@@ -48,7 +48,7 @@ export default function useWorkspaceState() {
   const [activeTable, setActiveTable] = useState(null);
   const [expandedDbs, setExpandedDbs] = useState({});
   const [expandedGroups, setExpandedGroups] = useState({});
-  const [activeTab, setActiveTab] = useState('gozat');
+  const [activeTab, setActiveTab] = useState('browse');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pinnedItems, setPinnedItems] = useState(() => {
     try {

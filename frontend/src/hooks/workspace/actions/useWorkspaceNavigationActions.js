@@ -71,8 +71,8 @@ export default function useWorkspaceNavigationActions({
     setActiveDb(dbName);
     setActiveTable(tableName);
     if (forceTab) setActiveTab(forceTab);
-    else if (activeTab !== 'gozat' && activeTab !== 'yapi' && activeTab !== 'sql')
-      setActiveTab('gozat');
+    else if (activeTab !== 'browse' && activeTab !== 'schema' && activeTab !== 'sql')
+      setActiveTab('browse');
 
     setSearchTerm('');
     setFilterRuleDrafts([]);

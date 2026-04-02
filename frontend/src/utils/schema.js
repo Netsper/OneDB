@@ -17,7 +17,7 @@ function formatDefault(defaultValue) {
 function formatColumnLine(driver, column) {
   const parts = [quoteIdentifier(driver, column.name), String(column.type || 'TEXT')];
 
-  if (column.nullable === 'No' || column.nullable === 'Hayır') {
+  if (column.nullable === 'No') {
     parts.push('NOT NULL');
   }
 

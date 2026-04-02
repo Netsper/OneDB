@@ -200,7 +200,7 @@ export default function SchemaView({
                     {col.type}
                   </td>
                   <td className="px-5 py-3">
-                    {col.nullable === 'Evet' || col.nullable === 'Yes' ? (
+                    {col.nullable === 'Yes' ? (
                       <span className="text-zinc-500">{t('yes')}</span>
                     ) : (
                       <span className="text-zinc-300 font-medium">{t('no')}</span>

@@ -63,15 +63,15 @@ export default function TableTabsToolbar({
         <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
           <div className="flex gap-6 min-w-max">
             <button
-              onClick={() => onChangeTab('gozat')}
-              className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'gozat' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}
+              onClick={() => onChangeTab('browse')}
+              className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'browse' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}
             >
               <Rows className="w-4 h-4" />{' '}
               {currentTableData.type === 'view' ? t('results') : t('tableEditor')}
             </button>
             <button
-              onClick={() => onChangeTab('yapi')}
-              className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'yapi' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}
+              onClick={() => onChangeTab('schema')}
+              className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'schema' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}
             >
               <Columns className="w-4 h-4" /> {t('schema')}
             </button>
@@ -84,7 +84,7 @@ export default function TableTabsToolbar({
           </div>
         </div>
 
-        {activeTab === 'gozat' && (
+        {activeTab === 'browse' && (
           <div className="flex items-center gap-2 py-2 shrink-0 overflow-visible">
             {currentTableData.type !== 'view' && (
               <>

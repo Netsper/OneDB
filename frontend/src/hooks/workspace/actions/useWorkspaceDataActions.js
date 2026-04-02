@@ -404,7 +404,7 @@ export default function useWorkspaceDataActions({
     if (!newColForm.name.trim() || !activeTable || !currentTableData) return;
     if (currentTableData.columns.find((c) => c.name === newColForm.name)) return;
 
-    const nullable = newColForm.nullable === 'Evet' || newColForm.nullable === 'Yes';
+    const nullable = newColForm.nullable === 'Yes';
     const mappedType = mapColumnTypeForDriver(newColForm.type, currentDriver);
     const defaultRaw = newColForm.default.trim();
     const defaultSql = buildColumnDefaultSql(defaultRaw, escapeLiteral);

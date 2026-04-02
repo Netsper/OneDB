@@ -163,7 +163,7 @@ export default function WorkspaceMainPanel({
         />
 
         <div className="flex-1 overflow-auto flex flex-col bg-[#18181b]">
-          {activeTab === 'gozat' && (
+          {activeTab === 'browse' && (
             <TableBrowserView
               t={t}
               tc={tc}
@@ -222,7 +222,7 @@ export default function WorkspaceMainPanel({
             />
           )}
 
-          {activeTab === 'yapi' && (
+          {activeTab === 'schema' && (
             <SchemaView
               t={t}
               tc={tc}

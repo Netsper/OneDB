@@ -41,13 +41,13 @@ export default function WorkspaceContextMenus({
             {contextMenu.tableName}
           </div>
           <button
-            onClick={() => selectDbAndTable(contextMenu.dbName, contextMenu.tableName, 'gozat')}
+            onClick={() => selectDbAndTable(contextMenu.dbName, contextMenu.tableName, 'browse')}
             className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white flex items-center gap-2"
           >
             <Rows className="w-3.5 h-3.5" /> {t('openTable')}
           </button>
           <button
-            onClick={() => selectDbAndTable(contextMenu.dbName, contextMenu.tableName, 'yapi')}
+            onClick={() => selectDbAndTable(contextMenu.dbName, contextMenu.tableName, 'schema')}
             className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white flex items-center gap-2"
           >
             <Columns className="w-3.5 h-3.5" /> {t('viewSchema')}
