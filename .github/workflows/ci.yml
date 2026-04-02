@@ -40,6 +40,12 @@ jobs:
       - name: Frontend unit and integration tests
         run: npm --prefix frontend test
 
+      - name: Install Playwright Chromium
+        run: npm --prefix frontend run test:e2e:install
+
+      - name: Frontend E2E tests
+        run: npm --prefix frontend run test:e2e
+
       - name: Build frontend bundle
         run: ONEDB_EMBEDDED=1 npm --prefix frontend run build
 

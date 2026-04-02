@@ -50,7 +50,10 @@ export default function LoginScreen({
         </button>
 
         <div className="flex-1 md:border-r md:border-[#333] md:pr-8 flex flex-col z-10">
-          <h2 className="text-lg font-medium text-zinc-100 mb-4 flex items-center gap-2">
+          <h2
+            data-testid="saved-servers-title"
+            className="text-lg font-medium text-zinc-100 mb-4 flex items-center gap-2"
+          >
             <Server className="w-5 h-5" /> {t('savedServers')}
           </h2>
           <div className="flex-1 overflow-auto space-y-2">
@@ -85,7 +88,7 @@ export default function LoginScreen({
 
         <div className="flex-[1.2] flex flex-col z-10">
           <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center gap-1.5 mb-2">
+            <div data-testid="login-brand" className="flex items-center gap-1.5 mb-2">
               <Database className={`w-8 h-8 ${tc.text}`} />
               <span className="text-3xl font-bold tracking-tight text-white">
                 One<span className={tc.text}>DB</span>
@@ -99,6 +102,7 @@ export default function LoginScreen({
                 {t('serverUrl')}
               </label>
               <input
+                data-testid="login-host-input"
                 type="text"
                 disabled={isConnecting}
                 className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 transition-colors disabled:opacity-50 ${tc.focusRing}`}
@@ -115,6 +119,7 @@ export default function LoginScreen({
                   {t('username')}
                 </label>
                 <input
+                  data-testid="login-user-input"
                   type="text"
                   disabled={isConnecting}
                   className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 transition-colors disabled:opacity-50 ${tc.focusRing}`}
@@ -172,6 +177,7 @@ export default function LoginScreen({
                 {t('password')}
               </label>
               <input
+                data-testid="login-pass-input"
                 type="password"
                 disabled={isConnecting}
                 placeholder="••••••••"
@@ -200,6 +206,7 @@ export default function LoginScreen({
               <button
                 type="submit"
                 disabled={isConnecting}
+                data-testid="connect-button"
                 className={`flex-1 ${tc.bg} ${tc.hoverBg} text-white text-sm font-medium py-2.5 rounded-md transition-colors flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed`}
               >
                 {isConnecting ? (
