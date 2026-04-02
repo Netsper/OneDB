@@ -46,6 +46,15 @@ final class Environment
     }
 
     /**
+     * Returns optional debug log file path (`ONEDB_DEBUG_LOG_PATH`).
+     */
+    public static function debugLogPath(): ?string
+    {
+        $raw = trim((string)(getenv('ONEDB_DEBUG_LOG_PATH') ?: ''));
+        return $raw !== '' ? $raw : null;
+    }
+
+    /**
      * Reads effective max row limit for SQL result-set responses.
      */
     public static function maxResultRows(): int

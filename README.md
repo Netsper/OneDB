@@ -14,6 +14,7 @@ It is designed for quick database operations: connect, inspect schema, browse ta
 - Export support: `.csv`, `.json`, `.sql`
 - CSRF-protected API requests
 - Optional readonly mode with `ONEDB_READONLY=1`
+- Optional debug telemetry with `ONEDB_DEBUG=1`
 - Production packaging into a single `release/OneDB.php`
 
 ## Project Structure
@@ -145,6 +146,12 @@ ONEDB_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 
 # Max accepted JSON request body (bytes)
 ONEDB_MAX_BODY_BYTES=2097152
+
+# Enable debug telemetry headers + verbose runtime errors
+ONEDB_DEBUG=1
+
+# Optional file sink for debug telemetry lines
+ONEDB_DEBUG_LOG_PATH=/tmp/onedb-debug.log
 ```
 
 ## Repository Notes

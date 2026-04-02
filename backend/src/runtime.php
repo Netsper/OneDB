@@ -16,6 +16,7 @@ use OneDB\Http\SessionCsrf;
 use OneDB\Support\Environment;
 use OneDB\Support\ErrorResponder;
 use OneDB\Support\UploadLimits;
+use OneDB\Support\DebugTelemetry;
 use PDOException;
 use Throwable;
 
@@ -38,31 +39,50 @@ final class Runtime
             return false;
         }
 
-        SessionCsrf::bootSession();
-        CorsPolicy::sendDevelopmentHeaders();
-
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
-            http_response_code(204);
-            return true;
-        }
-
-        $action = ApiRequest::resolveAction();
-        if ($action === '') {
-            JsonResponse::send(['ok' => false, 'error' => 'Missing action parameter.'], 400);
-            return true;
-        }
-
+        DebugTelemetry::beginRequest();
+        $statusCode = 200;
+        $action = '';
         try {
-            self::dispatchAction($action);
-        } catch (HttpException $e) {
-            JsonResponse::send(['ok' => false, 'error' => $e->getMessage()], $e->statusCode());
-        } catch (PDOException $e) {
-            JsonResponse::send(['ok' => false, 'error' => ErrorResponder::safeMessage($e)], 500);
-        } catch (Throwable $e) {
-            JsonResponse::send(['ok' => false, 'error' => ErrorResponder::safeMessage($e)], 500);
-        }
+            SessionCsrf::bootSession();
+            CorsPolicy::sendDevelopmentHeaders();
 
-        return true;
+            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+                $statusCode = 204;
+                http_response_code($statusCode);
+                return true;
+            }
+
+            $action = ApiRequest::resolveAction();
+            DebugTelemetry::setAction($action);
+            if ($action === '') {
+                $statusCode = 400;
+                JsonResponse::send(['ok' => false, 'error' => 'Missing action parameter.'], $statusCode);
+                return true;
+            }
+
+            try {
+                self::dispatchAction($action);
+                $status = http_response_code();
+                $statusCode = is_int($status) && $status > 0 ? $status : 200;
+            } catch (HttpException $e) {
+                $statusCode = $e->statusCode();
+                JsonResponse::send(['ok' => false, 'error' => $e->getMessage()], $statusCode);
+            } catch (PDOException $e) {
+                $statusCode = 500;
+                JsonResponse::send(['ok' => false, 'error' => ErrorResponder::safeMessage($e)], $statusCode);
+            } catch (Throwable $e) {
+                $statusCode = 500;
+                JsonResponse::send(['ok' => false, 'error' => ErrorResponder::safeMessage($e)], $statusCode);
+            }
+
+            return true;
+        } finally {
+            $status = http_response_code();
+            if (is_int($status) && $status > 0) {
+                $statusCode = $status;
+            }
+            DebugTelemetry::logRequest($statusCode);
+        }
     }
 
     /**

@@ -207,11 +207,30 @@ function wait_until_server_ready(string $baseUrl, array $cookieJar = []): void
     throw new SmokeTestFailure('Local backend server did not become ready in time.');
 }
 
+/**
+ * @param array<int,string> $headers
+ */
+function find_header_value(array $headers, string $headerName): ?string
+{
+    $needle = strtolower($headerName) . ':';
+    foreach ($headers as $headerLine) {
+        if (stripos($headerLine, $needle) !== 0) {
+            continue;
+        }
+
+        return trim((string)substr($headerLine, strlen($needle)));
+    }
+
+    return null;
+}
+
 function run_smoke_suite(): void
 {
     $rootDir = dirname(__DIR__, 2);
     $tmpDb = sys_get_temp_dir() . '/onedb-smoke-' . getmypid() . '.sqlite';
+    $debugLogPath = sys_get_temp_dir() . '/onedb-debug-' . getmypid() . '.log';
     @unlink($tmpDb);
+    @unlink($debugLogPath);
 
     $server = null;
     try {
@@ -406,11 +425,38 @@ function run_smoke_suite(): void
         );
         assert_same(403, $readonlyBlockedMutation['status'], 'readonly INSERT should return 403');
         assert_true(is_array($readonlyBlockedMutation['json']) && ($readonlyBlockedMutation['json']['ok'] ?? true) === false, 'readonly INSERT must be rejected');
+
+        stop_backend_server($server);
+        $server = null;
+
+        $debugServer = start_backend_server($rootDir, [
+            'ONEDB_DEBUG' => '1',
+            'ONEDB_DEBUG_LOG_PATH' => $debugLogPath,
+        ]);
+        $server = $debugServer;
+        $debugBaseUrl = 'http://127.0.0.1:' . $debugServer['port'];
+
+        wait_until_server_ready($debugBaseUrl);
+
+        $debugPing = call_api($debugBaseUrl, 'ping');
+        assert_same(200, $debugPing['status'], 'debug ping status must be 200');
+        assert_same('1', find_header_value($debugPing['headers'], 'X-OneDB-Debug'), 'debug header must be enabled');
+
+        $durationHeader = find_header_value($debugPing['headers'], 'X-OneDB-Request-Duration-Ms');
+        assert_true(is_string($durationHeader) && $durationHeader !== '', 'request duration header must be present');
+        assert_true(is_numeric($durationHeader), 'request duration header must be numeric');
+        assert_same('ping', find_header_value($debugPing['headers'], 'X-OneDB-Action'), 'debug action header must match action');
+
+        $debugLogText = is_file($debugLogPath) ? (string)file_get_contents($debugLogPath) : '';
+        assert_true($debugLogText !== '', 'debug log file must be written');
+        assert_true(strpos($debugLogText, 'action=ping') !== false, 'debug log must contain action');
+        assert_true(strpos($debugLogText, 'status=200') !== false, 'debug log must contain status');
     } finally {
         if (is_array($server)) {
             stop_backend_server($server);
         }
         @unlink($tmpDb);
+        @unlink($debugLogPath);
     }
 }
 

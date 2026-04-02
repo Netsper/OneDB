@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OneDB\Http;
 
+use OneDB\Support\DebugTelemetry;
+
 /**
  * Small HTTP JSON response helper.
  */
@@ -17,6 +19,7 @@ final class JsonResponse
     public static function send(array $payload, int $status = 200): void
     {
         http_response_code($status);
+        DebugTelemetry::appendResponseHeaders();
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
         header('X-Content-Type-Options: nosniff');
