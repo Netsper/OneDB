@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 
 const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const frontendDistDir = path.join(rootDir, 'frontend', 'dist');
@@ -128,10 +129,21 @@ function run() {
     .join('\n\n');
 
   const appHtml = inlineDistHtml(frontendDistDir);
+  const compressedHtml = zlib
+    .deflateRawSync(Buffer.from(appHtml, 'utf8'), { level: 9 })
+    .toString('base64');
 
   fs.mkdirSync(releaseDir, { recursive: true });
 
-  const output = `<?php\ndeclare(strict_types=1);\n${runtimeCode}\nif(\\OneDB\\Runtime::dispatch()){exit;}\n?>${appHtml}`;
+  const output =
+    `<?php\ndeclare(strict_types=1);\n${runtimeCode}\n` +
+    `if(\\OneDB\\Runtime::dispatch()){exit;}\n` +
+    `$__onedbPayload=base64_decode('${compressedHtml}',true);\n` +
+    `if($__onedbPayload===false){http_response_code(500);echo'OneDB payload decode failed.';exit;}\n` +
+    `if(!function_exists('gzinflate')){http_response_code(500);echo'OneDB requires the PHP zlib extension.';exit;}\n` +
+    `$__onedbHtml=gzinflate($__onedbPayload);\n` +
+    `if($__onedbHtml===false){http_response_code(500);echo'OneDB payload inflate failed.';exit;}\n` +
+    `echo $__onedbHtml;`;
   fs.writeFileSync(outputPath, output, 'utf8');
 
   console.log(`Built: ${outputPath}`);
