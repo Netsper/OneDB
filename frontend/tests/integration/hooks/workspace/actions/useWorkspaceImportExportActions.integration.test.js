@@ -60,6 +60,8 @@ function setupDomDownloadMocks() {
 function createBaseActions(overrides = {}) {
   const toastCalls = [];
   const setModalConfigCalls = [];
+  const setIsImportingCalls = [];
+  const setIsImportDragActiveCalls = [];
 
   const deps = {
     t: (key) => key,
@@ -75,8 +77,8 @@ function createBaseActions(overrides = {}) {
     },
     importFileInputRef: { current: null },
     isImporting: false,
-    setIsImporting: () => {},
-    setIsImportDragActive: () => {},
+    setIsImporting: (value) => setIsImportingCalls.push(value),
+    setIsImportDragActive: (value) => setIsImportDragActiveCalls.push(value),
     setImportLimitsError: () => {},
     importLimits: null,
     currentTableData: null,
@@ -118,6 +120,8 @@ function createBaseActions(overrides = {}) {
     actions: createWorkspaceImportExportActions(deps),
     toastCalls,
     setModalConfigCalls,
+    setIsImportingCalls,
+    setIsImportDragActiveCalls,
   };
 }
 
@@ -228,4 +232,57 @@ test('handleExportTable exports only selected rows and respects hidden columns',
   } finally {
     dom.restore();
   }
+});
+
+test('handleImportFileInputChange imports CSV rows into active table', async () => {
+  const executeSqlCalls = [];
+  let refreshActiveTableCallCount = 0;
+
+  const { actions, toastCalls, setModalConfigCalls, setIsImportingCalls } = createBaseActions({
+    modalConfig: { isOpen: true, type: 'import' },
+    currentTableData: {
+      columns: [
+        { name: 'id', type: 'int' },
+        { name: 'email', type: 'varchar(255)' },
+        { name: 'is_active', type: 'tinyint(1)' },
+      ],
+    },
+    isBooleanColumn: (column) => column.name === 'is_active',
+    isNumericColumnType: (column) => column.name === 'id' || column.name === 'is_active',
+    executeSql: async (sql) => {
+      executeSqlCalls.push(sql);
+    },
+    refreshActiveTable: async () => {
+      refreshActiveTableCallCount += 1;
+    },
+  });
+
+  const file = {
+    name: 'users.csv',
+    text: async () => 'id,email,is_active\n1,alpha@example.com,true\n2,beta@example.com,false\n',
+  };
+
+  actions.handleImportFileInputChange({
+    target: {
+      files: [file],
+    },
+  });
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (setModalConfigCalls.length > 0) break;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+
+  assert.equal(executeSqlCalls.length, 1);
+  assert.match(
+    executeSqlCalls[0],
+    /INSERT INTO `users` \(`id`, `email`, `is_active`\) VALUES \('1', 'alpha@example.com', '1'\), \('2', 'beta@example.com', '0'\);/,
+  );
+  assert.equal(refreshActiveTableCallCount, 1);
+  assert.deepEqual(setIsImportingCalls, [true, false]);
+  assert.deepEqual(setModalConfigCalls.at(-1), { isOpen: false, type: null });
+  assert.deepEqual(toastCalls.at(-1), {
+    message: 'importSuccessRows'.replace('{count}', '2'),
+    type: 'success',
+  });
 });
