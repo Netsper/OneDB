@@ -905,6 +905,14 @@ final class Runtime
      * Returns paginated table rows with optional filtering and sorting.
      *
      * @param array<string,mixed> $payload
+     * Payload keys:
+     * - connection: connection object
+     * - table: table/view name
+     * - page: 1-based page index
+     * - perPage: page size (max 200)
+     * - includeRowCount: when false, skips expensive COUNT(*) query
+     * - sort: sort descriptor
+     * - filters: filter list
      * @return array<string,mixed>
      */
     private static function browseTable(array $payload): array
@@ -918,6 +926,7 @@ final class Runtime
 
         $page = max(1, (int)($payload['page'] ?? 1));
         $perPage = max(1, min(200, (int)($payload['perPage'] ?? 25)));
+        $includeRowCount = !array_key_exists('includeRowCount', $payload) || (bool)$payload['includeRowCount'];
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
         $pdo = self::makePdo($connection);
         $columns = self::describeTable($pdo, $connection, $table);
@@ -1026,12 +1035,15 @@ final class Runtime
         }
 
         $qualifiedTable = self::quoteIdentifier($table, $driver);
-        $countStmt = $pdo->prepare('SELECT COUNT(*) AS total_count FROM ' . $qualifiedTable . $whereSql);
-        foreach ($bindings as $key => $value) {
-            $countStmt->bindValue($key, $value);
+        $rowCount = null;
+        if ($includeRowCount) {
+            $countStmt = $pdo->prepare('SELECT COUNT(*) AS total_count FROM ' . $qualifiedTable . $whereSql);
+            foreach ($bindings as $key => $value) {
+                $countStmt->bindValue($key, $value);
+            }
+            $countStmt->execute();
+            $rowCount = (int)($countStmt->fetchColumn() ?: 0);
         }
-        $countStmt->execute();
-        $rowCount = (int)($countStmt->fetchColumn() ?: 0);
 
         $offset = ($page - 1) * $perPage;
         $dataSql = 'SELECT * FROM ' . $qualifiedTable . $whereSql . $orderSql . ' LIMIT ' . $perPage . ' OFFSET ' . $offset;

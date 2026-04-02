@@ -1,5 +1,22 @@
 import { useCallback } from 'react';
 
+export const shouldIncludeBrowseRowCount = (nextPage, overrideValue) => {
+  if (typeof overrideValue === 'boolean') {
+    return overrideValue;
+  }
+  return Number(nextPage || 1) <= 1;
+};
+
+export const resolveBrowseRowCount = ({ includeRowCount, apiRowCount, fallbackRowCount }) => {
+  if (includeRowCount) {
+    const parsed = Number(apiRowCount || 0);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }
+
+  const fallback = Number(fallbackRowCount || 0);
+  return Number.isFinite(fallback) && fallback >= 0 ? fallback : 0;
+};
+
 export default function useOneDbApi({
   currentDriver,
   connForm,
@@ -232,6 +249,7 @@ export default function useOneDbApi({
 
       const nextPage = overrides.page ?? page;
       const nextPerPage = overrides.perPage ?? rowsPerPage;
+      const includeRowCount = shouldIncludeBrowseRowCount(nextPage, overrides.includeRowCount);
       const nextSort = overrides.sort ?? (sortConfig.key ? sortConfig : null);
       const nextColumnFilters = overrides.columnFilters ?? serverColumnFilters;
       const nextRuleFilters = overrides.ruleFilters ?? filterRules;
@@ -240,17 +258,22 @@ export default function useOneDbApi({
         table: tableName,
         page: nextPage,
         perPage: nextPerPage,
+        includeRowCount,
         sort: nextSort?.key ? { column: nextSort.key, direction: nextSort.direction } : null,
         filters: buildBrowseFilters(nextColumnFilters, nextRuleFilters),
       });
 
       const rows = (result.rows || []).map((row, index) => ({ ...row, _origIndex: index }));
       const columns = result.columns || [];
-      const rowCount = Number(result.rowCount || 0);
 
       setDatabases((prev) => {
         const dbEntry = prev[dbName] || {};
         const currentEntry = dbEntry[tableName] || { type: 'table' };
+        const rowCount = resolveBrowseRowCount({
+          includeRowCount,
+          apiRowCount: result.rowCount,
+          fallbackRowCount: currentEntry.rowCount,
+        });
         return {
           ...prev,
           [dbName]: {
