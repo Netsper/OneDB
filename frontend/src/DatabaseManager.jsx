@@ -6,11 +6,11 @@ import useDatabaseManagerScreenModel from './hooks/workspace/view-models/useData
 export default function DatabaseManager() {
   const { isConnected, workspaceViewModel, loginScreenProps } = useDatabaseManagerScreenModel();
 
-  // --- GİRİŞ EKRANI ---
+  // Render login screen until an active DB session is established.
   if (!isConnected) {
     return <LoginScreen {...loginScreenProps} />;
   }
 
-  // --- ANA YAPI (WRAPPER) ---
+  // Render main workspace once connected.
   return <ConnectedWorkspace viewModel={workspaceViewModel} />;
 }

@@ -8,18 +8,38 @@ use PDO;
 use PDOException;
 use Throwable;
 
+/**
+ * Runtime entrypoint for OneDB single-file backend API.
+ *
+ * The class handles request routing, security checks, connection bootstrap,
+ * metadata listing and SQL execution for MySQL, PostgreSQL and SQLite.
+ */
 final class Runtime
 {
+    /**
+     * Session key used to persist the CSRF token.
+     */
     private const CSRF_KEY = 'onedb_csrf_token';
 
+    /**
+     * Default maximum number of rows returned from the `query` API action.
+     *
+     * This keeps memory usage predictable when users run large SELECT queries.
+     */
+    private const DEFAULT_MAX_RESULT_ROWS = 2000;
+
+    /**
+     * Handles API dispatch for the embedded OneDB runtime.
+     *
+     * @return bool True if request is handled by API dispatcher, otherwise false.
+     */
     public static function dispatch(): bool
     {
-        self::bootSession();
-
         if (!self::isApiRequest()) {
             return false;
         }
 
+        self::bootSession();
         self::sendCorsHeaders();
 
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
@@ -109,7 +129,21 @@ final class Runtime
                     $durationMs = (microtime(true) - $startedAt) * 1000;
 
                     if ($stmt->columnCount() > 0) {
-                        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        $maxRows = self::maxResultRows();
+                        $rows = [];
+                        $truncated = false;
+                        $rowCount = 0;
+
+                        while (($row = $stmt->fetch(PDO::FETCH_ASSOC)) !== false) {
+                            if ($rowCount >= $maxRows) {
+                                $truncated = true;
+                                break;
+                            }
+
+                            $rows[] = $row;
+                            $rowCount++;
+                        }
+
                         $columns = [];
                         for ($idx = 0; $idx < $stmt->columnCount(); $idx++) {
                             $meta = $stmt->getColumnMeta($idx);
@@ -123,8 +157,10 @@ final class Runtime
                             'kind' => 'result_set',
                             'columns' => $columns,
                             'rows' => $rows,
-                            'rowCount' => count($rows),
+                            'rowCount' => $rowCount,
                             'durationMs' => round($durationMs, 2),
+                            'truncated' => $truncated,
+                            'maxRows' => $maxRows,
                         ]);
                     } else {
                         self::json([
@@ -141,14 +177,17 @@ final class Runtime
                     break;
             }
         } catch (PDOException $e) {
-            self::json(['ok' => false, 'error' => $e->getMessage()], 500);
+            self::json(['ok' => false, 'error' => self::safeErrorMessage($e)], 500);
         } catch (Throwable $e) {
-            self::json(['ok' => false, 'error' => $e->getMessage()], 500);
+            self::json(['ok' => false, 'error' => self::safeErrorMessage($e)], 500);
         }
 
         return true;
     }
 
+    /**
+     * Starts a secure HTTP session if one does not already exist.
+     */
     private static function bootSession(): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -162,6 +201,9 @@ final class Runtime
         ]);
     }
 
+    /**
+     * Determines whether current request targets the API.
+     */
     private static function isApiRequest(): bool
     {
         if (isset($_GET['action']) || isset($_GET['api'])) {
@@ -174,6 +216,9 @@ final class Runtime
         return $path === '/api' || strpos($path, '/api/') === 0;
     }
 
+    /**
+     * Resolves API action name from query parameters or `/api/{action}` path.
+     */
     private static function resolveAction(): string
     {
         if (isset($_GET['action'])) {
@@ -198,6 +243,11 @@ final class Runtime
         return '';
     }
 
+    /**
+     * Reads JSON payload from request body.
+     *
+     * @return array<string,mixed>
+     */
     private static function readJson(): array
     {
         $raw = file_get_contents('php://input');
@@ -209,6 +259,9 @@ final class Runtime
         return is_array($data) ? $data : [];
     }
 
+    /**
+     * Returns current session CSRF token, creating one when missing.
+     */
     private static function csrfToken(): string
     {
         if (!isset($_SESSION[self::CSRF_KEY])) {
@@ -218,6 +271,9 @@ final class Runtime
         return (string)$_SESSION[self::CSRF_KEY];
     }
 
+    /**
+     * Validates CSRF header for state-changing HTTP verbs.
+     */
     private static function requireCsrf(): void
     {
         $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
@@ -231,15 +287,17 @@ final class Runtime
         }
     }
 
+    /**
+     * Creates PDO connection from user-supplied connection payload.
+     *
+     * @param array<string,mixed> $connection
+     */
     private static function makePdo(array $connection): PDO
     {
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
 
         if ($driver === 'sqlite') {
-            $path = (string)($connection['path'] ?? '');
-            if ($path === '') {
-                throw new \InvalidArgumentException('SQLite path is required.');
-            }
+            $path = self::normalizeSqlitePath((string)($connection['path'] ?? ''));
             $dsn = 'sqlite:' . $path;
             $user = null;
             $pass = null;
@@ -269,17 +327,28 @@ final class Runtime
             }
         }
 
-        return new PDO($dsn, $user, $pass, [
+        $pdo = new PDO($dsn, $user, $pass, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
+
+        if (self::readonlyMode()) {
+            self::configureReadonlySession($pdo, $driver);
+        }
+
+        return $pdo;
     }
 
+    /**
+     * Performs a conservative SQL-level check for readonly mode.
+     *
+     * Note: this is intentionally strict and may reject edge-case queries.
+     */
     private static function isReadOnlySql(string $sql): bool
     {
-        $trimmed = ltrim($sql);
-        if ($trimmed === '') {
+        $inspected = self::normalizeSqlForInspection($sql);
+        if ($inspected === '') {
             return false;
         }
 
@@ -293,17 +362,78 @@ final class Runtime
             'pragma',
         ];
 
-        $firstToken = strtolower((string)strtok($trimmed, " \t\n\r\0\x0B"));
+        $firstToken = strtolower((string)strtok($inspected, " \t\n\r\0\x0B"));
 
-        return in_array($firstToken, $allowed, true);
+        if (!in_array($firstToken, $allowed, true)) {
+            return false;
+        }
+
+        // Block obvious mutating statements even when hidden in CTEs.
+        if (preg_match('/\b(insert|update|delete|merge|replace|upsert|create|alter|drop|truncate|grant|revoke|comment|attach|detach|copy)\b/i', $inspected)) {
+            return false;
+        }
+
+        // Block MySQL file write variants.
+        if (preg_match('/\binto\s+(outfile|dumpfile)\b/i', $inspected)) {
+            return false;
+        }
+
+        return true;
     }
 
+    /**
+     * Returns readonly mode flag from environment.
+     */
     private static function readonlyMode(): bool
     {
         $raw = strtolower((string)(getenv('ONEDB_READONLY') ?: '0'));
         return in_array($raw, ['1', 'true', 'yes', 'on'], true);
     }
 
+    /**
+     * Returns runtime debug mode flag from environment.
+     */
+    private static function debugMode(): bool
+    {
+        $raw = strtolower((string)(getenv('ONEDB_DEBUG') ?: '0'));
+        return in_array($raw, ['1', 'true', 'yes', 'on'], true);
+    }
+
+    /**
+     * Reads effective max row limit for SQL result-set responses.
+     */
+    private static function maxResultRows(): int
+    {
+        $raw = trim((string)(getenv('ONEDB_MAX_RESULT_ROWS') ?: ''));
+        if ($raw !== '' && ctype_digit($raw)) {
+            $value = (int)$raw;
+            if ($value > 0) {
+                return min($value, 10000);
+            }
+        }
+
+        return self::DEFAULT_MAX_RESULT_ROWS;
+    }
+
+    /**
+     * Returns sanitized error text for API responses.
+     */
+    private static function safeErrorMessage(Throwable $e): string
+    {
+        if (self::debugMode()) {
+            return $e->getMessage();
+        }
+
+        return $e instanceof PDOException
+            ? 'Database operation failed.'
+            : 'Unexpected server error.';
+    }
+
+    /**
+     * Parses and returns upload/memory related PHP runtime limits.
+     *
+     * @return array<string,mixed>
+     */
     private static function uploadLimits(): array
     {
         $uploadRaw = trim((string)(ini_get('upload_max_filesize') ?: ''));
@@ -335,6 +465,9 @@ final class Runtime
         ];
     }
 
+    /**
+     * Reads integer value from php.ini.
+     */
     private static function iniInt(string $key): ?int
     {
         $raw = ini_get($key);
@@ -350,6 +483,9 @@ final class Runtime
         return (int)$value;
     }
 
+    /**
+     * Parses php.ini style size value (`2M`, `512K`, `-1`) to bytes.
+     */
     private static function iniSizeToBytes(string $raw): ?int
     {
         $value = strtolower(trim($raw));
@@ -389,6 +525,11 @@ final class Runtime
         return (int)round(min($bytes, (float)PHP_INT_MAX));
     }
 
+    /**
+     * Returns smallest finite limit in bytes, preserving unlimited (`-1`) semantics.
+     *
+     * @param array<int|null> $limits
+     */
     private static function smallestLimit(array $limits): ?int
     {
         $finiteLimits = [];
@@ -412,6 +553,207 @@ final class Runtime
         return $hasUnlimited ? -1 : null;
     }
 
+    /**
+     * Normalizes SQL text for readonly inspection.
+     *
+     * The method strips comments and string literals so keyword scans are more reliable.
+     */
+    private static function normalizeSqlForInspection(string $sql): string
+    {
+        $normalized = '';
+        $length = strlen($sql);
+        $inSingle = false;
+        $inDouble = false;
+        $inBacktick = false;
+        $inLineComment = false;
+        $inBlockComment = false;
+
+        for ($index = 0; $index < $length; $index++) {
+            $char = $sql[$index];
+            $next = $index + 1 < $length ? $sql[$index + 1] : '';
+            $prev = $index > 0 ? $sql[$index - 1] : '';
+
+            if ($inLineComment) {
+                if ($char === "\n") {
+                    $inLineComment = false;
+                    $normalized .= ' ';
+                }
+                continue;
+            }
+
+            if ($inBlockComment) {
+                if ($char === '*' && $next === '/') {
+                    $index++;
+                    $inBlockComment = false;
+                    $normalized .= ' ';
+                }
+                continue;
+            }
+
+            if (!$inSingle && !$inDouble && !$inBacktick) {
+                if ($char === '-' && $next === '-') {
+                    $inLineComment = true;
+                    $index++;
+                    continue;
+                }
+
+                if ($char === '/' && $next === '*') {
+                    $inBlockComment = true;
+                    $index++;
+                    continue;
+                }
+            }
+
+            if (!$inDouble && !$inBacktick && $char === "'") {
+                if ($inSingle && $next === "'") {
+                    $index++;
+                    continue;
+                }
+
+                if (!$inSingle || $prev !== '\\') {
+                    $inSingle = !$inSingle;
+                }
+
+                continue;
+            }
+
+            if (!$inSingle && !$inBacktick && $char === '"') {
+                if ($inDouble && $next === '"') {
+                    $index++;
+                    continue;
+                }
+
+                if (!$inDouble || $prev !== '\\') {
+                    $inDouble = !$inDouble;
+                }
+
+                continue;
+            }
+
+            if (!$inSingle && !$inDouble && $char === '`') {
+                $inBacktick = !$inBacktick;
+                continue;
+            }
+
+            if ($inSingle || $inDouble || $inBacktick) {
+                continue;
+            }
+
+            $normalized .= $char;
+        }
+
+        return trim(strtolower($normalized));
+    }
+
+    /**
+     * Enforces a readonly SQL session where supported by current driver.
+     */
+    private static function configureReadonlySession(PDO $pdo, string $driver): void
+    {
+        if ($driver === 'pgsql') {
+            $pdo->exec('SET default_transaction_read_only = on');
+            return;
+        }
+
+        if ($driver === 'mysql') {
+            $pdo->exec('SET SESSION TRANSACTION READ ONLY');
+        }
+    }
+
+    /**
+     * Validates and normalizes SQLite path according to optional root restriction.
+     */
+    private static function normalizeSqlitePath(string $path): string
+    {
+        $candidate = trim($path);
+        if ($candidate === '') {
+            throw new \InvalidArgumentException('SQLite path is required.');
+        }
+
+        if ($candidate === ':memory:') {
+            return $candidate;
+        }
+
+        if (strpos($candidate, "\0") !== false) {
+            throw new \InvalidArgumentException('SQLite path is invalid.');
+        }
+
+        $rootRaw = trim((string)(getenv('ONEDB_SQLITE_ROOT') ?: ''));
+        if ($rootRaw === '') {
+            return $candidate;
+        }
+
+        $root = realpath($rootRaw);
+        if ($root === false) {
+            throw new \RuntimeException('Configured ONEDB_SQLITE_ROOT directory does not exist.');
+        }
+
+        $absoluteCandidate = self::resolveAbsolutePath($candidate);
+        $resolvedFile = realpath($absoluteCandidate);
+
+        if ($resolvedFile !== false) {
+            if (!self::pathStartsWith($resolvedFile, $root)) {
+                throw new \RuntimeException('SQLite path is outside allowed root.');
+            }
+
+            return $resolvedFile;
+        }
+
+        $parent = realpath(dirname($absoluteCandidate));
+        if ($parent === false || !self::pathStartsWith($parent, $root)) {
+            throw new \RuntimeException('SQLite path is outside allowed root.');
+        }
+
+        return $absoluteCandidate;
+    }
+
+    /**
+     * Returns an absolute path for relative filesystem paths.
+     */
+    private static function resolveAbsolutePath(string $path): string
+    {
+        if (self::isAbsolutePath($path)) {
+            return $path;
+        }
+
+        $base = getcwd();
+        if ($base === false || $base === '') {
+            return $path;
+        }
+
+        return rtrim($base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $path;
+    }
+
+    /**
+     * Checks if path is absolute (POSIX or Windows style).
+     */
+    private static function isAbsolutePath(string $path): bool
+    {
+        if ($path === '') {
+            return false;
+        }
+
+        if ($path[0] === '/' || $path[0] === '\\') {
+            return true;
+        }
+
+        return (bool)preg_match('/^[a-zA-Z]:[\\\\\\/]/', $path);
+    }
+
+    /**
+     * Returns true when $path is inside $root directory.
+     */
+    private static function pathStartsWith(string $path, string $root): bool
+    {
+        $normalizedPath = rtrim(str_replace('\\', '/', $path), '/');
+        $normalizedRoot = rtrim(str_replace('\\', '/', $root), '/');
+
+        return $normalizedPath === $normalizedRoot || strpos($normalizedPath, $normalizedRoot . '/') === 0;
+    }
+
+    /**
+     * Sends CORS headers for local development origins.
+     */
     private static function sendCorsHeaders(): void
     {
         $origin = (string)($_SERVER['HTTP_ORIGIN'] ?? '');
@@ -419,6 +761,8 @@ final class Runtime
             'http://localhost:5173',
             'http://127.0.0.1:5173',
         ];
+
+        header('Vary: Origin');
 
         if (in_array($origin, $allowed, true)) {
             header('Access-Control-Allow-Origin: ' . $origin);
@@ -429,6 +773,11 @@ final class Runtime
         header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
     }
 
+    /**
+     * Writes a JSON HTTP response.
+     *
+     * @param array<string,mixed> $payload
+     */
     private static function json(array $payload, int $status = 200): void
     {
         http_response_code($status);
@@ -436,6 +785,12 @@ final class Runtime
         echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
+    /**
+     * Lists available databases for the active connection driver.
+     *
+     * @param array<string,mixed> $connection
+     * @return array<int,string>
+     */
     private static function listDatabases(array $connection): array
     {
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
@@ -457,6 +812,12 @@ final class Runtime
         )));
     }
 
+    /**
+     * Lists tables/views and basic metadata for selected database.
+     *
+     * @param array<string,mixed> $connection
+     * @return array<int,array<string,mixed>>
+     */
     private static function listTables(array $connection): array
     {
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
@@ -478,11 +839,8 @@ final class Runtime
                     continue;
                 }
 
-                $columnCount = 0;
                 $pragmaRows = $pdo->query('PRAGMA table_info(' . self::quoteIdentifier($tableName, $driver) . ')')->fetchAll(PDO::FETCH_ASSOC);
-                foreach ($pragmaRows as $_pragmaRow) {
-                    $columnCount++;
-                }
+                $columnCount = count($pragmaRows);
 
                 $tables[] = [
                     'name' => $tableName,
@@ -543,6 +901,12 @@ final class Runtime
         )));
     }
 
+    /**
+     * Returns paginated table rows with optional filtering and sorting.
+     *
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>
+     */
     private static function browseTable(array $payload): array
     {
         $connection = is_array($payload['connection'] ?? null) ? $payload['connection'] : [];
@@ -692,6 +1056,12 @@ final class Runtime
         ];
     }
 
+    /**
+     * Reads column metadata for selected table.
+     *
+     * @param array<string,mixed> $connection
+     * @return array<int,array<string,mixed>>
+     */
     private static function describeTable(PDO $pdo, array $connection, string $table): array
     {
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
@@ -836,6 +1206,9 @@ final class Runtime
         return $columns;
     }
 
+    /**
+     * Quotes SQL identifier based on driver-specific rules.
+     */
     private static function quoteIdentifier(string $name, string $driver): string
     {
         if ($driver === 'mysql') {
@@ -845,6 +1218,9 @@ final class Runtime
         return '"' . str_replace('"', '""', $name) . '"';
     }
 
+    /**
+     * Returns SQL cast expression for string-like filtering.
+     */
     private static function stringExpression(string $quotedColumn, string $driver): string
     {
         if ($driver === 'mysql') {

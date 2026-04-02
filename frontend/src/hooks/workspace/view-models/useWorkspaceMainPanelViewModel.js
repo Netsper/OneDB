@@ -68,6 +68,7 @@ export default function useWorkspaceMainPanelViewModel(params) {
     saveInlineEdit,
     handleCloneRow,
     handleDeleteRow,
+    handleDropColumn,
     copyRowWithHeaders,
     openCellContextMenu,
     activeTable,
@@ -103,7 +104,6 @@ export default function useWorkspaceMainPanelViewModel(params) {
     selectDbAndTable,
     setInputVal,
     setIsCommandOpen,
-    showToast,
   } = params;
 
   return {
@@ -175,6 +175,7 @@ export default function useWorkspaceMainPanelViewModel(params) {
     saveInlineEdit,
     handleCloneRow,
     handleDeleteRow,
+    handleDropColumn,
     copyRowWithHeaders,
     openCellContextMenu,
     activeTable,
@@ -210,6 +211,5 @@ export default function useWorkspaceMainPanelViewModel(params) {
     selectDbAndTable,
     setInputVal,
     setIsCommandOpen,
-    showToast,
   };
 }

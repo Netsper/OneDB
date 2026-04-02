@@ -422,6 +422,28 @@ export default function useWorkspaceDataActions({
     }
   };
 
+  const handleDropColumn = async (columnName) => {
+    const targetColumn = String(columnName || '').trim();
+    if (!targetColumn || !activeTable || !currentTableData) return;
+
+    const column = currentTableData.columns.find((entry) => entry.name === targetColumn);
+    if (!column) return;
+
+    if (!confirm(`Drop column "${targetColumn}" from "${activeTable}"?`)) {
+      return;
+    }
+
+    try {
+      await executeSql(
+        `ALTER TABLE ${quoteIdentifier(activeTable)} DROP COLUMN ${quoteIdentifier(targetColumn)};`,
+      );
+      await refreshActiveTable();
+      showToast(`Column "${targetColumn}" dropped.`, 'success');
+    } catch (error) {
+      showToast(error.message || 'Drop column failed.', 'error');
+    }
+  };
+
   return {
     saveInlineEdit,
     handleBulkDelete,
@@ -436,5 +458,6 @@ export default function useWorkspaceDataActions({
     handleDeleteDB,
     handleCreateTable,
     handleAddColumn,
+    handleDropColumn,
   };
 }

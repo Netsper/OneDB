@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 
 export default function useWorkspaceCommandPalette({ databases, commandQuery, sidebarQuery }) {
+  const MAX_COMMAND_RESULTS = 100;
+
   const allTablesList = useMemo(() => {
     const list = [];
     Object.keys(databases).forEach((db) => {
@@ -17,11 +19,13 @@ export default function useWorkspaceCommandPalette({ databases, commandQuery, si
     }
 
     const normalizedQuery = commandQuery.toLowerCase();
-    return allTablesList.filter(
-      (item) =>
-        item.tableName.toLowerCase().includes(normalizedQuery) ||
-        item.dbName.toLowerCase().includes(normalizedQuery),
-    );
+    return allTablesList
+      .filter(
+        (item) =>
+          item.tableName.toLowerCase().includes(normalizedQuery) ||
+          item.dbName.toLowerCase().includes(normalizedQuery),
+      )
+      .slice(0, MAX_COMMAND_RESULTS);
   }, [allTablesList, commandQuery]);
 
   const hasSidebarFilters = sidebarQuery.trim() !== '';

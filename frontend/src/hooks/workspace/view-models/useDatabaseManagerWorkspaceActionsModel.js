@@ -35,6 +35,8 @@ export default function useDatabaseManagerWorkspaceActionsModel(model, apiModel)
     loadXlsx,
   } = model;
   const {
+    callApi,
+    buildConnectionPayload,
     executeSql,
     getFirstValue,
     refreshSchemas,
@@ -92,6 +94,8 @@ export default function useDatabaseManagerWorkspaceActionsModel(model, apiModel)
     isNumericColumnType,
     quoteIdentifier,
     escapeLiteral,
+    callApi,
+    buildConnectionPayload,
     executeSql,
     refreshSchemas,
     ensureDatabaseTablesLoaded,

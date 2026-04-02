@@ -222,10 +222,10 @@ export default function SqlEditorView({
               </table>
             ) : (
               <div className="p-4">
-                <div className="bg-[#1c1c1c] border border-[#333] rounded-lg p-4 font-mono text-xs">
-                  <div className="flex items-center gap-2 mb-4 text-zinc-300 font-semibold">
-                    <Activity className="w-4 h-4 text-amber-500" /> Yürütme Planı (Execution Plan)
-                  </div>
+                  <div className="bg-[#1c1c1c] border border-[#333] rounded-lg p-4 font-mono text-xs">
+                    <div className="flex items-center gap-2 mb-4 text-zinc-300 font-semibold">
+                      <Activity className="w-4 h-4 text-amber-500" /> {t('explainTab')}
+                    </div>
                   {sqlResult.plan ? (
                     sqlResult.plan.map((planItem, i) => (
                       <div key={i} className="flex items-start gap-4 mb-3 relative pl-6">

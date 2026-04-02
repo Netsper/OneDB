@@ -1,6 +1,24 @@
 import { useRef, useState } from 'react';
 import { normalizePinnedItems } from '../../../utils/pins.js';
 
+function sanitizeSavedConnectionProfiles(rawValue) {
+  if (!Array.isArray(rawValue)) {
+    return [];
+  }
+
+  return rawValue
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      name: String(item.name || '').trim(),
+      host: String(item.host || ''),
+      user: String(item.user || ''),
+      pass: '',
+      port: String(item.port || ''),
+      driver: item.driver === 'pgsql' ? 'pgsql' : 'mysql',
+    }))
+    .filter((item) => item.name !== '' || item.host !== '' || item.user !== '');
+}
+
 export default function useWorkspaceState() {
   const [lang, setLang] = useState(() => localStorage.getItem('dbm_lang') || 'en');
 
@@ -17,7 +35,8 @@ export default function useWorkspaceState() {
   });
   const [savedConnections, setSavedConnections] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('dbm_connections')) || [];
+      const parsed = JSON.parse(localStorage.getItem('dbm_connections')) || [];
+      return sanitizeSavedConnectionProfiles(parsed);
     } catch {
       return [];
     }
@@ -44,7 +63,7 @@ export default function useWorkspaceState() {
     try {
       return (
         JSON.parse(localStorage.getItem('dbm_sql_history')) || [
-          'SELECT * FROM kullanicilar LIMIT 10;',
+          'SELECT * FROM users LIMIT 10;',
         ]
       );
     } catch {

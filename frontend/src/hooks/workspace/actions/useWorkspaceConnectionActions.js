@@ -69,7 +69,7 @@ export default function useWorkspaceConnectionActions({
 
     setSavedConnections((prev) => [
       ...prev.filter((connection) => connection.name !== profileName),
-      { ...connForm, name: profileName },
+      { ...connForm, pass: '', name: profileName },
     ]);
     setConnForm((prev) => ({ ...prev, name: profileName }));
     setIsSaveProfileModalOpen(false);
@@ -81,7 +81,7 @@ export default function useWorkspaceConnectionActions({
     setConnForm({
       host: profile.host || '',
       user: profile.user || '',
-      pass: profile.pass || '',
+      pass: '',
       port: profile.port || '',
       name: profile.name || '',
       driver: inferredDriver,

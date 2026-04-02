@@ -38,10 +38,8 @@ export default function DatabaseActionModals({
   isImportLimitsLoading,
   importLimitsError,
   importLimitsRows,
-  activeDb,
-  databases,
-  exportToSQL,
   handleExportTable,
+  handleExportDatabaseSql,
 }) {
   return (
     <>
@@ -165,8 +163,8 @@ export default function DatabaseActionModals({
                     onChange={(e) => setNewColForm({ ...newColForm, nullable: e.target.value })}
                     className={baseSelectClass}
                   >
-                    <option value="Evet">{t('yes')}</option>
-                    <option value="Hayır">{t('no')}</option>
+                    <option value="Yes">{t('yes')}</option>
+                    <option value="No">{t('no')}</option>
                   </SelectField>
                 </div>
               </div>
@@ -381,14 +379,7 @@ export default function DatabaseActionModals({
                     <div className="flex gap-2">
                       {modalConfig.type === 'export_db' ? (
                         <button
-                          onClick={() => {
-                            const dbData = databases[activeDb];
-                            let allData = [];
-                            Object.keys(dbData).forEach((tableName) =>
-                              allData.push(...dbData[tableName].data),
-                            );
-                            exportToSQL(allData, activeDb, 'full_dump');
-                          }}
+                          onClick={handleExportDatabaseSql}
                           className="flex-1 bg-[#18181b] border border-[#333] hover:border-zinc-500 text-zinc-300 py-2 rounded text-sm transition-colors"
                         >
                           {t('downloadSql')}

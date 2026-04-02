@@ -228,7 +228,7 @@ export default function SchemaView({
                   <td className="px-5 py-3 text-right">
                     {currentTableData.type !== 'view' && (
                       <button
-                        onClick={onDropColumn}
+                        onClick={() => onDropColumn(col.name)}
                         className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
                         title={t('drop')}
                       >

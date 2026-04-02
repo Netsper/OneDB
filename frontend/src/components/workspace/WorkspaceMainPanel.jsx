@@ -76,6 +76,7 @@ export default function WorkspaceMainPanel({
   saveInlineEdit,
   handleCloneRow,
   handleDeleteRow,
+  handleDropColumn,
   copyRowWithHeaders,
   openCellContextMenu,
   activeTable,
@@ -111,7 +112,6 @@ export default function WorkspaceMainPanel({
   selectDbAndTable,
   setInputVal,
   setIsCommandOpen,
-  showToast,
 }) {
   if (currentTableData) {
     return (
@@ -234,9 +234,7 @@ export default function WorkspaceMainPanel({
               getColumnIcon={getColumnIcon}
               ddl={currentTableDdl}
               copyToClipboard={copyToClipboard}
-              onDropColumn={() =>
-                showToast('Sütun silme (Drop Column) henüz aktif değil.', 'error')
-              }
+              onDropColumn={handleDropColumn}
             />
           )}
 

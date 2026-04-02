@@ -54,11 +54,14 @@ export default function useWorkspaceImportExportActions({
   isNumericColumnType,
   quoteIdentifier,
   escapeLiteral,
+  callApi,
+  buildConnectionPayload,
   executeSql,
   refreshSchemas,
   ensureDatabaseTablesLoaded,
   refreshActiveTable,
   showToast,
+  databases,
   hiddenColumns,
   processedData,
   selectedRows,
@@ -314,6 +317,106 @@ export default function useWorkspaceImportExportActions({
     showToast(`${tableName}_dump.sql downloaded!`, 'success');
   };
 
+  const toExportSqlLiteral = (value) => {
+    if (value === null || value === undefined) return 'NULL';
+    if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'NULL';
+    if (typeof value === 'boolean') return value ? '1' : '0';
+    return `'${String(value).replace(/'/g, "''")}'`;
+  };
+
+  const loadAllRowsForTableForExport = async (dbName, tableName) => {
+    const perPage = 200;
+    let page = 1;
+    let expectedRowCount = null;
+    const rows = [];
+
+    for (;;) {
+      const result = await callApi('browse_table', {
+        connection: buildConnectionPayload(dbName),
+        table: tableName,
+        page,
+        perPage,
+        sort: null,
+        filters: [],
+      });
+
+      if (expectedRowCount === null) {
+        expectedRowCount = Number(result.rowCount || 0);
+      }
+
+      const pageRows = Array.isArray(result.rows) ? result.rows : [];
+      rows.push(...pageRows);
+
+      if (
+        pageRows.length === 0 ||
+        (expectedRowCount !== null && rows.length >= expectedRowCount) ||
+        pageRows.length < perPage
+      ) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return rows;
+  };
+
+  const handleExportDatabaseSql = async () => {
+    if (!activeDb) {
+      showToast('No active database selected.', 'error');
+      return;
+    }
+
+    const tableEntries = Object.entries(databases[activeDb] || {})
+      .filter(([, table]) => (table?.type || 'table') !== 'view')
+      .map(([tableName]) => tableName)
+      .sort((a, b) => a.localeCompare(b));
+
+    if (tableEntries.length === 0) {
+      showToast(t('noRecords'), 'error');
+      return;
+    }
+
+    try {
+      const sections = [
+        `-- DB: ${activeDb}`,
+        `-- Exported at: ${new Date().toISOString()}`,
+        '',
+      ];
+
+      for (const tableName of tableEntries) {
+        const allRows = await loadAllRowsForTableForExport(activeDb, tableName);
+        sections.push(`-- Table: ${tableName} (${allRows.length} rows)`);
+
+        if (allRows.length === 0) {
+          sections.push('');
+          continue;
+        }
+
+        const headers = Object.keys(allRows[0]).filter((key) => key !== '_origIndex');
+        const quotedTable = quoteIdentifier(tableName);
+        const columnSql = headers.map((header) => quoteIdentifier(header)).join(', ');
+
+        allRows.forEach((row) => {
+          const valueSql = headers.map((header) => toExportSqlLiteral(row[header])).join(', ');
+          sections.push(`INSERT INTO ${quotedTable} (${columnSql}) VALUES (${valueSql});`);
+        });
+
+        sections.push('');
+      }
+
+      downloadFile(
+        sections.join('\n'),
+        `${activeDb}_full_dump.sql`,
+        'text/sql;charset=utf-8;',
+      );
+      showToast(`${activeDb}_full_dump.sql downloaded!`, 'success');
+      setModalConfig({ isOpen: false, type: null });
+    } catch (error) {
+      showToast(error.message || 'Database export failed.', 'error');
+    }
+  };
+
   const handleExportTable = (format = 'csv') => {
     const dataToExport =
       selectedRows.size > 0
@@ -373,6 +476,7 @@ export default function useWorkspaceImportExportActions({
     exportToCSV,
     exportToJSON,
     exportToSQL,
+    handleExportDatabaseSql,
     handleExportTable,
     handleAiGenerate,
     isImportModalOpen,
