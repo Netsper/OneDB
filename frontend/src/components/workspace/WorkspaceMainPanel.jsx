@@ -266,6 +266,7 @@ export default function WorkspaceMainPanel({
               sqlResultTab={sqlResultTab}
               setSqlResultTab={setSqlResultTab}
               exportToCSV={exportToCSV}
+              copyToClipboard={copyToClipboard}
             />
           )}
         </div>

@@ -1,3 +1,61 @@
+export const mapExplainRowToPlanItem = (row, getFirstValue) => {
+  const baseItem = {
+    node: '-',
+    entity: '-',
+    cost: '-',
+    rows: '-',
+    time: '-',
+    raw: row,
+  };
+
+  if (!row || typeof row !== 'object') {
+    return baseItem;
+  }
+
+  const firstValue = getFirstValue(row);
+  const firstText = String(firstValue ?? '').trim();
+
+  if (firstText !== '') {
+    const postgresMatch = firstText.match(/^(.*?)(?:\s+on\s+([^\s(]+))?\s+\((.+)\)$/i);
+    if (postgresMatch) {
+      const attrs = String(postgresMatch[3] || '');
+      const costMatch = attrs.match(/cost=([0-9.]+)\.\.([0-9.]+)/i);
+      const rowsMatch = attrs.match(/rows=([0-9]+)/i);
+      const timeMatch = attrs.match(/actual time=([0-9.]+)\.\.([0-9.]+)/i);
+
+      return {
+        ...baseItem,
+        node: String(postgresMatch[1] || '-').trim() || '-',
+        entity: String(postgresMatch[2] || '-').replace(/^"|"$/g, '') || '-',
+        cost: costMatch ? `${costMatch[1]}..${costMatch[2]}` : '-',
+        rows: rowsMatch ? rowsMatch[1] : '-',
+        time: timeMatch ? timeMatch[2] : '-',
+      };
+    }
+  }
+
+  const mysqlNode = String(row.select_type || row.type || firstText || 'STEP').trim();
+  const mysqlEntity = String(row.table || row.key || '-').trim();
+
+  let mysqlCost = '-';
+  if (row.cost_info && typeof row.cost_info === 'object' && row.cost_info.query_cost !== undefined) {
+    mysqlCost = String(row.cost_info.query_cost);
+  } else if (row.query_cost !== undefined) {
+    mysqlCost = String(row.query_cost);
+  }
+
+  const mysqlRows = row.rows !== undefined ? String(row.rows) : '-';
+
+  return {
+    ...baseItem,
+    node: mysqlNode || '-',
+    entity: mysqlEntity || '-',
+    cost: mysqlCost,
+    rows: mysqlRows,
+    time: '-',
+  };
+};
+
 export default function useWorkspaceSqlActions({
   sqlQuery,
   setIsQueryRunning,
@@ -41,13 +99,7 @@ export default function useWorkspaceSqlActions({
         if (/^(select|with)\b/i.test(sql)) {
           try {
             const explainResult = await executeSql(`EXPLAIN ${sql}`, activeDb || '');
-            plan = (explainResult.rows || []).map((row) => ({
-              node: String(getFirstValue(row) || JSON.stringify(row)),
-              entity: '-',
-              cost: '-',
-              rows: '-',
-              time: '-',
-            }));
+            plan = (explainResult.rows || []).map((row) => mapExplainRowToPlanItem(row, getFirstValue));
           } catch {
             plan = null;
           }

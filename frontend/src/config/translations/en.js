@@ -111,6 +111,8 @@ export const en = {
   queryResults: 'Query Results',
   dataTab: 'Data',
   explainTab: 'Execution Plan (EXPLAIN)',
+  copyPlanJson: 'Copy Plan JSON',
+  planSteps: 'steps',
   rows: 'rows',
   cost: 'Cost',
   time: 'Time',

@@ -102,6 +102,8 @@ export const tr = {
   queryResults: 'Sorgu Sonuçları',
   dataTab: 'Veri',
   explainTab: 'Sorgu Planı (EXPLAIN)',
+  copyPlanJson: 'Plan JSON Kopyala',
+  planSteps: 'adım',
   rows: 'satır',
   cost: 'Maliyet (Cost)',
   time: 'Süre',

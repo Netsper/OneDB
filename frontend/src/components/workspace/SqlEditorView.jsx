@@ -36,6 +36,7 @@ export default function SqlEditorView({
   sqlResultTab,
   setSqlResultTab,
   exportToCSV,
+  copyToClipboard,
 }) {
   return (
     <div className="flex-1 flex flex-col h-full bg-[#18181b]" ref={sqlContainerRef}>
@@ -222,10 +223,33 @@ export default function SqlEditorView({
               </table>
             ) : (
               <div className="p-4">
-                  <div className="bg-[#1c1c1c] border border-[#333] rounded-lg p-4 font-mono text-xs">
-                    <div className="flex items-center gap-2 mb-4 text-zinc-300 font-semibold">
+                <div className="bg-[#1c1c1c] border border-[#333] rounded-lg p-4 font-mono text-xs">
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-2 text-zinc-300 font-semibold">
                       <Activity className="w-4 h-4 text-amber-500" /> {t('explainTab')}
                     </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-zinc-500">
+                        {sqlResult.plan?.length || 0} {t('planSteps')}
+                      </span>
+                      <button
+                        onClick={() =>
+                          copyToClipboard(
+                            JSON.stringify(
+                              Array.isArray(sqlResult.plan)
+                                ? sqlResult.plan.map((item) => item.raw || item)
+                                : [],
+                              null,
+                              2,
+                            ),
+                          )
+                        }
+                        className="text-[10px] text-zinc-400 hover:text-zinc-200 border border-[#333] rounded px-2 py-1 transition-colors"
+                      >
+                        {t('copyPlanJson')}
+                      </button>
+                    </div>
+                  </div>
                   {sqlResult.plan ? (
                     sqlResult.plan.map((planItem, i) => (
                       <div key={i} className="flex items-start gap-4 mb-3 relative pl-6">
@@ -233,8 +257,12 @@ export default function SqlEditorView({
                         <GitCommit className="w-3 h-3 text-zinc-500 absolute left-0 top-1 bg-[#1c1c1c]" />
                         <div className="flex-1">
                           <div className="text-emerald-400 font-bold mb-1">
-                            {planItem.node} on{' '}
-                            <span className="text-zinc-200">"{planItem.entity}"</span>
+                            {planItem.node}{' '}
+                            {planItem.entity !== '-' && (
+                              <>
+                                on <span className="text-zinc-200">"{planItem.entity}"</span>
+                              </>
+                            )}
                           </div>
                           <div className="text-zinc-500">
                             {t('cost')}: <span className="text-zinc-400">{planItem.cost}</span> •{' '}
