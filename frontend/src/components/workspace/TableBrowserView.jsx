@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownUp,
   Check,
@@ -82,21 +82,88 @@ export default function TableBrowserView({
   showToolbar = true,
 }) {
   const selectClass = `w-full appearance-none bg-[#18181b] border border-[#3a3a3f] rounded-md text-zinc-100 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] ${tc.focusRing}`;
+  const scrollContainerRef = useRef(null);
   const filterButtonRef = useRef(null);
   const columnsButtonRef = useRef(null);
   const columnTriggerRefs = useRef({});
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const ROW_HEIGHT = 36;
+  const OVERSCAN_ROWS = 10;
   const rowOffset = (page - 1) * rowsPerPage;
   const allRowsSelected = paginatedData.length > 0 && selectedRows.size === paginatedData.length;
+  const shouldVirtualizeRows = paginatedData.length > 80;
   const appliedServerFilterEntries = Object.entries(serverColumnFilters || {}).filter(
     ([, filterConfig]) =>
       filterConfig &&
       typeof filterConfig === 'object' &&
       String(filterConfig.value ?? '').trim() !== '',
   );
+  const virtualWindow = useMemo(() => {
+    if (!shouldVirtualizeRows) {
+      return {
+        startIndex: 0,
+        endIndex: paginatedData.length,
+        topPadding: 0,
+        bottomPadding: 0,
+        rows: paginatedData,
+      };
+    }
+
+    const safeViewportHeight = Math.max(viewportHeight, ROW_HEIGHT * 8);
+    const visibleRows = Math.ceil(safeViewportHeight / ROW_HEIGHT);
+    const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN_ROWS);
+    const endIndex = Math.min(
+      paginatedData.length,
+      startIndex + visibleRows + OVERSCAN_ROWS * 2,
+    );
+
+    return {
+      startIndex,
+      endIndex,
+      topPadding: startIndex * ROW_HEIGHT,
+      bottomPadding: Math.max(0, (paginatedData.length - endIndex) * ROW_HEIGHT),
+      rows: paginatedData.slice(startIndex, endIndex),
+    };
+  }, [paginatedData, scrollTop, shouldVirtualizeRows, viewportHeight]);
+  const tableRows = virtualWindow.rows;
+  const dataColumnSpan = visibleColumns.length + 2;
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const syncViewportState = () => {
+      setScrollTop(container.scrollTop);
+      setViewportHeight(container.clientHeight);
+    };
+
+    syncViewportState();
+    container.addEventListener('scroll', syncViewportState, { passive: true });
+
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(syncViewportState);
+      resizeObserver.observe(container);
+    }
+
+    return () => {
+      container.removeEventListener('scroll', syncViewportState);
+      resizeObserver?.disconnect();
+    };
+  }, [currentTableData?.name, paginatedData.length]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.scrollTop = 0;
+    setScrollTop(0);
+  }, [page, rowsPerPage]);
+
   const cellMetaByRow = useMemo(() => {
     const metadata = new Map();
 
-    for (const row of paginatedData) {
+    for (const row of tableRows) {
       const columnMeta = {};
 
       for (const col of visibleColumns) {
@@ -124,8 +191,8 @@ export default function TableBrowserView({
     getCellTextValue,
     getTimestampTooltip,
     isJsonColumn,
-    paginatedData,
     renderCellContent,
+    tableRows,
     visibleColumns,
   ]);
 
@@ -297,7 +364,7 @@ export default function TableBrowserView({
         </div>
       )}
 
-      <div className="flex-1 overflow-auto bg-[#18181b]">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto bg-[#18181b]">
         <table className="w-full text-left text-sm whitespace-nowrap border-collapse select-none">
           <thead className="bg-[#1c1c1c] text-zinc-400 sticky top-0 z-10 shadow-sm border-b border-[#2e2e32]">
             <tr>
@@ -468,7 +535,19 @@ export default function TableBrowserView({
             </tr>
           </thead>
           <tbody className="text-zinc-300">
-            {paginatedData.map((row, index) => (
+            {shouldVirtualizeRows && virtualWindow.topPadding > 0 && (
+              <tr aria-hidden="true">
+                <td
+                  colSpan={dataColumnSpan}
+                  style={{ height: `${virtualWindow.topPadding}px` }}
+                  className="p-0 border-0"
+                />
+              </tr>
+            )}
+            {tableRows.map((row, index) => {
+              const absoluteIndex = virtualWindow.startIndex + index;
+
+              return (
               <tr
                 key={row._origIndex}
                 className={`border-b border-[#2e2e32] group transition-colors ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/50' : 'hover:bg-[#232323]/60'}`}
@@ -490,7 +569,7 @@ export default function TableBrowserView({
                       </span>
                     )}
                     <span className={selectedRows.has(row._origIndex) ? tc.textLight : ''}>
-                      {rowOffset + index + 1}
+                      {rowOffset + absoluteIndex + 1}
                     </span>
                   </div>
                 </td>
@@ -649,7 +728,17 @@ export default function TableBrowserView({
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
+            {shouldVirtualizeRows && virtualWindow.bottomPadding > 0 && (
+              <tr aria-hidden="true">
+                <td
+                  colSpan={dataColumnSpan}
+                  style={{ height: `${virtualWindow.bottomPadding}px` }}
+                  className="p-0 border-0"
+                />
+              </tr>
+            )}
           </tbody>
         </table>
         {paginatedData.length === 0 && (
@@ -676,6 +765,8 @@ export default function TableBrowserView({
             <option value={15}>15</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={200}>200</option>
           </SelectField>
         </div>
         <div className="flex items-center gap-4 text-xs">
