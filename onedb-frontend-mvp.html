@@ -1,0 +1,2306 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { 
+  Database, Table2, Terminal, Settings, Search, Plus, Trash2, 
+  Play, ChevronRight, ChevronDown, Server, Key, LogOut, 
+  LayoutGrid, AlignLeft, Download, RefreshCw, AlertCircle, X, Check,
+  FileText, Hash, Type, Calendar, ToggleLeft, MoreHorizontal,
+  ArrowRight, Code, Columns, Rows, PanelLeft, Palette, Filter,
+  UploadCloud, ArrowDownUp, FileDown, PlusCircle, Copy, History, 
+  ChevronLeft, ChevronLast, ChevronFirst, Loader2, Eye, Command, Zap,
+  GripHorizontal, Maximize2, AlignCenter, CopyPlus, Link as LinkIcon,
+  Bookmark, BookmarkPlus, SlidersHorizontal, Star, Network, Timer,
+  Activity, GitCommit, Wand2, Sparkles, Cpu, HardDrive, BarChart2,
+  Globe
+} from 'lucide-react';
+
+// --- DİL VE ÇEVİRİ SÖZLÜĞÜ (i18n) ---
+const translations = {
+  en: {
+    // Login & Connection
+    connectToDb: "Connect to Database",
+    loginDesc: "Log in to OneDB.",
+    serverUrl: "Server URL",
+    username: "Username",
+    port: "Port",
+    password: "Password",
+    connectBtn: "Connect",
+    saveBtn: "Save",
+    savedServers: "Saved Servers",
+    noSavedConn: "No saved connections yet.",
+    newConn: "New Connection",
+    connSuccess: "Connection successful.",
+    connSaved: "Connection profile saved.",
+    
+    // Sidebar & Layout
+    databases: "Databases",
+    newDatabase: "New Database",
+    search: "Search...",
+    searchDbTable: "Search database or table...",
+    favorites: "Favorites",
+    tables: "Tables",
+    views: "Views",
+    noTable: "No table",
+    openCmd: "Open Command Palette",
+    
+    // Topbar
+    autoRefresh: "Auto Refresh",
+    off: "Off",
+    sec5: "Every 5 sec",
+    sec10: "Every 10 sec",
+    refresh: "Refresh",
+    settings: "Settings",
+    logout: "Logout",
+    shortcuts: "Shortcuts",
+    online: "Online",
+    dataUpdated: "Data updated",
+
+    // Tabs
+    tableEditor: "Table Editor",
+    results: "Results",
+    schema: "Schema",
+    sqlEditor: "SQL Editor",
+
+    // Data Toolbar
+    addRow: "Add Row",
+    mockDataBtn: "Generate Mock Data",
+    selected: "selected",
+    delSelected: "Delete Selected",
+    exportSql: "Export SQL",
+    filters: "Filters",
+    columns: "Columns",
+    import: "Import",
+    export: "Export",
+
+    // Filter Panel
+    equals: "Equals (=)",
+    notEquals: "Not Equals (!=)",
+    contains: "Contains",
+    greaterThan: "Greater Than (>)",
+    lessThan: "Less Than (<)",
+    valuePlaceholder: "Value...",
+    addRule: "Add Rule",
+
+    // Data Table & Pagination
+    rowsPerPage: "Rows per page:",
+    noRecords: "No records found.",
+    copy: "Copy",
+    copied: "Copied to clipboard",
+
+    // Schema Tab
+    tableSchema: "Table Schema",
+    manageCols: "Manage columns and data types:",
+    addColumn: "Add Column",
+    colName: "Name",
+    colType: "Type",
+    colNullable: "Nullable",
+    colDefault: "Default / Extra",
+    colKey: "Key / Relation",
+    action: "Action",
+    yes: "Yes",
+    no: "No",
+
+    // SQL Editor
+    format: "Format",
+    saveSnippet: "Save",
+    historySaved: "History & Saved",
+    run: "Run",
+    queryResults: "Query Results",
+    dataTab: "Data",
+    explainTab: "Execution Plan (EXPLAIN)",
+    rows: "rows",
+    cost: "Cost",
+    time: "Time",
+    noPlan: "Plan not found. Supported for SELECT queries only.",
+    sqlFormatted: "SQL query formatted.",
+    sqlExecuted: "Query executed successfully.",
+
+    // Dashboard
+    dbOverview: "Database overview and management",
+    importSqlBtn: "Import (.sql)",
+    exportSqlBtn: "Export (.sql)",
+    cpuUsage: "CPU Usage",
+    diskSize: "Disk / Size",
+    qps: "QPS (Query/Sec)",
+    records: "records",
+    colsFound: "columns found.",
+    addNewTable: "Add New Table",
+    selectDb: "Select Database",
+    selectDbDesc: "Select a table or database from the left menu to perform actions.",
+
+    // Context Menu
+    openTable: "Open Table",
+    viewSchema: "View Schema",
+    addToFav: "Add to Favorites",
+    removeFromFav: "Remove from Favs",
+    duplicateTable: "Duplicate Table",
+    truncate: "Truncate",
+    drop: "Drop (Delete)",
+
+    // Modals
+    rowDetails: "Row Details",
+    editRow: "Edit Row",
+    relatedData: "Related Data",
+    close: "Close",
+    cancel: "Cancel",
+    dbNamePlaceholder: "Database Name",
+    tableNamePlaceholder: "Table Name",
+    collation: "Collation",
+    create: "Create",
+    add: "Add",
+    dataType: "Data Type",
+    defaultValue: "Default Value",
+    dropCsvHere: "Drop your CSV file here",
+    dropSqlHere: "Drop your .SQL file here",
+    clickToSelect: "or click to select",
+    exportFormat: "Which format do you want to download?",
+    downloadCsv: "Download .CSV",
+    downloadJson: "Download .JSON",
+    downloadSql: "Download .SQL",
+    themeSettings: "Theme & Settings",
+    languageSelect: "Language Selection:",
+    accentColor: "Select interface accent color:",
+
+    // AI & AutoGen
+    aiPlaceholder: "Ask AI to write SQL... (e.g. 'Get admins registered last month')",
+    aiGenerate: "Generate",
+    aiSuccess: "AI generated the query.",
+    autoGen: "Auto-generated",
+    
+    // Shortcuts Modal
+    shortcutsTitle: "Keyboard Shortcuts",
+    cmdPalette: "Command Palette (Search)",
+    runQuery: "Run SQL Query",
+    closeWindows: "Close Windows / Exit Edit",
+    saveInline: "Save Cell Value (Inline)",
+    editCell: "Edit Cell",
+    doubleClickCell: "Double Click on Cell",
+    
+    // Prompts / Confirms
+    confirmDelete: "Are you sure you want to delete this record?",
+    confirmBulkDelete: "Are you sure you want to delete {count} records?",
+    confirmDbDrop: "Are you sure you want to drop the database '{name}'?",
+    confirmTableDrop: "Are you sure you want to drop the table '{name}' permanently?",
+    confirmTruncate: "WARNING: ALL DATA in '{name}' will be deleted. Are you sure?",
+    recordAdded: "Record added.",
+    recordUpdated: "Record updated.",
+    recordDeleted: "Record deleted.",
+    dbCreated: "Database '{name}' created.",
+    tableCreated: "Table '{name}' created.",
+    colAdded: "Column '{name}' added.",
+    mockDataAdded: "10 mock data rows added.",
+    mustBeNumber: "'{col}' must be a numerical value!"
+  },
+  tr: {
+    connectToDb: "Veritabanına Bağlan",
+    loginDesc: "OneDB'ye giriş yapın.",
+    serverUrl: "Sunucu URL",
+    username: "Kullanıcı Adı",
+    port: "Port",
+    password: "Şifre",
+    connectBtn: "Bağlan",
+    saveBtn: "Kaydet",
+    savedServers: "Kayıtlı Sunucular",
+    noSavedConn: "Henüz kayıtlı bağlantı yok.",
+    newConn: "Yeni Bağlantı",
+    connSuccess: "Bağlantı başarılı.",
+    connSaved: "Bağlantı profili kaydedildi.",
+    
+    databases: "Veritabanları",
+    newDatabase: "Yeni Veritabanı",
+    search: "Ara...",
+    searchDbTable: "Veritabanı veya tablo ara...",
+    favorites: "Favoriler",
+    tables: "Tablolar",
+    views: "Görünümler",
+    noTable: "Tablo yok",
+    openCmd: "Komut Paletini Aç",
+    
+    autoRefresh: "Otomatik Yenileme",
+    off: "Kapalı",
+    sec5: "5 saniyede bir",
+    sec10: "10 saniyede bir",
+    refresh: "Yenile",
+    settings: "Ayarlar",
+    logout: "Çıkış Yap",
+    shortcuts: "Kısayollar",
+    online: "Yayında",
+    dataUpdated: "Veriler güncellendi",
+
+    tableEditor: "Tablo Düzenleyici",
+    results: "Sonuçlar",
+    schema: "Şema",
+    sqlEditor: "SQL Düzenleyici",
+
+    addRow: "Satır Ekle",
+    mockDataBtn: "Sahte Veri Üret",
+    selected: "seçili",
+    delSelected: "Seçilenleri Sil",
+    exportSql: "SQL Çıktısı Al",
+    filters: "Filtreler",
+    columns: "Sütunlar",
+    import: "İçe Aktar",
+    export: "Dışa Aktar",
+
+    equals: "Eşittir (=)",
+    notEquals: "Eşit Değil (!=)",
+    contains: "İçerir",
+    greaterThan: "Büyüktür (>)",
+    lessThan: "Küçüktür (<)",
+    valuePlaceholder: "Değer...",
+    addRule: "Kural Ekle",
+
+    rowsPerPage: "Sayfa başı:",
+    noRecords: "Gösterilecek kayıt bulunamadı.",
+    copy: "Kopyala",
+    copied: "Kopyalandı",
+
+    tableSchema: "Tablo Şeması",
+    manageCols: "Sütunları ve veri tiplerini yönetin:",
+    addColumn: "Sütun Ekle",
+    colName: "Ad",
+    colType: "Tür",
+    colNullable: "Boş Bırakılabilir",
+    colDefault: "Varsayılan / Ekstra",
+    colKey: "Anahtar / İlişki",
+    action: "İşlem",
+    yes: "Evet",
+    no: "Hayır",
+
+    format: "Formatla",
+    saveSnippet: "Kaydet",
+    historySaved: "Geçmiş & Kayıtlılar",
+    run: "Çalıştır",
+    queryResults: "Sorgu Sonuçları",
+    dataTab: "Veri",
+    explainTab: "Sorgu Planı (EXPLAIN)",
+    rows: "satır",
+    cost: "Maliyet (Cost)",
+    time: "Süre",
+    noPlan: "Plan bulunamadı. Sadece SELECT sorguları için desteklenir.",
+    sqlFormatted: "SQL sorgusu formatlandı.",
+    sqlExecuted: "SQL sorgusu başarıyla yürütüldü.",
+
+    dbOverview: "Veritabanı genel bakış ve yönetimi",
+    importSqlBtn: "İçe Aktar (.sql)",
+    exportSqlBtn: "Dışa Aktar (.sql)",
+    cpuUsage: "CPU Kullanımı",
+    diskSize: "Disk / Boyut",
+    qps: "QPS (Query/Sec)",
+    records: "kayıt",
+    colsFound: "sütun bulundu.",
+    addNewTable: "Yeni Tablo Ekle",
+    selectDb: "Veritabanı Seçin",
+    selectDbDesc: "İşlem yapmak için sol menüden bir tablo veya veritabanı seçin.",
+
+    openTable: "Tabloyu Aç",
+    viewSchema: "Şemayı Gör",
+    addToFav: "Favorilere Ekle",
+    removeFromFav: "Favorilerden Çıkar",
+    duplicateTable: "Tabloyu Çoğalt",
+    truncate: "Boşalt (Truncate)",
+    drop: "Sil (Drop)",
+
+    rowDetails: "Satır Detayları",
+    editRow: "Satırı Düzenle",
+    relatedData: "İlişkili Veriler",
+    close: "Kapat",
+    cancel: "İptal",
+    dbNamePlaceholder: "Veritabanı Adı",
+    tableNamePlaceholder: "Tablo Adı",
+    collation: "Karşılaştırma (Collation)",
+    create: "Oluştur",
+    add: "Ekle",
+    dataType: "Veri Tipi",
+    defaultValue: "Varsayılan Değer (Default)",
+    dropCsvHere: "CSV dosyanızı buraya sürükleyin",
+    dropSqlHere: ".SQL dosyanızı buraya sürükleyin",
+    clickToSelect: "veya seçmek için tıklayın",
+    exportFormat: "Hangi formatta indirmek istiyorsunuz?",
+    downloadCsv: ".CSV İndir",
+    downloadJson: ".JSON İndir",
+    downloadSql: ".SQL İndir",
+    themeSettings: "Tema & Dil Ayarları",
+    languageSelect: "Dil Seçimi (Language):",
+    accentColor: "Arayüz aksan rengini seçin:",
+
+    aiPlaceholder: "Yapay zekaya SQL yazdır... (Örn: 'Son 1 ayda kayıt olan adminleri getir')",
+    aiGenerate: "Oluştur",
+    aiSuccess: "Yapay zeka sorguyu üretti.",
+    autoGen: "Otomatik üretildi",
+    
+    shortcutsTitle: "Klavye Kısayolları",
+    cmdPalette: "Komut Paleti (Arama)",
+    runQuery: "SQL Sorgusunu Çalıştır",
+    closeWindows: "Pencereleri Kapat / Düzenlemeden Çık",
+    saveInline: "Hücre Değerini Kaydet (Satır İçi)",
+    editCell: "Hücreyi Düzenle",
+    doubleClickCell: "Hücreye Çift Tıkla",
+
+    confirmDelete: "Bu kaydı silmek istediğinize emin misiniz?",
+    confirmBulkDelete: "{count} kaydı silmek istediğinize emin misiniz?",
+    confirmDbDrop: "\"{name}\" veritabanını silmek istediğinize emin misiniz?",
+    confirmTableDrop: "\"{name}\" tablosunu kalıcı olarak silmek istediğinize emin misiniz?",
+    confirmTruncate: "DİKKAT: \"{name}\" tablosundaki TÜM VERİLER silinecek. Emin misiniz?",
+    recordAdded: "Kayıt eklendi.",
+    recordUpdated: "Kayıt güncellendi.",
+    recordDeleted: "Kayıt silindi.",
+    dbCreated: "Veritabanı '{name}' oluşturuldu.",
+    tableCreated: "Tablo '{name}' oluşturuldu.",
+    colAdded: "Sütun '{name}' eklendi.",
+    mockDataAdded: "10 adet sahte veri üretildi.",
+    mustBeNumber: "'{col}' sütunu sayısal bir değer olmalıdır!"
+  }
+};
+
+// --- TEMA (RENK) TANIMLAMALARI ---
+const themes = {
+  emerald: { nameKey: 'emerald', text: 'text-emerald-500', textLight: 'text-emerald-400', textLightOpacity: 'text-emerald-400/80', textLightest: 'text-emerald-100', bg: 'bg-emerald-600', hoverBg: 'hover:bg-emerald-500', lightBg: 'bg-emerald-500/10', border: 'border-emerald-500', borderLight: 'border-emerald-500/20', focusRing: 'focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none', accentBg: 'bg-emerald-500', accent: 'accent-emerald-500', selection: 'selection:bg-emerald-500/30', previewClass: 'bg-emerald-500', badgeBg: 'bg-emerald-500/20', badgeText: 'text-emerald-300' },
+  blue: { nameKey: 'blue', text: 'text-blue-500', textLight: 'text-blue-400', textLightOpacity: 'text-blue-400/80', textLightest: 'text-blue-100', bg: 'bg-blue-600', hoverBg: 'hover:bg-blue-500', lightBg: 'bg-blue-500/10', border: 'border-blue-500', borderLight: 'border-blue-500/20', focusRing: 'focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none', accentBg: 'bg-blue-500', accent: 'accent-blue-500', selection: 'selection:bg-blue-500/30', previewClass: 'bg-blue-500', badgeBg: 'bg-blue-500/20', badgeText: 'text-blue-300' },
+  violet: { nameKey: 'violet', text: 'text-violet-500', textLight: 'text-violet-400', textLightOpacity: 'text-violet-400/80', textLightest: 'text-violet-100', bg: 'bg-violet-600', hoverBg: 'hover:bg-violet-500', lightBg: 'bg-violet-500/10', border: 'border-violet-500', borderLight: 'border-violet-500/20', focusRing: 'focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none', accentBg: 'bg-violet-500', accent: 'accent-violet-500', selection: 'selection:bg-violet-500/30', previewClass: 'bg-violet-500', badgeBg: 'bg-violet-500/20', badgeText: 'text-violet-300' },
+  amber: { nameKey: 'amber', text: 'text-amber-500', textLight: 'text-amber-400', textLightOpacity: 'text-amber-400/80', textLightest: 'text-amber-100', bg: 'bg-amber-600', hoverBg: 'hover:bg-amber-500', lightBg: 'bg-amber-500/10', border: 'border-amber-500', borderLight: 'border-amber-500/20', focusRing: 'focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none', accentBg: 'bg-amber-500', accent: 'accent-amber-500', selection: 'selection:bg-amber-500/30', previewClass: 'bg-amber-500', badgeBg: 'bg-amber-500/20', badgeText: 'text-amber-300' },
+  rose: { nameKey: 'rose', text: 'text-rose-500', textLight: 'text-rose-400', textLightOpacity: 'text-rose-400/80', textLightest: 'text-rose-100', bg: 'bg-rose-600', hoverBg: 'hover:bg-rose-500', lightBg: 'bg-rose-500/10', border: 'border-rose-500', borderLight: 'border-rose-500/20', focusRing: 'focus:border-rose-500 focus:ring-1 focus:ring-rose-500 focus:outline-none', accentBg: 'bg-rose-500', accent: 'accent-rose-500', selection: 'selection:bg-rose-500/30', previewClass: 'bg-rose-500', badgeBg: 'bg-rose-500/20', badgeText: 'text-rose-300' }
+};
+
+// --- BAŞLANGIÇ VERİLERİ ---
+const initialDatabases = {
+  "eticaret_db": {
+    "kullanicilar": {
+      type: 'table',
+      columns: [
+        { name: "id", type: "int(11)", extra: "auto_increment", isPrimary: true, nullable: "No" },
+        { name: "ad_soyad", type: "varchar(255)", extra: "", isPrimary: false, nullable: "No" },
+        { name: "eposta", type: "varchar(255)", extra: "", isPrimary: false, nullable: "No" },
+        { name: "hakkinda_uzun_yazi", type: "text", extra: "", isPrimary: false, nullable: "Yes" },
+        { name: "rol", type: "enum('admin', 'editor', 'user')", extra: "", isPrimary: false, nullable: "Yes" },
+        { name: "kayit_tarihi", type: "datetime", extra: "default CURRENT_TIMESTAMP", isPrimary: false, nullable: "No" }
+      ],
+      data: Array.from({ length: 45 }, (_, i) => ({
+        id: i + 1, ad_soyad: `Kullanıcı ${i + 1}`, eposta: `user${i+1}@ornek.com`, hakkinda_uzun_yazi: i % 3 === 0 ? 'Bu kullanıcı hakkında yazılmış oldukça uzun bir metindir.' : 'Kısa bilgi.', rol: i === 0 ? "admin" : (i % 5 === 0 ? "editor" : "user"), kayit_tarihi: "2023-11-01 10:00:00"
+      }))
+    },
+    "siparisler": {
+      type: 'table',
+      columns: [
+        { name: "siparis_id", type: "int(11)", extra: "auto_increment", isPrimary: true, nullable: "No" },
+        { name: "kullanici_id", type: "int(11)", extra: "", isPrimary: false, nullable: "No", isForeign: true, foreignTable: "kullanicilar", foreignCol: "id" },
+        { name: "tutar", type: "decimal(10,2)", extra: "", isPrimary: false, nullable: "No" },
+        { name: "durum", type: "enum('bekliyor', 'onaylandi', 'iptal')", extra: "default 'bekliyor'", isPrimary: false, nullable: "No" }
+      ],
+      data: [
+        { siparis_id: 1, kullanici_id: 1, tutar: 2500.50, durum: 'onaylandi' },
+        { siparis_id: 2, kullanici_id: 2, tutar: 150.00, durum: 'bekliyor' },
+        { siparis_id: 3, kullanici_id: 1, tutar: 4200.00, durum: 'iptal' },
+        { siparis_id: 4, kullanici_id: 3, tutar: 89.90, durum: 'onaylandi' }
+      ]
+    }
+  }
+};
+
+export default function DatabaseManager() {
+  // --- DİL YÖNETİMİ (i18n) ---
+  const [lang, setLang] = useState(() => localStorage.getItem('dbm_lang') || 'en');
+  const t = (key) => translations[lang][key] || key;
+
+  useEffect(() => { localStorage.setItem('dbm_lang', lang); }, [lang]);
+
+  // --- GİRİŞ VE BAĞLANTI ---
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [ping, setPing] = useState(12);
+  const [connForm, setConnForm] = useState({ name: '', host: 'localhost', user: 'postgres', pass: '', port: '5432' });
+  const [savedConnections, setSavedConnections] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dbm_connections')) || []; } catch { return []; }
+  });
+
+  // --- VERİTABANI STATE ---
+  const [databases, setDatabases] = useState(initialDatabases);
+  const [activeDb, setActiveDb] = useState(null);
+  const [activeTable, setActiveTable] = useState(null);
+  const [expandedDbs, setExpandedDbs] = useState({});
+  const [expandedGroups, setExpandedGroups] = useState({}); 
+  const [activeTab, setActiveTab] = useState('gozat'); 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pinnedTables, setPinnedTables] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dbm_pinned')) || []; } catch { return []; }
+  });
+  
+  // --- SQL EDİTÖR ---
+  const [sqlQuery, setSqlQuery] = useState('');
+  const [sqlHistory, setSqlHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dbm_sql_history')) || ['SELECT * FROM kullanicilar LIMIT 10;']; } catch { return []; }
+  });
+  const [sqlSnippets, setSqlSnippets] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dbm_sql_snippets')) || []; } catch { return []; }
+  });
+  const [sqlResult, setSqlResult] = useState(null);
+  const [sqlResultTab, setSqlResultTab] = useState('data'); 
+  const [isQueryRunning, setIsQueryRunning] = useState(false);
+  const [sqlEditorHeight, setSqlEditorHeight] = useState(50);
+  
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // --- ARAYÜZ VE UX ---
+  const [theme, setTheme] = useState(() => localStorage.getItem('dbm_theme') || 'emerald');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem('dbm_sidebar_w')) || 256);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
+  const searchInputRef = useRef(null);
+  
+  const [modalConfig, setModalConfig] = useState({ isOpen: false, type: null, data: null }); 
+  const [formData, setFormData] = useState({});
+  const [inputVal, setInputVal] = useState('');
+  const [dbCollation, setDbCollation] = useState('utf8mb4_general_ci'); 
+  const [newColForm, setNewColForm] = useState({ name: '', type: 'varchar(255)', nullable: 'Yes', default: '' });
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, dbName: null, tableName: null });
+
+  // --- TABLO ARAÇLARI ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState([]);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [hiddenColumns, setHiddenColumns] = useState(new Set());
+  const [isColsPanelOpen, setIsColsPanelOpen] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [selectedRows, setSelectedRows] = useState(new Set()); 
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(15);
+  const [editingCell, setEditingCell] = useState(null); 
+  const [historyTab, setHistoryTab] = useState('history'); 
+  const [rowDetailsTab, setRowDetailsTab] = useState('details'); 
+
+  // --- OTOMATİK YENİLEME ---
+  const [autoRefreshInt, setAutoRefreshInt] = useState(0);
+  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
+
+  // --- DASHBOARD (METRICS) MOCK DATA ---
+  const [cpuUsage, setCpuUsage] = useState(12);
+  const [qps, setQps] = useState(450);
+
+  const sqlContainerRef = useRef(null);
+  const tc = themes[theme]; 
+
+  // --- EFEKTLER ---
+  useEffect(() => { localStorage.setItem('dbm_theme', theme); }, [theme]);
+  useEffect(() => { localStorage.setItem('dbm_sql_history', JSON.stringify(sqlHistory)); }, [sqlHistory]);
+  useEffect(() => { localStorage.setItem('dbm_sql_snippets', JSON.stringify(sqlSnippets)); }, [sqlSnippets]);
+  useEffect(() => { localStorage.setItem('dbm_sidebar_w', sidebarWidth); }, [sidebarWidth]);
+  useEffect(() => { localStorage.setItem('dbm_pinned', JSON.stringify(pinnedTables)); }, [pinnedTables]);
+  useEffect(() => { localStorage.setItem('dbm_connections', JSON.stringify(savedConnections)); }, [savedConnections]);
+
+  useEffect(() => {
+    let intervalId;
+    if (autoRefreshInt > 0 && isConnected) {
+      intervalId = setInterval(() => {
+         setIsRefreshing(true);
+         setTimeout(() => setIsRefreshing(false), 300);
+      }, autoRefreshInt * 1000);
+    }
+    return () => clearInterval(intervalId);
+  }, [autoRefreshInt, isConnected, activeDb, activeTable]);
+
+  useEffect(() => {
+     let dashInterval;
+     if (isConnected && activeDb && !activeTable) {
+        dashInterval = setInterval(() => {
+           setCpuUsage(Math.floor(Math.random() * 30) + 10);
+           setQps(Math.floor(Math.random() * 200) + 300);
+        }, 3000);
+     }
+     return () => clearInterval(dashInterval);
+  }, [isConnected, activeDb, activeTable]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isCommandOpen) setIsCommandOpen(false);
+        else if (contextMenu.visible) setContextMenu({ ...contextMenu, visible: false });
+        else if (editingCell) setEditingCell(null);
+        else if (modalConfig.isOpen) setModalConfig({ isOpen: false, type: null });
+        else if (isFilterPanelOpen) setIsFilterPanelOpen(false);
+        else if (isColsPanelOpen) setIsColsPanelOpen(false);
+        else if (isAutoRefreshMenuOpen) setIsAutoRefreshMenuOpen(false);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandOpen(prev => {
+          if (!prev) setTimeout(() => searchInputRef.current?.focus(), 50);
+          return !prev;
+        });
+      }
+    };
+    const handleClick = () => { 
+      if (contextMenu.visible) setContextMenu({ ...contextMenu, visible: false }); 
+      if (isAutoRefreshMenuOpen) setIsAutoRefreshMenuOpen(false);
+      if (isColsPanelOpen) setIsColsPanelOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('click', handleClick);
+    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('click', handleClick); };
+  }, [editingCell, modalConfig, isFilterPanelOpen, isColsPanelOpen, contextMenu, isCommandOpen, isAutoRefreshMenuOpen]);
+
+  // --- KOMUT PALETİ ---
+  const allTablesList = useMemo(() => {
+    const list = [];
+    Object.keys(databases).forEach(db => {
+      Object.keys(databases[db]).forEach(tbl => {
+        list.push({ dbName: db, tableName: tbl, type: databases[db][tbl].type || 'table' });
+      });
+    });
+    return list;
+  }, [databases]);
+
+  const filteredCommands = commandQuery ? allTablesList.filter(item => 
+    item.tableName.toLowerCase().includes(commandQuery.toLowerCase()) || 
+    item.dbName.toLowerCase().includes(commandQuery.toLowerCase())
+  ) : allTablesList.slice(0, 10);
+
+  // --- İŞLEMLER (EXPORT / AI / MOCK) ---
+  const downloadFile = (content, fileName, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToCSV = (dataArray, fileName) => {
+    if (!dataArray || dataArray.length === 0) return showToast(t('noRecords'), 'error');
+    const headers = Object.keys(dataArray[0]).filter(k => k !== '_origIndex' && !hiddenColumns.has(k));
+    const csvRows = dataArray.map(row => headers.map(fieldName => JSON.stringify(row[fieldName] ?? '')).join(','));
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+    downloadFile(csvContent, `${fileName}.csv`, 'text/csv;charset=utf-8;');
+    showToast(`${fileName}.csv downloaded!`, 'success');
+  };
+
+  const exportToJSON = (dataArray, fileName) => {
+    if (!dataArray || dataArray.length === 0) return showToast(t('noRecords'), 'error');
+    const cleanData = dataArray.map(row => {
+      const newRow = { ...row };
+      delete newRow._origIndex;
+      hiddenColumns.forEach(hc => delete newRow[hc]);
+      return newRow;
+    });
+    downloadFile(JSON.stringify(cleanData, null, 2), `${fileName}.json`, 'application/json;charset=utf-8;');
+    showToast(`${fileName}.json downloaded!`, 'success');
+  };
+
+  const exportToSQL = (dataArray, dbName, tableName) => {
+    if (!dataArray || dataArray.length === 0) return showToast(t('noRecords'), 'error');
+    const headers = Object.keys(dataArray[0]).filter(k => k !== '_origIndex' && !hiddenColumns.has(k));
+    
+    let sqlContent = `-- DB: ${dbName}\n-- Table: ${tableName}\n-- Date: ${new Date().toLocaleString()}\n\n`;
+    
+    dataArray.forEach(row => {
+      const vals = headers.map(h => {
+         const v = row[h];
+         if (v === null || v === undefined) return 'NULL';
+         if (typeof v === 'number') return v;
+         return `'${String(v).replace(/'/g, "''")}'`; 
+      });
+      sqlContent += `INSERT INTO "${tableName}" (${headers.map(h=>`"${h}"`).join(', ')}) VALUES (${vals.join(', ')});\n`;
+    });
+
+    downloadFile(sqlContent, `${tableName}_dump.sql`, 'text/sql;charset=utf-8;');
+    showToast(`${tableName}_dump.sql downloaded!`, 'success');
+  };
+
+  const handleExportTable = (format = 'csv') => {
+    const dataToExport = selectedRows.size > 0 
+      ? processedData.filter(row => selectedRows.has(row._origIndex)) 
+      : processedData;
+    const fileName = selectedRows.size > 0 ? `${activeTable}_selected` : activeTable;
+    if(format === 'csv') exportToCSV(dataToExport, fileName);
+    if(format === 'json') exportToJSON(dataToExport, fileName);
+    if(format === 'sql') exportToSQL(dataToExport, activeDb, activeTable);
+    setModalConfig({isOpen: false, type: null});
+  };
+
+  const handleAiGenerate = (e) => {
+    e.preventDefault();
+    if (!aiPrompt.trim()) return;
+    setIsAiLoading(true);
+    setTimeout(() => {
+       const mockSql = `-- AI: "${aiPrompt}"\nSELECT \n  * \nFROM \n  "${activeTable || 'table_name'}" \nWHERE \n  1=1\nORDER BY \n  id DESC \nLIMIT 10;`;
+       setSqlQuery(mockSql);
+       setIsAiLoading(false);
+       setAiPrompt('');
+       showToast(t('aiSuccess'), 'success');
+    }, 1500);
+  };
+
+  const handleFillMockData = () => {
+    if(!activeDb || !activeTable) return;
+    const tableInfo = databases[activeDb][activeTable];
+    const newFormData = { ...formData };
+    
+    tableInfo.columns.forEach(col => {
+       if (col.extra?.includes('auto_increment')) return; 
+
+       if (col.isForeign) {
+          const fTable = databases[activeDb][col.foreignTable]?.data;
+          newFormData[col.name] = fTable && fTable.length > 0 ? fTable[Math.floor(Math.random() * fTable.length)][col.foreignCol] : 1;
+       } else if (col.type.includes('int')) {
+          newFormData[col.name] = Math.floor(Math.random() * 1000);
+       } else if (col.type.includes('decimal')) {
+          newFormData[col.name] = (Math.random() * 1000).toFixed(2);
+       } else if (col.type.includes('enum')) {
+          const matches = col.type.match(/'([^']+)'/g);
+          if (matches) {
+             const opts = matches.map(m => m.replace(/'/g, ''));
+             newFormData[col.name] = opts[Math.floor(Math.random() * opts.length)];
+          } else newFormData[col.name] = 'value';
+       } else if (col.type.includes('datetime')) {
+          newFormData[col.name] = new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString().slice(0, 19).replace('T', ' ');
+       } else if (col.type === 'text') {
+          newFormData[col.name] = `${t('autoGen')} text ${Math.floor(Math.random() * 1000)}.`;
+       } else {
+          newFormData[col.name] = `Test Data ${Math.floor(Math.random() * 1000)}`;
+       }
+    });
+    setFormData(newFormData);
+  };
+
+  // --- YARDIMCI FONKSİYONLAR ---
+  const getColumnIcon = (type) => {
+    const t = type?.toLowerCase() || '';
+    if (t.includes('int') || t.includes('decimal') || t.includes('float')) return <Hash className="w-3.5 h-3.5 text-zinc-500" />;
+    if (t.includes('datetime') || t.includes('date') || t.includes('time')) return <Calendar className="w-3.5 h-3.5 text-zinc-500" />;
+    if (t.includes('enum') || t.includes('tinyint') || t.includes('bool')) return <ToggleLeft className="w-3.5 h-3.5 text-zinc-500" />;
+    return <Type className="w-3.5 h-3.5 text-zinc-500" />;
+  };
+
+  const showToast = (message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    showToast(t('copied'), 'success');
+  };
+
+  const handleConnect = (e) => {
+    if(e) e.preventDefault();
+    setIsConnecting(true);
+    setTimeout(() => {
+      setIsConnected(true);
+      setIsConnecting(false);
+      const firstDb = Object.keys(databases)[0];
+      if(firstDb) {
+        setActiveDb(firstDb);
+        setExpandedDbs({ [firstDb]: true });
+        setExpandedGroups({ [`${firstDb}_tables`]: true, [`${firstDb}_views`]: true });
+      }
+      showToast(t('connSuccess'), 'success');
+      setInterval(() => setPing(Math.floor(Math.random() * 5) + 10), 5000);
+    }, 600);
+  };
+
+  const saveConnectionProfile = () => {
+    const profileName = prompt("Profile Name:", connForm.host);
+    if (profileName) {
+      setSavedConnections(prev => [...prev.filter(c => c.name !== profileName), { ...connForm, name: profileName }]);
+      showToast(t('connSaved'), 'success');
+    }
+  };
+
+  const loadConnectionProfile = (profile) => {
+    setConnForm({ host: profile.host, user: profile.user, pass: profile.pass, port: profile.port, name: profile.name });
+  };
+
+  const deleteConnectionProfile = (e, profileName) => {
+    e.stopPropagation();
+    setSavedConnections(prev => prev.filter(c => c.name !== profileName));
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+      showToast(t('dataUpdated'), 'success');
+    }, 600);
+  };
+
+  const selectDbAndTable = (dbName, tableName, forceTab = null) => {
+    setActiveDb(dbName);
+    setActiveTable(tableName);
+    if(forceTab) setActiveTab(forceTab);
+    else if(activeTab !== 'gozat' && activeTab !== 'yapi' && activeTab !== 'sql') setActiveTab('gozat');
+    
+    setSearchTerm('');
+    setFilters([]);
+    setHiddenColumns(new Set()); 
+    setSortConfig({ key: null, direction: 'asc' });
+    setSelectedRows(new Set());
+    setPage(1);
+    setEditingCell(null);
+    setIsCommandOpen(false);
+    setSqlQuery(`SELECT * FROM "${tableName}" LIMIT 50;`);
+    setSqlResult(null);
+  };
+
+  const handleContextMenu = (e, dbName, tableName) => {
+    e.preventDefault();
+    setContextMenu({ visible: true, x: e.clientX, y: e.clientY, dbName, tableName });
+  };
+
+  const togglePinTable = (dbName, tableName) => {
+    const pinKey = `${dbName}.${tableName}`;
+    setPinnedTables(prev => {
+      if(prev.includes(pinKey)) return prev.filter(k => k !== pinKey);
+      return [...prev, pinKey];
+    });
+    setContextMenu({...contextMenu, visible: false});
+  };
+
+  // --- SİDEBAR & SQL SPLITTER ---
+  const handleSidebarResizeStart = (e) => {
+    e.preventDefault();
+    document.addEventListener('mousemove', handleSidebarResizeMove);
+    document.addEventListener('mouseup', handleSidebarResizeUp);
+  };
+  const handleSidebarResizeMove = (e) => {
+    let newWidth = e.clientX;
+    if (newWidth < 200) newWidth = 200;
+    if (newWidth > 600) newWidth = 600;
+    setSidebarWidth(newWidth);
+  };
+  const handleSidebarResizeUp = () => {
+    document.removeEventListener('mousemove', handleSidebarResizeMove);
+    document.removeEventListener('mouseup', handleSidebarResizeUp);
+  };
+
+  const handleSplitterMouseDown = (e) => {
+    e.preventDefault();
+    document.addEventListener('mousemove', handleSplitterMouseMove);
+    document.addEventListener('mouseup', handleSplitterMouseUp);
+  };
+  const handleSplitterMouseMove = (e) => {
+    if (sqlContainerRef.current) {
+      const containerRect = sqlContainerRef.current.getBoundingClientRect();
+      let newHeight = ((e.clientY - containerRect.top) / containerRect.height) * 100;
+      if (newHeight < 20) newHeight = 20;
+      if (newHeight > 80) newHeight = 80;
+      setSqlEditorHeight(newHeight);
+    }
+  };
+  const handleSplitterMouseUp = () => {
+    document.removeEventListener('mousemove', handleSplitterMouseMove);
+    document.removeEventListener('mouseup', handleSplitterMouseUp);
+  };
+
+  const formatSql = () => {
+    if (!sqlQuery.trim()) return;
+    let formatted = sqlQuery
+      .replace(/\b(select|from|where|insert|update|delete|join|left|right|inner|order by|group by|limit|values|set|into)\b/gi, match => match.toUpperCase())
+      .replace(/\s+(FROM|WHERE|LEFT JOIN|RIGHT JOIN|INNER JOIN|ORDER BY|GROUP BY|LIMIT)\s+/g, '\n$1 ')
+      .replace(/,\s+/g, ',\n  ');
+    setSqlQuery(formatted);
+    showToast(t('sqlFormatted'), 'success');
+  };
+
+  const saveSnippet = () => {
+     if(!sqlQuery.trim()) return;
+     const title = prompt("Name:", "Saved Query");
+     if(title) {
+        setSqlSnippets(prev => [{ id: Date.now(), title, query: sqlQuery }, ...prev]);
+     }
+  };
+
+  // --- TABLO VE VERİ İŞLEMLERİ ---
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
+  };
+
+  const currentTableData = activeDb && activeTable ? databases[activeDb]?.[activeTable] : null;
+
+  const visibleColumns = useMemo(() => {
+    if (!currentTableData) return [];
+    return currentTableData.columns.filter(col => !hiddenColumns.has(col.name));
+  }, [currentTableData, hiddenColumns]);
+
+  const toggleColumnVisibility = (colName) => {
+    setHiddenColumns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(colName)) newSet.delete(colName);
+      else newSet.add(colName);
+      return newSet;
+    });
+  };
+
+  const processedData = useMemo(() => {
+    if (!currentTableData) return [];
+    let data = currentTableData.data.map((row, index) => ({ ...row, _origIndex: index }));
+    if (searchTerm) {
+      data = data.filter(row => Object.keys(row).some(key => key !== '_origIndex' && String(row[key]).toLowerCase().includes(searchTerm.toLowerCase())));
+    }
+    if (filters.length > 0) {
+      data = data.filter(row => {
+        return filters.every(f => {
+          const val = String(row[f.column] || '').toLowerCase();
+          const target = f.value.toLowerCase();
+          switch(f.operator) {
+            case 'eq': return val === target;
+            case 'neq': return val !== target;
+            case 'contains': return val.includes(target);
+            case 'gt': return Number(row[f.column]) > Number(f.value);
+            case 'lt': return Number(row[f.column]) < Number(f.value);
+            default: return true;
+          }
+        });
+      });
+    }
+    if (sortConfig.key) {
+      data.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return data;
+  }, [currentTableData, searchTerm, filters, sortConfig]);
+
+  const paginatedData = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return processedData.slice(start, start + rowsPerPage);
+  }, [processedData, page, rowsPerPage]);
+
+  const totalPages = Math.ceil(processedData.length / rowsPerPage) || 1;
+
+  const toggleRowSelection = (origIndex) => {
+    const newSet = new Set(selectedRows);
+    if (newSet.has(origIndex)) newSet.delete(origIndex);
+    else newSet.add(origIndex);
+    setSelectedRows(newSet);
+  };
+
+  const toggleAllRows = () => {
+    if (selectedRows.size === paginatedData.length && paginatedData.length > 0) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(paginatedData.map(r => r._origIndex)));
+    }
+  };
+
+  const saveInlineEdit = () => {
+    if (!editingCell || !currentTableData) return;
+    const colDef = currentTableData.columns.find(c => c.name === editingCell.colName);
+    if (colDef && (colDef.type.includes('int') || colDef.type.includes('decimal')) && editingCell.value !== '' && isNaN(Number(editingCell.value))) {
+        showToast(t('mustBeNumber').replace('{col}', editingCell.colName), 'error');
+        setEditingCell(null);
+        return;
+    }
+    const newData = [...currentTableData.data];
+    if (String(newData[editingCell.rowIndex][editingCell.colName]) !== String(editingCell.value)) {
+      newData[editingCell.rowIndex] = { ...newData[editingCell.rowIndex], [editingCell.colName]: editingCell.value };
+      updateTableData(newData);
+      showToast(t('recordUpdated'), 'success');
+    }
+    setEditingCell(null);
+  };
+
+  const handleBulkDelete = () => {
+    if(!confirm(t('confirmBulkDelete').replace('{count}', selectedRows.size))) return;
+    const newData = currentTableData.data.filter((_, idx) => !selectedRows.has(idx));
+    updateTableData(newData);
+    setSelectedRows(new Set());
+    showToast(t('recordDeleted'), 'success');
+  };
+
+  const handleDeleteRow = (origIndex) => {
+    if(!confirm(t('confirmDelete'))) return;
+    const newData = [...currentTableData.data];
+    newData.splice(origIndex, 1);
+    updateTableData(newData);
+    setSelectedRows(prev => { const s = new Set(prev); s.delete(origIndex); return s; });
+    showToast(t('recordDeleted'), 'success');
+  };
+
+  const handleCloneRow = (origIndex) => {
+    const rowToClone = { ...currentTableData.data[origIndex] };
+    const pkCol = currentTableData.columns.find(c => c.isPrimary);
+    if (pkCol) {
+      const maxId = currentTableData.data.length > 0 ? Math.max(...currentTableData.data.map(r => parseInt(r[pkCol.name]) || 0)) : 0;
+      rowToClone[pkCol.name] = maxId + 1;
+    }
+    const newData = [rowToClone, ...currentTableData.data];
+    updateTableData(newData);
+    showToast(t('recordAdded'), 'success');
+  };
+
+  const handleTruncateTable = (dbName, tableName) => {
+     if(!confirm(t('confirmTruncate').replace('{name}', tableName))) return;
+     setDatabases(prev => ({
+        ...prev, [dbName]: { ...prev[dbName], [tableName]: { ...prev[dbName][tableName], data: [] } }
+     }));
+     setContextMenu({...contextMenu, visible: false});
+  };
+
+  const handleDeleteTable = (e, dbName, tableName) => {
+    if(e) e.stopPropagation();
+    if(!confirm(t('confirmTableDrop').replace('{name}', tableName))) return;
+    
+    setDatabases(prev => {
+      const copy = { ...prev };
+      delete copy[dbName][tableName];
+      return copy;
+    });
+    if(activeTable === tableName) setActiveTable(null);
+    setContextMenu({...contextMenu, visible: false});
+  };
+
+  const handleDuplicateTable = (dbName, tableName) => {
+    const newName = `${tableName}_copy`;
+    if(databases[dbName][newName]) return;
+    const sourceTable = databases[dbName][tableName];
+    const newTable = JSON.parse(JSON.stringify(sourceTable)); 
+    setDatabases(prev => ({ ...prev, [dbName]: { ...prev[dbName], [newName]: newTable } }));
+    setContextMenu({...contextMenu, visible: false});
+  };
+
+  const saveRowData = (e) => {
+    e.preventDefault();
+    const newData = [...currentTableData.data];
+    const submitData = { ...formData };
+    delete submitData._origIndex; 
+    const pkCol = currentTableData.columns.find(c => c.isPrimary);
+    
+    if (modalConfig.editIndex > -1) {
+      newData[modalConfig.editIndex] = submitData;
+      showToast(t('recordUpdated'), 'success');
+    } else {
+      if (pkCol && !submitData[pkCol.name]) {
+        const maxId = newData.length > 0 ? Math.max(...newData.map(r => parseInt(r[pkCol.name]) || 0)) : 0;
+        submitData[pkCol.name] = maxId + 1;
+      }
+      newData.unshift(submitData);
+      showToast(t('recordAdded'), 'success');
+    }
+    updateTableData(newData);
+    setModalConfig({ isOpen: false, type: null });
+  };
+
+  const updateTableData = (newData) => {
+    setDatabases(prev => ({
+      ...prev, [activeDb]: { ...prev[activeDb], [activeTable]: { ...prev[activeDb][activeTable], data: newData } }
+    }));
+  };
+
+  const getRelatedData = () => {
+    if (!activeDb || !activeTable || modalConfig.editIndex === -1 || !currentTableData) return [];
+    const pkCol = currentTableData.columns.find(c => c.isPrimary);
+    if (!pkCol) return [];
+    
+    const currentRowPkValue = formData[pkCol.name];
+    const related = [];
+
+    Object.keys(databases[activeDb]).forEach(tblName => {
+      if (tblName === activeTable) return;
+      const tbl = databases[activeDb][tblName];
+      const foreignCol = tbl.columns?.find(c => c.isForeign && c.foreignTable === activeTable && c.foreignCol === pkCol.name);
+      
+      if (foreignCol) {
+        const matchingRows = tbl.data.filter(r => String(r[foreignCol.name]) === String(currentRowPkValue));
+        related.push({ tableName: tblName, foreignCol: foreignCol.name, rows: matchingRows, cols: tbl.columns });
+      }
+    });
+
+    return related;
+  };
+
+  const relatedDataInfo = useMemo(() => getRelatedData(), [formData, activeDb, activeTable, databases]);
+
+  // --- DDL İŞLEMLERİ ---
+  const handleCreateDB = (e) => {
+    e.preventDefault();
+    if(!inputVal.trim()) return;
+    if(databases[inputVal]) return;
+    setDatabases(prev => ({ ...prev, [inputVal]: {} }));
+    showToast(t('dbCreated').replace('{name}', inputVal), 'success');
+    setModalConfig({ isOpen: false, type: null });
+    setInputVal('');
+  };
+
+  const handleDeleteDB = (e, dbName) => {
+    e.stopPropagation();
+    if(!confirm(t('confirmDbDrop').replace('{name}', dbName))) return;
+    setDatabases(prev => { const copy = { ...prev }; delete copy[dbName]; return copy; });
+    if(activeDb === dbName) { setActiveDb(null); setActiveTable(null); }
+  };
+
+  const handleCreateTable = (e) => {
+    e.preventDefault();
+    if(!inputVal.trim()) return;
+    const targetDb = modalConfig.data?.dbName || activeDb;
+    if(databases[targetDb][inputVal]) return;
+    const newTable = {
+      type: 'table', columns: [{ name: "id", type: "int(11)", extra: "auto_increment", isPrimary: true, nullable: "No" }], data: []
+    };
+    setDatabases(prev => ({ ...prev, [targetDb]: { ...prev[targetDb], [inputVal]: newTable } }));
+    showToast(t('tableCreated').replace('{name}', inputVal), 'success');
+    setExpandedDbs(prev => ({ ...prev, [targetDb]: true }));
+    setExpandedGroups(prev => ({ ...prev, [`${targetDb}_tables`]: true }));
+    selectDbAndTable(targetDb, inputVal);
+    setModalConfig({ isOpen: false, type: null });
+    setInputVal('');
+  };
+
+  const handleAddColumn = (e) => {
+    e.preventDefault();
+    if (!newColForm.name.trim()) return;
+    const cols = [...currentTableData.columns];
+    if (cols.find(c => c.name === newColForm.name)) return;
+    cols.push({
+      name: newColForm.name, type: newColForm.type, extra: newColForm.default ? `default ${newColForm.default}` : '',
+      isPrimary: false, nullable: newColForm.nullable, isForeign: false
+    });
+    const newData = currentTableData.data.map(row => ({ ...row, [newColForm.name]: newColForm.default || null }));
+    setDatabases(prev => ({
+      ...prev, [activeDb]: { ...prev[activeDb], [activeTable]: { ...prev[activeDb][activeTable], columns: cols, data: newData } }
+    }));
+    showToast(t('colAdded').replace('{name}', newColForm.name), 'success');
+    setModalConfig({isOpen: false, type: null});
+    setNewColForm({ name: '', type: 'varchar(255)', nullable: 'Yes', default: '' });
+  };
+
+  const runSql = () => {
+    if (!sqlQuery.trim()) return;
+    setIsQueryRunning(true);
+    
+    if (!sqlHistory.includes(sqlQuery)) {
+      setSqlHistory(prev => [sqlQuery, ...prev].slice(0, 15));
+    }
+
+    setTimeout(() => {
+      setIsQueryRunning(false);
+      const q = sqlQuery.toLowerCase();
+      if (q.includes('select') && activeTable) {
+        const mockPlan = [
+          { node: 'Seq Scan', entity: activeTable, cost: '0.00..15.20', rows: 45, time: 0.015 },
+          { node: 'Filter', entity: '-', cost: '0.00..15.20', rows: 10, time: 0.005 }
+        ];
+
+        setSqlResult({ 
+          columns: currentTableData.columns, 
+          data: currentTableData.data.slice(0, 15), 
+          time: (Math.random() * 0.05).toFixed(3),
+          plan: mockPlan
+        });
+        showToast(t('sqlExecuted'), 'success');
+      } else {
+        setSqlResult(null);
+        showToast(t('sqlExecuted'), 'success');
+      }
+    }, 600); 
+  };
+
+  const handleSqlKeyDown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runSql();
+  };
+
+  const renderCellContent = (row, col) => {
+    const val = row[col.name];
+    if (val === null || val === '' || val === undefined) return <span className="text-zinc-600 font-mono text-xs">NULL</span>;
+    
+    if (col.type.includes('enum') || col.type.includes('tinyint(1)') || col.type.includes('bool')) {
+      let badgeClass = `${tc.badgeBg} ${tc.badgeText}`;
+      if(val === 0 || String(val).toLowerCase() === 'false' || String(val).toLowerCase() === 'user' || String(val).toLowerCase() === 'iptal') badgeClass = 'bg-zinc-800 text-zinc-300';
+      if(String(val).toLowerCase() === 'admin' || String(val).toLowerCase() === 'bekliyor') badgeClass = 'bg-rose-500/20 text-rose-300';
+      
+      return <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide border border-current opacity-80 ${badgeClass}`}>{String(val)}</span>;
+    }
+    if (col.type.includes('int') || col.type.includes('decimal')) {
+      return <span className={`font-mono text-xs ${tc.textLightest}`}>{String(val)}</span>;
+    }
+    return <span className="text-sm">{String(val)}</span>;
+  };
+
+  // --- GİRİŞ EKRANI ---
+  if (!isConnected) {
+    return (
+      <div className={`min-h-screen bg-[#1c1c1c] flex items-center justify-center p-4 font-sans text-zinc-300 ${tc.selection}`}>
+        <div className="bg-[#232323] p-8 rounded-xl w-full max-w-4xl border border-[#333] shadow-2xl relative overflow-hidden flex flex-col md:flex-row gap-8">
+          <div className={`absolute -top-20 -right-20 w-48 h-48 ${tc.bg} opacity-10 blur-3xl rounded-full`}></div>
+          <div className={`absolute -bottom-20 -left-20 w-48 h-48 ${tc.bg} opacity-10 blur-3xl rounded-full`}></div>
+          
+          <div className="flex-1 md:border-r md:border-[#333] md:pr-8 flex flex-col z-10">
+             <h2 className="text-lg font-medium text-zinc-100 mb-4 flex items-center gap-2">
+               <Server className="w-5 h-5"/> {t('savedServers')}
+             </h2>
+             <div className="flex-1 overflow-auto space-y-2">
+               {savedConnections.length === 0 ? (
+                 <div className="text-sm text-zinc-500 py-8 text-center bg-[#1c1c1c] rounded-lg border border-[#333] border-dashed">{t('noSavedConn')}</div>
+               ) : (
+                 savedConnections.map((conn, idx) => (
+                   <div key={idx} className="bg-[#1c1c1c] border border-[#333] hover:border-[#555] rounded-lg p-3 transition-colors group cursor-pointer" onClick={() => loadConnectionProfile(conn)}>
+                     <div className="flex justify-between items-start mb-1">
+                        <span className="font-medium text-zinc-200 text-sm">{conn.name}</span>
+                        <button onClick={(e) => deleteConnectionProfile(e, conn.name)} className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5"/></button>
+                     </div>
+                     <div className="text-xs text-zinc-500 font-mono">{conn.user} @ {conn.host}:{conn.port}</div>
+                   </div>
+                 ))
+               )}
+             </div>
+          </div>
+
+          <div className="flex-[1.2] flex flex-col z-10">
+            <div className="flex flex-col items-center mb-8">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Database className={`w-8 h-8 ${tc.text}`} />
+                <span className="text-3xl font-bold tracking-tight text-white">One<span className={tc.text}>DB</span></span>
+              </div>
+              <p className="text-sm text-zinc-500">{t('loginDesc')}</p>
+            </div>
+            <form onSubmit={handleConnect} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">{t('serverUrl')}</label>
+                <input type="text" disabled={isConnecting} className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 transition-colors disabled:opacity-50 ${tc.focusRing}`} value={connForm.host} onChange={(e) => setConnForm({...connForm, host: e.target.value})} />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">{t('username')}</label>
+                  <input type="text" disabled={isConnecting} className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 transition-colors disabled:opacity-50 ${tc.focusRing}`} value={connForm.user} onChange={(e) => setConnForm({...connForm, user: e.target.value})} />
+                </div>
+                <div className="w-24">
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">{t('port')}</label>
+                  <input type="text" disabled={isConnecting} className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 transition-colors disabled:opacity-50 ${tc.focusRing}`} value={connForm.port} onChange={(e) => setConnForm({...connForm, port: e.target.value})} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">{t('password')}</label>
+                <input type="password" disabled={isConnecting} placeholder="••••••••" className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 transition-colors disabled:opacity-50 ${tc.focusRing}`} value={connForm.pass} onChange={(e) => setConnForm({...connForm, pass: e.target.value})} />
+              </div>
+              <div className="flex gap-2 mt-6 pt-2">
+                <button type="button" onClick={saveConnectionProfile} disabled={isConnecting} className="bg-[#1c1c1c] border border-[#333] hover:bg-[#2e2e32] text-zinc-300 text-sm font-medium px-4 py-2.5 rounded-md transition-colors">
+                  {t('saveBtn')}
+                </button>
+                <button type="submit" disabled={isConnecting} className={`flex-1 ${tc.bg} ${tc.hoverBg} text-white text-sm font-medium py-2.5 rounded-md transition-colors flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed`}>
+                  {isConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Database className="w-4 h-4" /> {t('connectBtn')}</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- ANA YAPI (WRAPPER) ---
+  return (
+    <div className={`h-screen flex flex-col bg-[#18181b] text-zinc-300 font-sans overflow-hidden ${tc.selection}`}>
+      
+      {/* ANA ÇALIŞMA ALANI */}
+      <div className="flex-1 flex overflow-hidden relative">
+        
+        {/* SOL MENÜ (SIDEBAR) */}
+        <div className={`shrink-0 transition-all duration-300 ease-in-out overflow-hidden bg-[#1c1c1c] z-20 flex`} style={{ width: isSidebarOpen ? `${sidebarWidth}px` : '0px', borderRightWidth: isSidebarOpen ? '1px' : '0px', borderColor: '#2e2e32' }}>
+          <div className="flex-1 flex flex-col h-full relative overflow-hidden min-w-[200px]">
+            <div className="h-14 border-b border-[#2e2e32] flex items-center px-4 shrink-0 bg-[#18181b]">
+              <div className="flex items-center gap-2 w-full">
+                <Database className={`w-5 h-5 ${tc.text}`} />
+                <span className="font-bold text-lg tracking-tight text-white flex-1">One<span className={tc.text}>DB</span></span>
+              </div>
+            </div>
+
+            <div className="p-3 shrink-0">
+              <div className="flex items-center justify-between mb-2 px-1">
+                 <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('databases')}</span>
+                 <button onClick={() => { setInputVal(''); setModalConfig({ isOpen: true, type: 'create_db' }); }} className={`text-zinc-500 hover:${tc.textLight} transition-colors p-1 rounded hover:bg-[#2e2e32]`} title={t('newDatabase')}>
+                   <Plus className="w-3.5 h-3.5" />
+                 </button>
+              </div>
+              <button 
+                onClick={() => setIsCommandOpen(true)}
+                className={`w-full bg-[#232323] border border-[#333] hover:border-[#444] rounded-md py-1.5 px-3 text-xs text-zinc-400 flex items-center justify-between transition-colors`}
+              >
+                <div className="flex items-center gap-2"><Search className="w-3.5 h-3.5" /> {t('search')}</div>
+                <kbd className="font-mono text-[9px] bg-[#18181b] px-1.5 py-0.5 rounded text-zinc-500">⌘K</kbd>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-2 pb-4 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+              
+              {/* FAVORİ TABLOLAR (PINNED) */}
+              {pinnedTables.length > 0 && (
+                <div className="mb-4">
+                   <div className="flex items-center gap-1 px-3 py-1 mb-1">
+                     <Star className="w-3 h-3 text-amber-500" />
+                     <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">{t('favorites')}</span>
+                   </div>
+                   {pinnedTables.map(pinKey => {
+                      const [pDb, pTbl] = pinKey.split('.');
+                      if(!databases[pDb] || !databases[pDb][pTbl]) return null;
+                      return (
+                        <div key={pinKey} className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm transition-colors group cursor-pointer relative ${activeDb === pDb && activeTable === pTbl ? `${tc.lightBg} ${tc.textLight} font-medium` : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#232323]'}`} onClick={() => selectDbAndTable(pDb, pTbl)}>
+                          {activeDb === pDb && activeTable === pTbl && <div className={`absolute left-[-1px] top-1/2 -translate-y-1/2 w-[2px] h-4 ${tc.accentBg} rounded-r-full`} />}
+                          <div className="flex items-center gap-2 flex-1 overflow-hidden">
+                             {databases[pDb][pTbl].type === 'view' ? <Eye className="w-3.5 h-3.5 shrink-0" /> : <Table2 className="w-3.5 h-3.5 shrink-0" />}
+                             <span className="truncate">{pTbl}</span>
+                          </div>
+                          <button onClick={(e) => { e.stopPropagation(); togglePinTable(pDb, pTbl); }} className="p-1 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><X className="w-3 h-3"/></button>
+                        </div>
+                      )
+                   })}
+                </div>
+              )}
+
+              {/* TÜM VERİTABANLARI AĞACI */}
+              {Object.keys(databases).map(dbName => {
+                 const tables = Object.keys(databases[dbName]).filter(k => databases[dbName][k].type === 'table' || !databases[dbName][k].type);
+                 const views = Object.keys(databases[dbName]).filter(k => databases[dbName][k].type === 'view');
+                 
+                 return (
+                  <div key={dbName} className="mb-1">
+                    <div 
+                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-[#232323] transition-colors group cursor-pointer ${activeDb === dbName && !activeTable ? `${tc.lightBg} ${tc.textLight}` : ''}`} 
+                      onClick={() => { 
+                         setActiveDb(dbName); 
+                         setActiveTable(null); 
+                         setExpandedDbs(prev => ({ ...prev, [dbName]: true })); 
+                         setExpandedGroups(prev => ({ ...prev, [`${dbName}_tables`]: true })); 
+                      }}
+                    >
+                      <div className="flex items-center gap-2 flex-1 overflow-hidden">
+                        {expandedDbs[dbName] ? 
+                          <ChevronDown onClick={(e)=>{e.stopPropagation(); setExpandedDbs(prev=>({...prev, [dbName]: false}))}} className="w-3.5 h-3.5 shrink-0 text-zinc-500 hover:text-white" /> : 
+                          <ChevronRight onClick={(e)=>{
+                             e.stopPropagation(); 
+                             setExpandedDbs(prev=>({...prev, [dbName]: true}));
+                             setExpandedGroups(prev => ({ ...prev, [`${dbName}_tables`]: true })); 
+                          }} className="w-3.5 h-3.5 shrink-0 text-zinc-500 hover:text-white" />
+                        }
+                        <Database className="w-3.5 h-3.5 shrink-0 text-zinc-400" />
+                        <span className="truncate text-sm text-zinc-300 font-medium flex-1 text-left">{dbName}</span>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button onClick={(e) => handleDeleteDB(e, dbName)} className="p-1 text-zinc-400 hover:text-red-400 transition-colors" title={t('drop')}><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </div>
+                    
+                    {expandedDbs[dbName] && (
+                      <div className="ml-6 mt-0.5 space-y-1 relative before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-[#333]">
+                        {/* TABLOLAR GRUBU */}
+                        <div>
+                           <div className="flex items-center gap-1 px-1 py-1 cursor-pointer group/folder" onClick={() => setExpandedGroups(prev => ({...prev, [`${dbName}_tables`]: !prev[`${dbName}_tables`]}))}>
+                             {expandedGroups[`${dbName}_tables`] ? <ChevronDown className="w-3 h-3 text-zinc-500" /> : <ChevronRight className="w-3 h-3 text-zinc-500" />}
+                             <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider flex-1">{t('tables')}</span>
+                             <button onClick={(e) => { e.stopPropagation(); setInputVal(''); setModalConfig({isOpen:true, type:'create_table', data:{dbName}}); }} className="p-0.5 text-zinc-500 hover:text-zinc-200 opacity-0 group-hover/folder:opacity-100 transition-opacity"><PlusCircle className="w-3 h-3"/></button>
+                           </div>
+                           {expandedGroups[`${dbName}_tables`] && tables.map(tableName => (
+                            <div 
+                              key={tableName} 
+                              onContextMenu={(e) => handleContextMenu(e, dbName, tableName)}
+                              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm transition-colors group cursor-pointer relative ${activeDb === dbName && activeTable === tableName ? `${tc.lightBg} ${tc.textLight} font-medium` : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#232323]'}`} 
+                              onClick={() => selectDbAndTable(dbName, tableName)}
+                            >
+                              {activeDb === dbName && activeTable === tableName && <div className={`absolute left-[-1px] top-1/2 -translate-y-1/2 w-[2px] h-4 ${tc.accentBg} rounded-r-full`} />}
+                              <div className="flex items-center gap-2 flex-1 overflow-hidden">
+                                 <Table2 className="w-3.5 h-3.5 shrink-0" />
+                                 <span className="truncate">{tableName}</span>
+                              </div>
+                            </div>
+                           ))}
+                        </div>
+
+                        {/* GÖRÜNÜMLER (VIEWS) GRUBU */}
+                        <div>
+                           <div className="flex items-center gap-1 px-1 py-1 cursor-pointer" onClick={() => setExpandedGroups(prev => ({...prev, [`${dbName}_views`]: !prev[`${dbName}_views`]}))}>
+                             {expandedGroups[`${dbName}_views`] ? <ChevronDown className="w-3 h-3 text-zinc-500" /> : <ChevronRight className="w-3 h-3 text-zinc-500" />}
+                             <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">{t('views')}</span>
+                           </div>
+                           {expandedGroups[`${dbName}_views`] && views.map(viewName => (
+                            <div key={viewName} className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm transition-colors group cursor-pointer relative ${activeDb === dbName && activeTable === viewName ? `${tc.lightBg} ${tc.textLight} font-medium` : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#232323]'}`} onClick={() => selectDbAndTable(dbName, viewName)}>
+                              {activeDb === dbName && activeTable === viewName && <div className={`absolute left-[-1px] top-1/2 -translate-y-1/2 w-[2px] h-4 ${tc.accentBg} rounded-r-full`} />}
+                              <div className="flex items-center gap-2 flex-1 overflow-hidden">
+                                 <Eye className="w-3.5 h-3.5 shrink-0" />
+                                 <span className="truncate">{viewName}</span>
+                              </div>
+                            </div>
+                           ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                 );
+              })}
+            </div>
+          </div>
+          {/* Sidebar Resizer Edge */}
+          {isSidebarOpen && (
+             <div 
+               className="w-1.5 hover:bg-[#333] cursor-col-resize h-full absolute right-0 z-50 transition-colors"
+               onMouseDown={handleSidebarResizeStart}
+             />
+          )}
+        </div>
+
+        {/* ANA EKRAN İÇERİĞİ */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#18181b]">
+          
+          {/* Üst Bar */}
+          <header className="h-14 bg-[#1c1c1c] border-b border-[#2e2e32] flex items-center justify-between px-6 shrink-0 z-10">
+            <div className="flex items-center gap-2 text-sm text-zinc-400">
+              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mr-3 text-zinc-500 hover:text-zinc-300 transition-colors p-1 hover:bg-[#333] rounded">
+                <PanelLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => { setActiveDb(null); setActiveTable(null); }} className="hover:text-zinc-200 transition-colors">{connForm.host}</button>
+              {activeDb && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
+                  <button onClick={() => setActiveTable(null)} className={`hover:text-zinc-200 transition-colors ${!activeTable ? 'text-zinc-100 font-medium' : ''}`}>
+                    {activeDb}
+                  </button>
+                </>
+              )}
+              {activeTable && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
+                  <span className="text-zinc-100 font-medium">{activeTable}</span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                 <button onClick={(e) => { e.stopPropagation(); setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen); }} className={`text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded flex items-center gap-1 ${autoRefreshInt > 0 ? `${tc.text} ${tc.lightBg}` : 'hover:bg-[#2e2e32]'}`} title={t('autoRefresh')}>
+                   <Timer className="w-4 h-4" />
+                   {autoRefreshInt > 0 && <span className="text-[10px] font-bold">{autoRefreshInt}s</span>}
+                 </button>
+                 {isAutoRefreshMenuOpen && (
+                   <div onClick={(e) => e.stopPropagation()} className="absolute top-full right-0 mt-2 w-48 bg-[#1c1c1c] border border-[#333] shadow-2xl rounded-lg p-2 z-[100]">
+                      <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-1">{t('autoRefresh')}</div>
+                      <div className="space-y-1">
+                         <button onClick={()=>{setAutoRefreshInt(0); setIsAutoRefreshMenuOpen(false);}} className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${autoRefreshInt === 0 ? tc.textLight : 'text-zinc-300 hover:bg-[#2e2e32]'}`}>{t('off')}</button>
+                         <button onClick={()=>{setAutoRefreshInt(5); setIsAutoRefreshMenuOpen(false);}} className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${autoRefreshInt === 5 ? tc.textLight : 'text-zinc-300 hover:bg-[#2e2e32]'}`}>{t('sec5')}</button>
+                         <button onClick={()=>{setAutoRefreshInt(10); setIsAutoRefreshMenuOpen(false);}} className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${autoRefreshInt === 10 ? tc.textLight : 'text-zinc-300 hover:bg-[#2e2e32]'}`}>{t('sec10')}</button>
+                      </div>
+                   </div>
+                 )}
+              </div>
+              <button onClick={() => setIsCommandOpen(true)} className="text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded hover:bg-[#2e2e32]"><Search className="w-4 h-4" /></button>
+              <button onClick={handleRefresh} className="text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded hover:bg-[#2e2e32]">
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-zinc-100' : ''}`} />
+              </button>
+              <button onClick={() => setIsSettingsOpen(true)} className="text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded hover:bg-[#2e2e32]"><Settings className="w-4 h-4" /></button>
+              <div className="w-[1px] h-4 bg-[#333] mx-1"></div>
+              <button onClick={() => setIsConnected(false)} className="text-zinc-400 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-[#2e2e32]" title={t('logout')}><LogOut className="w-4 h-4" /></button>
+            </div>
+          </header>
+
+          {currentTableData ? (
+            <>
+              {/* Sekmeler */}
+              <div className="px-6 flex gap-6 border-b border-[#2e2e32] bg-[#1c1c1c] shrink-0">
+                <button onClick={() => setActiveTab('gozat')} className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'gozat' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}><Rows className="w-4 h-4" /> {currentTableData.type === 'view' ? t('results') : t('tableEditor')}</button>
+                <button onClick={() => setActiveTab('yapi')} className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'yapi' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}><Columns className="w-4 h-4" /> {t('schema')}</button>
+                <button onClick={() => setActiveTab('sql')} className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'sql' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}><Code className="w-4 h-4" /> {t('sqlEditor')}</button>
+              </div>
+
+              <div className="flex-1 overflow-auto flex flex-col bg-[#18181b]">
+                {/* --- TABLE EDITOR (GÖZAT) --- */}
+                {activeTab === 'gozat' && (
+                  <div className="flex-1 flex flex-col h-full relative">
+                    {/* Araç Çubuğu */}
+                    <div className="flex justify-between items-center px-4 py-2 border-b border-[#2e2e32] bg-[#18181b] shrink-0 z-20">
+                      <div className="flex items-center gap-2">
+                        {currentTableData.type !== 'view' && (
+                          <>
+                            <button onClick={() => { setFormData({}); setRowDetailsTab('details'); setModalConfig({isOpen:true, type:'row_form', editIndex:-1, viewOnly: false}); }} className={`${tc.bg} ${tc.hoverBg} text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-colors`}>
+                              <Plus className="w-3.5 h-3.5" /> {t('addRow')}
+                            </button>
+                            <div className="h-4 w-[1px] bg-[#333] mx-1"></div>
+                          </>
+                        )}
+                        
+                        {selectedRows.size > 0 && currentTableData.type !== 'view' && (
+                          <>
+                            <span className="text-xs text-zinc-400 mx-2">{selectedRows.size} {t('selected')}</span>
+                            <button onClick={handleBulkDelete} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" /> {t('delSelected')}
+                            </button>
+                            <button onClick={() => handleExportTable('sql')} className="bg-[#232323] border border-[#333] hover:bg-[#2e2e32] text-zinc-300 px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-colors">
+                              <FileDown className="w-3.5 h-3.5" /> {t('exportSql')}
+                            </button>
+                          </>
+                        )}
+
+                        {(selectedRows.size === 0 || currentTableData.type === 'view') && (
+                          <>
+                            <div className="relative">
+                              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1.5 text-zinc-500" />
+                              <input type="text" placeholder={t('search')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`bg-transparent border border-[#333] hover:border-[#444] rounded text-xs py-1.5 pl-8 pr-3 w-48 text-zinc-200 transition-colors ${tc.focusRing}`} />
+                            </div>
+                            <button onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)} className={`px-2 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors border ${filters.length > 0 ? `${tc.border} ${tc.textLight} ${tc.lightBg}` : 'border-[#333] text-zinc-400 hover:bg-[#232323]'}`}>
+                              <Filter className="w-3.5 h-3.5" /> {t('filters')} {filters.length > 0 && `(${filters.length})`}
+                            </button>
+                            {/* Sütun Görünürlüğü Butonu */}
+                            <div className="relative">
+                               <button onClick={(e) => { e.stopPropagation(); setIsColsPanelOpen(!isColsPanelOpen); }} className={`px-2 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors border ${hiddenColumns.size > 0 ? `${tc.border} ${tc.textLight} ${tc.lightBg}` : 'border-[#333] text-zinc-400 hover:bg-[#232323]'}`}>
+                                 <SlidersHorizontal className="w-3.5 h-3.5" /> {t('columns')} {hiddenColumns.size > 0 && `(${currentTableData.columns.length - hiddenColumns.size}/${currentTableData.columns.length})`}
+                               </button>
+                               {isColsPanelOpen && (
+                                 <div onClick={(e) => e.stopPropagation()} className="absolute top-full mt-2 left-0 w-48 bg-[#1c1c1c] border border-[#333] shadow-2xl rounded-lg p-2 z-[100]">
+                                    <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-1">{t('columns')}</div>
+                                    <div className="max-h-[300px] overflow-y-auto">
+                                       {currentTableData.columns.map(c => (
+                                          <label key={c.name} className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#2e2e32] rounded cursor-pointer text-xs text-zinc-300">
+                                            <input type="checkbox" checked={!hiddenColumns.has(c.name)} onChange={() => toggleColumnVisibility(c.name)} className={`rounded-sm bg-[#18181b] border-[#444] ${tc.accent}`} />
+                                            {c.name}
+                                          </label>
+                                       ))}
+                                    </div>
+                                 </div>
+                               )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                         {currentTableData.type !== 'view' && <button onClick={() => setModalConfig({isOpen:true, type:'import'})} className="text-zinc-400 hover:text-zinc-200 text-xs flex items-center gap-1.5 px-2 py-1.5 rounded border border-[#333] hover:bg-[#232323] transition-colors"><UploadCloud className="w-3.5 h-3.5" /> {t('import')}</button>}
+                         <button onClick={() => setModalConfig({isOpen:true, type:'export'})} className="text-zinc-400 hover:text-zinc-200 text-xs flex items-center gap-1.5 px-2 py-1.5 rounded border border-[#333] hover:bg-[#232323] transition-colors"><FileDown className="w-3.5 h-3.5" /> {t('export')}</button>
+                      </div>
+                    </div>
+
+                    {/* Filtreleme Paneli */}
+                    {isFilterPanelOpen && (
+                      <div className="bg-[#1c1c1c] border-b border-[#2e2e32] p-4 flex flex-col gap-3 shrink-0">
+                         {filters.map((f, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                               <select value={f.column} onChange={e => { const nf=[...filters]; nf[i].column=e.target.value; setFilters(nf); }} className="bg-[#232323] border border-[#333] text-zinc-200 rounded p-1 outline-none">
+                                  {currentTableData.columns.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                               </select>
+                               <select value={f.operator} onChange={e => { const nf=[...filters]; nf[i].operator=e.target.value; setFilters(nf); }} className="bg-[#232323] border border-[#333] text-zinc-200 rounded p-1 outline-none">
+                                  <option value="eq">{t('equals')}</option>
+                                  <option value="neq">{t('notEquals')}</option>
+                                  <option value="contains">{t('contains')}</option>
+                                  <option value="gt">{t('greaterThan')}</option>
+                                  <option value="lt">{t('lessThan')}</option>
+                               </select>
+                               <input type="text" value={f.value} onChange={e => { const nf=[...filters]; nf[i].value=e.target.value; setFilters(nf); }} className="bg-[#232323] border border-[#333] text-zinc-200 rounded p-1 outline-none px-2" placeholder={t('valuePlaceholder')} />
+                               <button onClick={() => setFilters(filters.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400 p-1"><X className="w-3.5 h-3.5"/></button>
+                            </div>
+                         ))}
+                         <button onClick={() => setFilters([...filters, {column: currentTableData.columns[0].name, operator: 'eq', value: ''}])} className={`text-xs ${tc.textLight} hover:text-white flex items-center gap-1 w-max`}>
+                            <Plus className="w-3 h-3" /> {t('addRule')}
+                         </button>
+                      </div>
+                    )}
+
+                    {/* Veri Tablosu */}
+                    <div className="flex-1 overflow-auto bg-[#18181b]">
+                      <table className="w-full text-left text-sm whitespace-nowrap border-collapse select-none">
+                        <thead className="bg-[#1c1c1c] text-zinc-400 sticky top-0 z-10 shadow-sm border-b border-[#2e2e32]">
+                          <tr>
+                            {currentTableData.type !== 'view' && (
+                              <th className="px-4 py-2 w-10 border-r border-[#2e2e32] font-normal cursor-pointer" onClick={toggleAllRows}>
+                                <input type="checkbox" readOnly checked={selectedRows.size === paginatedData.length && paginatedData.length > 0} className={`rounded-sm bg-[#18181b] border-[#333] ${tc.accent} w-3.5 h-3.5 block cursor-pointer`} />
+                              </th>
+                            )}
+                            <th className="px-3 py-2 w-12 border-r border-[#2e2e32] font-normal text-center">#</th>
+                            {visibleColumns.map(col => (
+                              <th key={col.name} onClick={() => handleSort(col.name)} className="px-4 py-2 border-r border-[#2e2e32] font-normal last:border-r-0 hover:bg-[#232323] transition-colors group relative" style={{ resize: 'horizontal', overflow: 'hidden', minWidth: '100px' }}>
+                                <div className="flex items-center justify-between cursor-pointer">
+                                  <div className="flex items-center gap-2">
+                                    {getColumnIcon(col.type)}
+                                    <span className="text-zinc-200 font-medium">{col.name}</span>
+                                    {col.isPrimary && <Key className="w-3 h-3 text-amber-500 opacity-70" />}
+                                    {col.isForeign && <LinkIcon className="w-3 h-3 text-blue-400 opacity-70" title="Foreign Key" />}
+                                  </div>
+                                  <div className="flex items-center">
+                                     {sortConfig.key === col.name ? (
+                                        <ArrowDownUp className={`w-3.5 h-3.5 ${tc.textLight} ${sortConfig.direction === 'desc' ? 'rotate-180' : ''} transition-transform`} />
+                                     ) : (
+                                        <MoreHorizontal className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-zinc-500" />
+                                     )}
+                                  </div>
+                                </div>
+                              </th>
+                            ))}
+                            <th className="px-4 py-2 font-normal w-[120px] border-b border-[#2e2e32]"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-zinc-300">
+                          {paginatedData.map((row, index) => (
+                            <tr key={row._origIndex} className={`border-b border-[#2e2e32] group transition-colors ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/50' : 'hover:bg-[#232323]/60'}`}>
+                              {currentTableData.type !== 'view' && (
+                                <td className="px-4 py-1.5 border-r border-[#2e2e32] text-center cursor-pointer" onClick={() => toggleRowSelection(row._origIndex)}>
+                                  <input type="checkbox" readOnly checked={selectedRows.has(row._origIndex)} className={`rounded-sm bg-[#18181b] border-[#333] ${tc.accent} w-3.5 h-3.5 block cursor-pointer`} />
+                                </td>
+                              )}
+                              <td className="px-3 py-1.5 border-r border-[#2e2e32] text-center text-zinc-600 text-xs">{(page-1)*rowsPerPage + index + 1}</td>
+                              
+                              {visibleColumns.map(col => (
+                                <td 
+                                  key={col.name} 
+                                  onDoubleClick={() => currentTableData.type !== 'view' && setEditingCell({ rowIndex: row._origIndex, colName: col.name, value: row[col.name] })}
+                                  className="px-4 py-1 border-r border-[#2e2e32] last:border-r-0 max-w-[250px] relative group/cell cursor-text"
+                                >
+                                  {editingCell?.rowIndex === row._origIndex && editingCell?.colName === col.name ? (
+                                     <input 
+                                       autoFocus 
+                                       value={editingCell.value || ''} 
+                                       onChange={(e) => setEditingCell({...editingCell, value: e.target.value})}
+                                       onBlur={saveInlineEdit}
+                                       onKeyDown={(e) => { if (e.key === 'Enter') saveInlineEdit(); }}
+                                       className={`w-full bg-[#18181b] border ${tc.border} rounded px-1 py-0.5 text-sm text-zinc-200 outline-none shadow-lg`}
+                                     />
+                                  ) : (
+                                    <div className="relative group/tooltip inline-block w-full">
+                                      <div className="truncate w-full block">
+                                        {renderCellContent(row, col)}
+                                      </div>
+                                      {/* Akıllı Tooltip */}
+                                      {String(row[col.name]).length > 35 && (
+                                        <div className="absolute left-0 top-full mt-1 hidden group-hover/tooltip:block bg-[#2e2e32] border border-[#444] p-2.5 rounded-lg shadow-2xl z-[100] text-xs text-zinc-200 whitespace-normal min-w-[250px] max-w-[400px]">
+                                          {String(row[col.name])}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* Satır içi kopyalama butonu */}
+                                  <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-100 flex gap-1 bg-[#18181b] p-0.5 rounded shadow-lg border border-[#333]">
+                                     <button onClick={(e) => { e.stopPropagation(); copyToClipboard(String(row[col.name])) }} className="text-zinc-500 hover:text-white p-1 rounded hover:bg-[#333] transition-colors" title={t('copy')}><Copy className="w-3 h-3" /></button>
+                                  </div>
+                                </td>
+                              ))}
+                              
+                              <td className="px-4 py-1.5 text-right bg-transparent group-hover:bg-[#232323]">
+                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => { setFormData({...row}); setRowDetailsTab('details'); setModalConfig({isOpen:true, type:'row_form', editIndex:row._origIndex, viewOnly: true}); }} className="text-zinc-500 hover:text-blue-400" title={t('rowDetails')}><Maximize2 className="w-3.5 h-3.5" /></button>
+                                  {currentTableData.type !== 'view' && (
+                                    <>
+                                      <button onClick={() => handleCloneRow(row._origIndex)} className="text-zinc-500 hover:text-emerald-400" title={t('duplicateTable')}><CopyPlus className="w-3.5 h-3.5" /></button>
+                                      <button onClick={() => { setFormData({...row}); setRowDetailsTab('details'); setModalConfig({isOpen:true, type:'row_form', editIndex:row._origIndex, viewOnly: false}); }} className="text-zinc-500 hover:text-zinc-300" title={t('editRow')}><Settings className="w-3.5 h-3.5" /></button>
+                                      <button onClick={() => handleDeleteRow(row._origIndex)} className="text-zinc-500 hover:text-red-400" title={t('drop')}><Trash2 className="w-3.5 h-3.5" /></button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {paginatedData.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
+                          <FileText className="w-12 h-12 mb-4 opacity-20" />
+                          <p className="text-sm">{t('noRecords')}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Sayfalama (Pagination) Alt Çubuğu */}
+                    <div className="bg-[#1c1c1c] border-t border-[#2e2e32] p-2 px-4 flex justify-between items-center shrink-0">
+                       <div className="flex items-center gap-3 text-xs text-zinc-500">
+                          <span>{t('rowsPerPage')}</span>
+                          <select value={rowsPerPage} onChange={(e) => {setRowsPerPage(Number(e.target.value)); setPage(1);}} className="bg-[#232323] border border-[#333] text-zinc-300 rounded outline-none p-1">
+                            <option value={10}>10</option>
+                            <option value={15}>15</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                          </select>
+                       </div>
+                       <div className="flex items-center gap-4 text-xs">
+                          <span className="text-zinc-400">
+                             {processedData.length > 0 ? (page - 1) * rowsPerPage + 1 : 0} - {Math.min(page * rowsPerPage, processedData.length)} / {processedData.length}
+                          </span>
+                          <div className="flex gap-1">
+                             <button onClick={() => setPage(1)} disabled={page === 1} className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"><ChevronFirst className="w-4 h-4" /></button>
+                             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+                             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0} className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"><ChevronRight className="w-4 h-4" /></button>
+                             <button onClick={() => setPage(totalPages)} disabled={page === totalPages || totalPages === 0} className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"><ChevronLast className="w-4 h-4" /></button>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- SCHEMA (YAPI) --- */}
+                {activeTab === 'yapi' && (
+                  <div className="p-6 max-w-6xl mx-auto w-full">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h2 className="text-lg font-medium text-zinc-100">{t('tableSchema')}</h2>
+                        <p className="text-sm text-zinc-500">{t('manageCols')} <span className={tc.textLight}>{activeTable}</span></p>
+                      </div>
+                      {currentTableData.type !== 'view' && (
+                        <button onClick={() => setModalConfig({isOpen:true, type:'add_column'})} className="bg-[#232323] border border-[#333] hover:bg-[#2e2e32] text-zinc-200 px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-colors shadow-sm">
+                          <Plus className="w-3.5 h-3.5" /> {t('addColumn')}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="bg-[#1c1c1c] border border-[#2e2e32] rounded-lg overflow-hidden">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-[#232323] text-zinc-400 border-b border-[#2e2e32]">
+                          <tr>
+                            <th className="px-5 py-3 font-medium">{t('colName')}</th>
+                            <th className="px-5 py-3 font-medium">{t('colType')}</th>
+                            <th className="px-5 py-3 font-medium">{t('colNullable')}</th>
+                            <th className="px-5 py-3 font-medium">{t('colDefault')}</th>
+                            <th className="px-5 py-3 font-medium">{t('colKey')}</th>
+                            <th className="px-5 py-3 font-medium text-right">{t('action')}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#2e2e32]">
+                          {currentTableData.columns.map(col => (
+                            <tr key={col.name} className="hover:bg-[#232323]/50">
+                              <td className="px-5 py-3"><div className="flex items-center gap-2">{getColumnIcon(col.type)}<span className="font-medium text-zinc-200">{col.name}</span></div></td>
+                              <td className={`px-5 py-3 font-mono text-xs ${tc.textLightOpacity}`}>{col.type}</td>
+                              <td className="px-5 py-3">
+                                {col.nullable === 'Evet' || col.nullable === 'Yes' ? <span className="text-zinc-500">{t('yes')}</span> : <span className="text-zinc-300 font-medium">{t('no')}</span>}
+                              </td>
+                              <td className="px-5 py-3 text-zinc-500 text-xs font-mono">{col.extra?.includes('auto_increment') ? 'auto_increment' : (col.extra || 'NULL')}</td>
+                              <td className="px-5 py-3 flex gap-2">
+                                 {col.isPrimary && <div className="bg-zinc-800 text-zinc-300 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-zinc-700 flex items-center gap-1"><Key className="w-3 h-3 text-amber-500"/> PK</div>}
+                                 {col.isForeign && <div className="bg-blue-500/10 text-blue-300 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-blue-500/20 flex items-center gap-1" title={`${col.foreignTable}.${col.foreignCol}`}><LinkIcon className="w-3 h-3"/> FK</div>}
+                                 {!col.isPrimary && !col.isForeign && '-'}
+                              </td>
+                              <td className="px-5 py-3 text-right">
+                                {currentTableData.type !== 'view' && <button onClick={() => showToast('Sütun silme (Drop Column) henüz aktif değil.', 'error')} className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors" title={t('drop')}><Trash2 className="w-4 h-4" /></button>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- SQL EDITOR --- */}
+                {activeTab === 'sql' && (
+                  <div className="flex-1 flex flex-col h-full bg-[#18181b]" ref={sqlContainerRef}>
+                    {/* Üst Kısım: Editör */}
+                    <div className="flex flex-col border-b border-[#2e2e32] bg-[#1c1c1c] shrink-0 min-h-[20%]" style={{ height: sqlResult ? `${sqlEditorHeight}%` : '100%' }}>
+                      
+                      {/* Yapay Zeka Asistan Barı */}
+                      <div className="px-4 py-2 border-b border-[#2e2e32] bg-[#1c1c1c]/50 flex items-center gap-3">
+                         <Sparkles className={`w-4 h-4 ${tc.text}`} />
+                         <form onSubmit={handleAiGenerate} className="flex-1 flex gap-2">
+                           <input 
+                              type="text" 
+                              placeholder={t('aiPlaceholder')} 
+                              value={aiPrompt}
+                              onChange={e => setAiPrompt(e.target.value)}
+                              className={`flex-1 bg-[#18181b] border border-[#333] hover:border-[#444] rounded text-xs py-1.5 px-3 text-zinc-200 transition-colors ${tc.focusRing}`}
+                           />
+                           <button disabled={isAiLoading || !aiPrompt.trim()} type="submit" className={`px-3 py-1.5 rounded text-xs font-medium bg-[#232323] hover:bg-[#2e2e32] text-zinc-300 border border-[#333] transition-colors disabled:opacity-50 flex items-center gap-1.5`}>
+                             {isAiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : t('aiGenerate')}
+                           </button>
+                         </form>
+                      </div>
+
+                      <div className="flex border-b border-[#2e2e32] p-2 gap-2 bg-[#18181b] overflow-x-auto scrollbar-none">
+                        <button onClick={() => setSqlQuery(`SELECT * FROM "${activeTable}";`)} className="text-xs text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded hover:bg-[#232323] transition-colors border border-transparent hover:border-[#333] shrink-0">SELECT</button>
+                        <button onClick={() => setSqlQuery(`INSERT INTO "${activeTable}" (ad_soyad) VALUES ('Yeni Değer');`)} className="text-xs text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded hover:bg-[#232323] transition-colors border border-transparent hover:border-[#333] shrink-0">INSERT</button>
+                        <button onClick={() => setSqlQuery(`UPDATE "${activeTable}" SET kolon='deger' WHERE id=1;`)} className="text-xs text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded hover:bg-[#232323] transition-colors border border-transparent hover:border-[#333] shrink-0">UPDATE</button>
+                        <div className="flex-1"></div>
+                        <button onClick={formatSql} className="text-zinc-400 hover:text-zinc-200 text-xs px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors shrink-0"><AlignCenter className="w-3.5 h-3.5" /> {t('format')}</button>
+                        <button onClick={saveSnippet} className="text-zinc-400 hover:text-zinc-200 text-xs px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors shrink-0"><BookmarkPlus className="w-3.5 h-3.5" /> {t('saveSnippet')}</button>
+                        <button onClick={() => { setHistoryTab('history'); setModalConfig({isOpen:true, type:'sql_history'}); }} className="text-zinc-400 hover:text-zinc-200 text-xs px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors shrink-0"><History className="w-3.5 h-3.5" /> {t('historySaved')}</button>
+                        <div className="w-[1px] h-6 bg-[#333] shrink-0"></div>
+                        <button onClick={runSql} disabled={isQueryRunning} className={`${tc.bg} ${tc.hoverBg} text-white px-4 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed shrink-0`}>
+                          {isQueryRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                          {t('run')} <span className="text-white/60 ml-1 font-normal tracking-widest text-[10px]">⌘↵</span>
+                        </button>
+                      </div>
+                      <div className="flex-1 relative">
+                        <div className="absolute top-0 left-0 bottom-0 w-12 bg-[#18181b] border-r border-[#2e2e32] text-right pr-2 py-4 text-xs text-zinc-600 font-mono select-none">
+                          {sqlQuery.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
+                        </div>
+                        <textarea 
+                          value={sqlQuery} 
+                          onChange={(e) => setSqlQuery(e.target.value)} 
+                          onKeyDown={handleSqlKeyDown}
+                          className="w-full h-full bg-transparent text-zinc-200 p-4 pl-16 font-mono text-sm focus:outline-none resize-none bg-transparent" 
+                          style={{ caretColor: 'white' }} 
+                          spellCheck="false" 
+                        />
+                      </div>
+                    </div>
+
+                    {/* Sürüklenebilir Ayırıcı (Splitter) */}
+                    {sqlResult && (
+                      <div 
+                        className="h-1 bg-[#2e2e32] hover:bg-[#444] cursor-row-resize shrink-0 flex items-center justify-center transition-colors"
+                        onMouseDown={handleSplitterMouseDown}
+                      >
+                         <GripHorizontal className="w-4 h-4 text-zinc-500 pointer-events-none" />
+                      </div>
+                    )}
+
+                    {/* Alt Kısım: Sonuçlar */}
+                    {sqlResult && (
+                      <div className="flex-1 overflow-hidden flex flex-col bg-[#18181b]">
+                        <div className="px-6 border-b border-[#2e2e32] flex justify-between items-center bg-[#1c1c1c] shrink-0">
+                           <div className="flex gap-4">
+                             <button onClick={() => setSqlResultTab('data')} className={`py-2 text-xs font-medium border-b-2 transition-colors flex items-center gap-2 ${sqlResultTab === 'data' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}>{t('dataTab')}</button>
+                             <button onClick={() => setSqlResultTab('explain')} className={`py-2 text-xs font-medium border-b-2 transition-colors flex items-center gap-2 ${sqlResultTab === 'explain' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}>{t('explainTab')}</button>
+                           </div>
+                           <div className="flex items-center gap-3">
+                             <button onClick={() => exportToCSV(sqlResult.data, 'sorgu_sonucu')} className="text-zinc-400 hover:text-zinc-200 transition-colors flex items-center gap-1.5 text-xs"><Download className="w-3.5 h-3.5" /> CSV</button>
+                             <div className="w-[1px] h-3 bg-[#333]"></div>
+                             <span className="text-[10px] text-zinc-500 font-mono">⏱ {sqlResult.time}s • {sqlResult.data.length} {t('rows')}</span>
+                           </div>
+                        </div>
+                        <div className="flex-1 overflow-auto">
+                          {sqlResultTab === 'data' ? (
+                            <table className="w-full text-left text-sm whitespace-nowrap border-collapse">
+                              <thead className="bg-[#1c1c1c] text-zinc-400 sticky top-0 z-10 shadow-sm border-b border-[#2e2e32]">
+                                <tr>
+                                  <th className="px-4 py-1.5 w-10 border-r border-[#2e2e32] font-normal text-center text-zinc-600">#</th>
+                                  {sqlResult.columns.map(col => (
+                                    <th key={col.name} className="px-4 py-1.5 border-r border-[#2e2e32] font-normal text-zinc-200">{col.name}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="text-zinc-300">
+                                {sqlResult.data.map((row, idx) => (
+                                  <tr key={idx} className="hover:bg-[#232323] border-b border-[#2e2e32] transition-colors">
+                                    <td className="px-4 py-1.5 border-r border-[#2e2e32] text-center text-zinc-600 text-xs">{idx + 1}</td>
+                                    {sqlResult.columns.map(col => (
+                                      <td key={col.name} className="px-4 py-1.5 border-r border-[#2e2e32] text-xs font-mono">{String(row[col.name])}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <div className="p-4">
+                               <div className="bg-[#1c1c1c] border border-[#333] rounded-lg p-4 font-mono text-xs">
+                                  <div className="flex items-center gap-2 mb-4 text-zinc-300 font-semibold"><Activity className="w-4 h-4 text-amber-500"/> Yürütme Planı (Execution Plan)</div>
+                                  {sqlResult.plan ? sqlResult.plan.map((p, i) => (
+                                    <div key={i} className="flex items-start gap-4 mb-3 relative pl-6">
+                                       <div className="absolute left-1.5 top-1.5 bottom-[-1rem] w-[1px] bg-[#333]"></div>
+                                       <GitCommit className="w-3 h-3 text-zinc-500 absolute left-0 top-1 bg-[#1c1c1c]" />
+                                       <div className="flex-1">
+                                          <div className="text-emerald-400 font-bold mb-1">{p.node} on <span className="text-zinc-200">"{p.entity}"</span></div>
+                                          <div className="text-zinc-500">{t('cost')}: <span className="text-zinc-400">{p.cost}</span> • {t('rows')}: <span className="text-zinc-400">{p.rows}</span> • {t('time')}: <span className="text-zinc-400">{p.time}s</span></div>
+                                       </div>
+                                    </div>
+                                  )) : <div className="text-zinc-500">{t('noPlan')}</div>}
+                               </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            </>
+          ) : activeDb ? (
+            <div className="flex-1 p-8 bg-[#18181b] overflow-auto">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-2xl font-medium text-zinc-100 flex items-center gap-2">
+                    <Database className={`w-6 h-6 ${tc.text}`} /> {activeDb}
+                  </h2>
+                  <p className="text-sm text-zinc-500 mt-1">{t('dbOverview')}</p>
+                </div>
+                <div className="flex gap-2">
+                   <button onClick={() => setModalConfig({isOpen:true, type:'import_db'})} className="bg-[#232323] border border-[#333] hover:bg-[#2e2e32] text-zinc-200 px-3 py-2 rounded text-sm font-medium flex items-center gap-2 transition-colors"><UploadCloud className="w-4 h-4" /> {t('importSqlBtn')}</button>
+                   <button onClick={() => setModalConfig({isOpen:true, type:'export_db'})} className="bg-[#232323] border border-[#333] hover:bg-[#2e2e32] text-zinc-200 px-3 py-2 rounded text-sm font-medium flex items-center gap-2 transition-colors"><FileDown className="w-4 h-4" /> {t('exportSqlBtn')}</button>
+                </div>
+              </div>
+
+              {/* Analitik ve Metrikler Dashboard'u */}
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                 <div className="bg-[#1c1c1c] border border-[#2e2e32] p-4 rounded-lg flex items-center gap-4">
+                    <div className="p-3 bg-blue-500/10 rounded-full border border-blue-500/20"><Cpu className="w-6 h-6 text-blue-500"/></div>
+                    <div>
+                       <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wide">{t('cpuUsage')}</p>
+                       <p className="text-2xl font-medium text-zinc-200">{cpuUsage}%</p>
+                    </div>
+                 </div>
+                 <div className="bg-[#1c1c1c] border border-[#2e2e32] p-4 rounded-lg flex items-center gap-4">
+                    <div className="p-3 bg-amber-500/10 rounded-full border border-amber-500/20"><HardDrive className="w-6 h-6 text-amber-500"/></div>
+                    <div>
+                       <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wide">{t('diskSize')}</p>
+                       <p className="text-2xl font-medium text-zinc-200">14.2 MB</p>
+                    </div>
+                 </div>
+                 <div className="bg-[#1c1c1c] border border-[#2e2e32] p-4 rounded-lg flex items-center gap-4">
+                    <div className="p-3 bg-emerald-500/10 rounded-full border border-emerald-500/20"><BarChart2 className="w-6 h-6 text-emerald-500"/></div>
+                    <div>
+                       <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wide">{t('qps')}</p>
+                       <p className="text-2xl font-medium text-zinc-200">{qps}</p>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 {Object.keys(databases[activeDb]).map(tableName => (
+                    <div key={tableName} onClick={() => selectDbAndTable(activeDb, tableName)} className="bg-[#1c1c1c] border border-[#2e2e32] p-4 rounded-lg hover:border-[#444] cursor-pointer transition-colors group shadow-sm hover:shadow-md">
+                       <div className="flex items-center justify-between mb-3">
+                         <h3 className="text-zinc-200 font-medium flex items-center gap-2">
+                           {databases[activeDb][tableName].type === 'view' ? <Eye className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors"/> : <Table2 className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors"/>}
+                           {tableName}
+                         </h3>
+                         <span className="text-xs text-zinc-400 bg-[#232323] border border-[#333] px-2 py-0.5 rounded-full">{databases[activeDb][tableName].data.length} {t('records')}</span>
+                       </div>
+                       <p className="text-xs text-zinc-500">{databases[activeDb][tableName].columns.length} {t('colsFound')} {databases[activeDb][tableName].type === 'view' && `(${t('views')})`}</p>
+                    </div>
+                 ))}
+                 <div onClick={() => { setInputVal(''); setModalConfig({isOpen:true, type:'create_table', data:{dbName: activeDb}}); }} className={`border-2 border-dashed border-[#333] hover:${tc.border} p-4 rounded-lg cursor-pointer transition-colors flex flex-col items-center justify-center text-zinc-500 hover:${tc.text} min-h-[100px]`}>
+                    <Plus className="w-6 h-6 mb-1" />
+                    <span className="text-sm font-medium">{t('addNewTable')}</span>
+                 </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 p-6 text-center">
+               <Database className="w-12 h-12 mb-4 opacity-20" />
+               <h2 className="text-lg text-zinc-300 mb-1">{t('selectDb')}</h2>
+               <p className="text-sm">{t('selectDbDesc')}</p>
+               <button onClick={() => setIsCommandOpen(true)} className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#232323] hover:bg-[#2e2e32] border border-[#333] rounded-md text-sm transition-colors text-zinc-300 shadow-sm">
+                  <Command className="w-4 h-4" /> {t('openCmd')} <kbd className="font-mono text-[10px] bg-[#18181b] px-1.5 py-0.5 rounded text-zinc-500 border border-[#333]">⌘K</kbd>
+               </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ALT DURUM ÇUBUĞU (STATUS BAR) */}
+      <footer className="h-7 bg-[#1c1c1c] border-t border-[#2e2e32] flex items-center justify-between px-4 text-[10px] text-zinc-500 z-50 shrink-0 font-mono tracking-wide">
+          <div className="flex items-center gap-5">
+             <span className="flex items-center gap-1.5 text-zinc-300"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></div> {t('online')}</span>
+             <span className="flex items-center gap-1.5"><Server className="w-3 h-3" /> {connForm.host}:{connForm.port}</span>
+             <span>{connForm.user}@localhost</span>
+             {activeDb && <span><Database className="w-3 h-3 inline mr-1" />{activeDb}</span>}
+          </div>
+          <div className="flex items-center gap-4">
+             <button onClick={() => setModalConfig({isOpen:true, type:'shortcuts'})} className="hover:text-zinc-300 flex items-center gap-1"><Command className="w-3 h-3"/> {t('shortcuts')}</button>
+             <span className="flex items-center gap-1" title="Sunucu Gecikmesi"><Zap className="w-3 h-3"/> {ping}ms</span>
+             <span className="font-bold text-zinc-400">OneDB v1.0.0</span>
+             <Globe className="w-3 h-3 ml-1" /> {lang.toUpperCase()}
+          </div>
+      </footer>
+
+      {/* ========================================= KOMUT PALETİ (CMD+K) ========================================= */}
+      {isCommandOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-start justify-center pt-[15vh]">
+          <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-2xl flex flex-col shadow-2xl animate-in fade-in zoom-in-95 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center px-4 py-3 border-b border-[#2e2e32] bg-[#18181b]">
+              <Search className="w-5 h-5 text-zinc-500 mr-3" />
+              <input 
+                ref={searchInputRef}
+                type="text" 
+                placeholder={t('searchDbTable')} 
+                value={commandQuery}
+                onChange={e => setCommandQuery(e.target.value)}
+                className="flex-1 bg-transparent border-none outline-none text-zinc-200 text-lg placeholder:text-zinc-600"
+              />
+              <kbd className="font-mono text-[10px] bg-[#232323] px-1.5 py-0.5 rounded text-zinc-500 border border-[#333]">ESC</kbd>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto p-2">
+              {filteredCommands.length === 0 ? (
+                <div className="py-8 text-center text-sm text-zinc-500">{t('noRecords')}</div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="px-3 py-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">{t('tables')} & {t('views')}</div>
+                  {filteredCommands.map((cmd, idx) => (
+                    <button 
+                      key={idx}
+                      onClick={() => selectDbAndTable(cmd.dbName, cmd.tableName)}
+                      className={`w-full flex items-center justify-between px-3 py-3 rounded-lg hover:${tc.bg} hover:text-white text-zinc-300 transition-colors group text-left`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {cmd.type === 'view' ? <Eye className="w-4 h-4 text-zinc-500 group-hover:text-white/70" /> : <Table2 className="w-4 h-4 text-zinc-500 group-hover:text-white/70" />}
+                        <div>
+                          <span className="font-medium text-sm block">{cmd.tableName}</span>
+                          <span className="text-xs text-zinc-500 group-hover:text-white/50">{cmd.dbName}</span>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 text-white/50" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================= CONTEXT MENU ========================================= */}
+      {contextMenu.visible && (
+        <div className="fixed bg-[#1c1c1c] border border-[#333] shadow-2xl rounded py-1 z-[100] min-w-[160px]" style={{ top: contextMenu.y, left: contextMenu.x }}>
+          <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider border-b border-[#2e2e32] mb-1">{contextMenu.tableName}</div>
+          <button onClick={() => selectDbAndTable(contextMenu.dbName, contextMenu.tableName, 'gozat')} className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white flex items-center gap-2"><Rows className="w-3.5 h-3.5"/> {t('openTable')}</button>
+          <button onClick={() => selectDbAndTable(contextMenu.dbName, contextMenu.tableName, 'yapi')} className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white flex items-center gap-2"><Columns className="w-3.5 h-3.5"/> {t('viewSchema')}</button>
+          
+          <div className="my-1 border-t border-[#2e2e32]"></div>
+          <button onClick={() => togglePinTable(contextMenu.dbName, contextMenu.tableName)} className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-400/10 flex items-center gap-2">
+            <Star className="w-3.5 h-3.5"/> {pinnedTables.includes(`${contextMenu.dbName}.${contextMenu.tableName}`) ? t('removeFromFav') : t('addToFav')}
+          </button>
+          <button onClick={() => handleDuplicateTable(contextMenu.dbName, contextMenu.tableName)} className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white flex items-center gap-2"><CopyPlus className="w-3.5 h-3.5"/> {t('duplicateTable')}</button>
+          
+          <div className="my-1 border-t border-[#2e2e32]"></div>
+          <button onClick={() => handleTruncateTable(contextMenu.dbName, contextMenu.tableName)} className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-400/10 flex items-center gap-2"><AlertCircle className="w-3.5 h-3.5"/> {t('truncate')}</button>
+          <button onClick={(e) => handleDeleteTable(e, contextMenu.dbName, contextMenu.tableName)} className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-400/10 flex items-center gap-2"><Trash2 className="w-3.5 h-3.5"/> {t('drop')}</button>
+        </div>
+      )}
+
+      {/* ========================================= MODALS ========================================= */}
+      
+      {/* 1. SATIR DÜZENLEME & DETAY & İLİŞKİLER MODALI (Drawer) */}
+      {modalConfig.isOpen && modalConfig.type === 'row_form' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-end">
+          <div className="bg-[#1c1c1c] border-l border-[#333] h-full w-full max-w-md flex flex-col shadow-2xl animate-in slide-in-from-right">
+            
+            <div className="px-6 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] shrink-0">
+              <div className="flex gap-4">
+                 <button onClick={() => setRowDetailsTab('details')} className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${rowDetailsTab === 'details' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}>
+                   {modalConfig.viewOnly ? t('rowDetails') : (modalConfig.editIndex > -1 ? t('editRow') : t('addRow'))}
+                 </button>
+                 {modalConfig.editIndex > -1 && relatedDataInfo && relatedDataInfo.length > 0 && (
+                   <button onClick={() => setRowDetailsTab('relations')} className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${rowDetailsTab === 'relations' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}>
+                     <Network className="w-4 h-4"/> {t('relatedData')}
+                   </button>
+                 )}
+              </div>
+              <button onClick={() => setModalConfig({isOpen:false})} className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"><X className="w-4 h-4" /></button>
+            </div>
+
+            {rowDetailsTab === 'details' ? (
+              <>
+                <form onSubmit={saveRowData} className="flex-1 overflow-auto p-6 space-y-5">
+                  {currentTableData.columns.map(col => (
+                    <div key={col.name} className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-zinc-400 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">{col.name} {col.isPrimary && <Key className="w-3 h-3 text-amber-500/70"/>}</span>
+                        <span className="text-[10px] text-zinc-600 font-mono uppercase">{col.type}</span>
+                      </label>
+                      {modalConfig.viewOnly ? (
+                         <div className="w-full bg-[#18181b] border border-[#333] rounded p-3 text-sm text-zinc-200 min-h-[40px] whitespace-pre-wrap word-break">
+                            {formData[col.name] !== null && formData[col.name] !== undefined && formData[col.name] !== '' ? String(formData[col.name]) : <span className="text-zinc-600 font-mono text-xs">NULL</span>}
+                         </div>
+                      ) : col.isForeign ? (
+                         <select
+                           className={`w-full bg-[#18181b] border border-[#333] rounded p-2 text-sm text-zinc-200 transition-colors ${tc.focusRing}`}
+                           value={formData[col.name] || ''}
+                           onChange={(e) => setFormData({...formData, [col.name]: e.target.value})}
+                         >
+                           <option value="">-- {t('valuePlaceholder')} --</option>
+                           {databases[activeDb]?.[col.foreignTable]?.data.map(r => (
+                             <option key={r[col.foreignCol]} value={r[col.foreignCol]}>
+                               {r[col.foreignCol]} - {r.ad_soyad || r.urun_adi || r.isim || ''}
+                             </option>
+                           ))}
+                         </select>
+                      ) : col.type === 'text' ? (
+                        <textarea className={`w-full bg-[#18181b] border border-[#333] rounded p-2 text-sm text-zinc-200 resize-y min-h-[120px] transition-colors ${tc.focusRing}`} value={formData[col.name] || ''} onChange={(e) => setFormData({...formData, [col.name]: e.target.value})} disabled={col.extra?.includes('auto_increment') && modalConfig.editIndex === -1} placeholder={col.extra?.includes('auto_increment') ? t('autoGen') : t('valuePlaceholder')} />
+                      ) : (
+                        <input type="text" className={`w-full bg-[#18181b] border border-[#333] rounded p-2 text-sm text-zinc-200 transition-colors disabled:opacity-50 ${tc.focusRing}`} value={formData[col.name] || ''} onChange={(e) => setFormData({...formData, [col.name]: e.target.value})} disabled={col.extra?.includes('auto_increment') && modalConfig.editIndex === -1} placeholder={col.extra?.includes('auto_increment') ? t('autoGen') : 'NULL'} />
+                      )}
+                    </div>
+                  ))}
+                </form>
+                <div className="p-4 border-t border-[#2e2e32] bg-[#18181b] flex justify-between items-center gap-2">
+                  <div>
+                    {!modalConfig.viewOnly && (
+                      <button type="button" onClick={handleFillMockData} className="px-3 py-1.5 text-xs font-medium text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/20 rounded flex items-center gap-1.5 transition-colors">
+                        <Wand2 className="w-3.5 h-3.5" /> {t('mockDataBtn')}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setModalConfig({isOpen:false})} className="px-4 py-2 text-xs font-medium text-zinc-300 border border-[#333] hover:bg-[#2e2e32] rounded">{modalConfig.viewOnly ? t('close') : t('cancel')}</button>
+                    {!modalConfig.viewOnly && <button type="button" onClick={saveRowData} className={`px-4 py-2 text-xs font-medium text-white ${tc.bg} ${tc.hoverBg} rounded`}>{t('saveBtn')}</button>}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 overflow-auto p-4 bg-[#18181b]">
+                {relatedDataInfo.map((rel, i) => (
+                  <div key={i} className="mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                       <LinkIcon className="w-4 h-4 text-blue-400" />
+                       <h4 className="text-sm font-medium text-zinc-200">{rel.tableName} <span className="text-zinc-500 font-normal">({rel.rows.length} {t('records')})</span></h4>
+                    </div>
+                    {rel.rows.length === 0 ? (
+                       <div className="text-xs text-zinc-500 p-4 border border-[#333] border-dashed rounded text-center">{t('noRecords')}</div>
+                    ) : (
+                       <div className="border border-[#333] rounded overflow-hidden">
+                         <table className="w-full text-left text-xs whitespace-nowrap">
+                           <thead className="bg-[#232323] text-zinc-400 border-b border-[#333]">
+                             <tr>
+                               {rel.cols.slice(0, 4).map(c => <th key={c.name} className="px-3 py-1.5 font-normal border-r border-[#333] last:border-0">{c.name}</th>)}
+                             </tr>
+                           </thead>
+                           <tbody className="divide-y divide-[#333]">
+                             {rel.rows.map((r, idx) => (
+                               <tr key={idx} className="hover:bg-[#2e2e32]">
+                                 {rel.cols.slice(0, 4).map(c => <td key={c.name} className="px-3 py-1.5 text-zinc-300 border-r border-[#333] last:border-0 truncate max-w-[100px]">{String(r[c.name])}</td>)}
+                               </tr>
+                             ))}
+                           </tbody>
+                         </table>
+                       </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 2. VERİTABANI / TABLO OLUŞTURMA MODALI */}
+      {modalConfig.isOpen && (modalConfig.type === 'create_db' || modalConfig.type === 'create_table') && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-sm flex flex-col shadow-2xl animate-in zoom-in-95">
+            <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl">
+              <h3 className="text-base font-medium text-zinc-100">{modalConfig.type === 'create_db' ? t('newDatabase') : t('addNewTable')}</h3>
+              <button onClick={() => setModalConfig({isOpen:false})} className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={modalConfig.type === 'create_db' ? handleCreateDB : handleCreateTable} className="p-6">
+              <label className="block text-xs font-medium text-zinc-400 mb-2">{modalConfig.type === 'create_db' ? t('dbNamePlaceholder') : t('tableNamePlaceholder')}</label>
+              <input type="text" autoFocus value={inputVal} onChange={e=>setInputVal(e.target.value)} className={`w-full bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`} />
+              
+              {modalConfig.type === 'create_db' && (
+                <>
+                  <label className="block text-xs font-medium text-zinc-400 mt-4 mb-2">{t('collation')}</label>
+                  <select value={dbCollation} onChange={e=>setDbCollation(e.target.value)} className={`w-full bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 outline-none ${tc.focusRing}`}>
+                    <option value="utf8mb4_general_ci">utf8mb4_general_ci</option>
+                    <option value="utf8mb4_unicode_ci">utf8mb4_unicode_ci</option>
+                    <option value="utf8_general_ci">utf8_general_ci</option>
+                  </select>
+                </>
+              )}
+              <div className="flex justify-end gap-2 mt-6">
+                <button type="button" onClick={() => setModalConfig({isOpen:false})} className="px-4 py-2 text-xs font-medium text-zinc-300 border border-[#333] hover:bg-[#2e2e32] rounded">{t('cancel')}</button>
+                <button type="submit" className={`px-4 py-2 text-xs font-medium text-white ${tc.bg} ${tc.hoverBg} rounded`}>{t('create')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 3. SÜTUN EKLEME (ADD COLUMN) MODALI */}
+      {modalConfig.isOpen && modalConfig.type === 'add_column' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-sm flex flex-col shadow-2xl animate-in zoom-in-95">
+            <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl">
+              <h3 className="text-base font-medium text-zinc-100">{t('addColumn')}</h3>
+              <button onClick={() => setModalConfig({isOpen:false})} className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={handleAddColumn} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">{t('colName')}</label>
+                <input type="text" required autoFocus value={newColForm.name} onChange={e=>setNewColForm({...newColForm, name: e.target.value})} className={`w-full bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`} />
+              </div>
+              <div className="flex gap-4">
+                 <div className="flex-1">
+                   <label className="block text-xs font-medium text-zinc-400 mb-1">{t('dataType')}</label>
+                   <select value={newColForm.type} onChange={e=>setNewColForm({...newColForm, type: e.target.value})} className={`w-full bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`}>
+                      <option value="varchar(255)">VARCHAR</option>
+                      <option value="int(11)">INT</option>
+                      <option value="text">TEXT</option>
+                      <option value="datetime">DATETIME</option>
+                      <option value="tinyint(1)">BOOLEAN</option>
+                   </select>
+                 </div>
+                 <div className="w-24">
+                   <label className="block text-xs font-medium text-zinc-400 mb-1">{t('colNullable')}</label>
+                   <select value={newColForm.nullable} onChange={e=>setNewColForm({...newColForm, nullable: e.target.value})} className={`w-full bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`}>
+                      <option value="Evet">{t('yes')}</option>
+                      <option value="Hayır">{t('no')}</option>
+                   </select>
+                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">{t('defaultValue')}</label>
+                <input type="text" value={newColForm.default} onChange={e=>setNewColForm({...newColForm, default: e.target.value})} className={`w-full bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`} />
+              </div>
+              <div className="flex justify-end gap-2 mt-6 pt-2">
+                <button type="button" onClick={() => setModalConfig({isOpen:false})} className="px-4 py-2 text-xs font-medium text-zinc-300 border border-[#333] hover:bg-[#2e2e32] rounded">{t('cancel')}</button>
+                <button type="submit" className={`px-4 py-2 text-xs font-medium text-white ${tc.bg} ${tc.hoverBg} rounded`}>{t('add')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 4. SQL GEÇMİŞİ (HISTORY / SNIPPETS) MODALI */}
+      {modalConfig.isOpen && modalConfig.type === 'sql_history' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-lg flex flex-col shadow-2xl animate-in zoom-in-95 max-h-[80vh]">
+            <div className="px-6 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl shrink-0">
+              <div className="flex gap-4">
+                 <button onClick={() => setHistoryTab('history')} className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${historyTab === 'history' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}><History className="w-4 h-4"/> {t('historySaved').split('&')[0].trim()}</button>
+                 <button onClick={() => setHistoryTab('snippets')} className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${historyTab === 'snippets' ? `${tc.border} ${tc.textLight}` : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}><Bookmark className="w-4 h-4"/> {t('historySaved').split('&')[1]?.trim() || t('saveSnippet')}</button>
+              </div>
+              <button onClick={() => setModalConfig({isOpen:false})} className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"><X className="w-4 h-4" /></button>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-4 space-y-2 bg-[#18181b] rounded-b-xl">
+              {historyTab === 'history' ? (
+                <>
+                  {sqlHistory.length === 0 ? <p className="text-sm text-zinc-500 text-center py-4">{t('noRecords')}</p> : null}
+                  {sqlHistory.map((hq, idx) => (
+                    <div key={idx} className="bg-[#1c1c1c] border border-[#333] rounded p-3 group hover:border-[#444] transition-colors">
+                       <code className="text-xs text-zinc-300 font-mono block mb-2 whitespace-pre-wrap">{hq}</code>
+                       <div className="flex justify-end mt-2">
+                          <button onClick={() => { setSqlQuery(hq); setModalConfig({isOpen:false}); }} className={`text-[10px] uppercase font-bold ${tc.text} hover:${tc.textLight}`}>{t('add')}</button>
+                       </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {sqlSnippets.length === 0 ? <p className="text-sm text-zinc-500 text-center py-4">{t('noRecords')}</p> : null}
+                  {sqlSnippets.map((snip) => (
+                    <div key={snip.id} className="bg-[#1c1c1c] border border-[#333] rounded p-3 group hover:border-[#444] transition-colors">
+                       <div className="flex justify-between items-start mb-2">
+                         <span className="text-xs font-semibold text-zinc-300">{snip.title}</span>
+                         <button onClick={() => setSqlSnippets(prev => prev.filter(s => s.id !== snip.id))} className="text-zinc-500 hover:text-red-400"><Trash2 className="w-3.5 h-3.5"/></button>
+                       </div>
+                       <code className="text-xs text-zinc-400 font-mono block mb-3 bg-[#18181b] p-2 rounded border border-[#2e2e32] whitespace-pre-wrap">{snip.query}</code>
+                       <div className="flex justify-end">
+                          <button onClick={() => { setSqlQuery(snip.query); setModalConfig({isOpen:false}); }} className={`text-[10px] uppercase font-bold ${tc.text} hover:${tc.textLight}`}>{t('add')}</button>
+                       </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. İÇE / DIŞA AKTARIM MODALLARI */}
+      {modalConfig.isOpen && (modalConfig.type === 'import' || modalConfig.type === 'export' || modalConfig.type === 'import_db' || modalConfig.type === 'export_db') && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-sm flex flex-col shadow-2xl animate-in zoom-in-95">
+            <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl">
+              <h3 className="text-base font-medium text-zinc-100 flex items-center gap-2">
+                 {modalConfig.type.includes('import') ? <UploadCloud className="w-4 h-4" /> : <FileDown className="w-4 h-4" />}
+                 {modalConfig.type.includes('import') ? t('import') : t('export')}
+              </h3>
+              <button onClick={() => setModalConfig({isOpen:false})} className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6">
+              {modalConfig.type.includes('import') ? (
+                <div className="border-2 border-dashed border-[#333] rounded-lg p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#555] transition-colors bg-[#18181b]">
+                   <UploadCloud className="w-8 h-8 text-zinc-500 mb-3" />
+                   <p className="text-sm text-zinc-300 font-medium">{modalConfig.type === 'import_db' ? t('dropSqlHere') : t('dropCsvHere')}</p>
+                   <p className="text-xs text-zinc-500 mt-1">{t('clickToSelect')}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-zinc-400">{modalConfig.type === 'export_db' ? t('exportFormat') : t('exportFormat')}</p>
+                  <div className="flex gap-2">
+                     {modalConfig.type === 'export_db' ? (
+                        <button onClick={() => {
+                          const dbData = databases[activeDb];
+                          let allData = [];
+                          Object.keys(dbData).forEach(t => allData.push(...dbData[t].data));
+                          exportToSQL(allData, activeDb, 'full_dump');
+                        }} className="flex-1 bg-[#18181b] border border-[#333] hover:border-zinc-500 text-zinc-300 py-2 rounded text-sm transition-colors">{t('downloadSql')}</button>
+                     ) : (
+                        <>
+                          <button onClick={() => handleExportTable('csv')} className="flex-1 bg-[#18181b] border border-[#333] hover:border-zinc-500 text-zinc-300 py-2 rounded text-sm transition-colors">{t('downloadCsv')}</button>
+                          <button onClick={() => handleExportTable('json')} className="flex-1 bg-[#18181b] border border-[#333] hover:border-zinc-500 text-zinc-300 py-2 rounded text-sm transition-colors">{t('downloadJson')}</button>
+                          <button onClick={() => handleExportTable('sql')} className="flex-1 bg-[#18181b] border border-[#333] hover:border-zinc-500 text-zinc-300 py-2 rounded text-sm transition-colors">{t('downloadSql')}</button>
+                        </>
+                     )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- AYARLAR MODALI --- */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-sm flex flex-col shadow-2xl animate-in zoom-in-95">
+            <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl">
+              <h3 className="text-base font-medium text-zinc-100 flex items-center gap-2"><Palette className="w-4 h-4" /> {t('themeSettings')}</h3>
+              <button onClick={() => setIsSettingsOpen(false)} className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div>
+                 <p className="text-sm text-zinc-400 mb-3">{t('languageSelect')}</p>
+                 <div className="flex gap-2">
+                   <button onClick={() => setLang('en')} className={`flex-1 py-2 rounded-md text-sm transition-colors border ${lang === 'en' ? `${tc.bg} ${tc.border} text-white` : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'}`}>English</button>
+                   <button onClick={() => setLang('tr')} className={`flex-1 py-2 rounded-md text-sm transition-colors border ${lang === 'tr' ? `${tc.bg} ${tc.border} text-white` : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'}`}>Türkçe</button>
+                 </div>
+              </div>
+              <div className="border-t border-[#2e2e32]"></div>
+              <div>
+                 <p className="text-sm text-zinc-400 mb-3">{t('accentColor')}</p>
+                 <div className="flex gap-4">
+                   {Object.entries(themes).map(([key, themeObj]) => (
+                     <button key={key} onClick={() => setTheme(key)} className={`w-8 h-8 rounded-full ${themeObj.previewClass} border-2 transition-all flex items-center justify-center ${theme === key ? 'border-white scale-110 shadow-lg' : 'border-transparent hover:scale-110 opacity-70 hover:opacity-100'}`} title={themeObj.nameKey}>
+                       {theme === key && <Check className="w-4 h-4 text-white" />}
+                     </button>
+                   ))}
+                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- KLAVYE KISAYOLLARI MODALI --- */}
+      {modalConfig.isOpen && modalConfig.type === 'shortcuts' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-md flex flex-col shadow-2xl animate-in zoom-in-95">
+            <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl">
+              <h3 className="text-base font-medium text-zinc-100 flex items-center gap-2"><Command className="w-4 h-4"/> {t('shortcutsTitle')}</h3>
+              <button onClick={() => setModalConfig({isOpen:false})} className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                 <span className="text-sm text-zinc-300">{t('cmdPalette')}</span>
+                 <div className="flex gap-1"><kbd className="bg-[#2e2e32] text-zinc-300 px-2 py-1 rounded text-xs font-mono">Cmd / Ctrl</kbd><kbd className="bg-[#2e2e32] text-zinc-300 px-2 py-1 rounded text-xs font-mono">K</kbd></div>
+              </div>
+              <div className="flex justify-between items-center">
+                 <span className="text-sm text-zinc-300">{t('runQuery')}</span>
+                 <div className="flex gap-1"><kbd className="bg-[#2e2e32] text-zinc-300 px-2 py-1 rounded text-xs font-mono">Ctrl</kbd><kbd className="bg-[#2e2e32] text-zinc-300 px-2 py-1 rounded text-xs font-mono">Enter</kbd></div>
+              </div>
+              <div className="flex justify-between items-center">
+                 <span className="text-sm text-zinc-300">{t('closeWindows')}</span>
+                 <kbd className="bg-[#2e2e32] text-zinc-300 px-2 py-1 rounded text-xs font-mono">Esc</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                 <span className="text-sm text-zinc-300">{t('saveInline')}</span>
+                 <kbd className="bg-[#2e2e32] text-zinc-300 px-2 py-1 rounded text-xs font-mono">Enter</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                 <span className="text-sm text-zinc-300">{t('editCell')}</span>
+                 <span className="text-xs text-zinc-500">{t('doubleClickCell')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- TOAST BİLDİRİMLERİ --- */}
+      <div className="fixed bottom-10 right-6 z-[110] flex flex-col gap-2 pointer-events-none">
+        {toasts.map(toast => (
+          <div key={toast.id} className="bg-[#232323] text-zinc-200 border border-[#333] px-4 py-3 rounded shadow-xl flex items-center gap-3 animate-in slide-in-from-bottom-2 pointer-events-auto">
+            {toast.type === 'success' ? <Check className={`w-4 h-4 ${tc.text}`} /> : <AlertCircle className="w-4 h-4 text-red-500" />}
+            <p className="text-xs font-medium">{toast.message}</p>
+          </div>
+        ))}
+      </div>
+
+    </div>
+  );
+}
