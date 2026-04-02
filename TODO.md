@@ -4,4 +4,4 @@
 - [x] CI pipeline setup (GitHub Actions: backend smoke + frontend tests + build)
 - [x] Critical E2E flow coverage (connection, browse/query, import/export)
 - [x] Backend observability hardening (`ONEDB_DEBUG` request timing/log path)
-- [ ] Additional release size optimization pass
+- [x] Additional release size optimization pass

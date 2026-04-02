@@ -19,6 +19,31 @@ function readAsset(distDir, assetRef) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
+function minifyInlineCss(css) {
+  return css
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s*([{}:;,])\s*/g, '$1')
+    .replace(/;}/g, '}')
+    .trim();
+}
+
+function minifyInlineJs(js) {
+  return js
+    .replace(/\/\*\*[\s\S]*?\*\//g, '')
+    .replace(/\/\*![\s\S]*?\*\//g, '')
+    .replace(/\/\*#\s*sourceMappingURL=[\s\S]*?\*\//g, '')
+    .replace(/\/\/#\s*sourceMappingURL=.*$/gm, '')
+    .trim();
+}
+
+function minifyInlineHtml(html) {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/>\s+</g, '><')
+    .trim();
+}
+
 function inlineDistHtml(distDir) {
   const indexPath = path.join(distDir, 'index.html');
   assertFileExists(indexPath);
@@ -28,16 +53,16 @@ function inlineDistHtml(distDir) {
   html = html.replace(/<link[^>]*rel="modulepreload"[^>]*>\s*/g, '');
 
   html = html.replace(/<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g, (_full, href) => {
-    const css = readAsset(distDir, href);
-    return `<style>\n${css}\n</style>`;
+    const css = minifyInlineCss(readAsset(distDir, href));
+    return `<style>${css}</style>`;
   });
 
   html = html.replace(/<script[^>]*type="module"[^>]*src="([^"]+)"[^>]*><\/script>/g, (_full, src) => {
-    const js = readAsset(distDir, src);
-    return `<script type="module">\n${js}\n</script>`;
+    const js = minifyInlineJs(readAsset(distDir, src));
+    return `<script type="module">${js}</script>`;
   });
 
-  return html;
+  return minifyInlineHtml(html);
 }
 
 function phpBodyWithoutTag(phpCode) {
@@ -52,8 +77,9 @@ function minifyPhpBody(phpCode) {
   return phpCode
     .replace(/\/\*\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/[^\n]*$/gm, '')
+    .replace(/^[ \t]+/gm, '')
     .replace(/^\s+$/gm, '')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{2,}/g, '\n')
     .trim();
 }
 
@@ -105,7 +131,7 @@ function run() {
 
   fs.mkdirSync(releaseDir, { recursive: true });
 
-  const output = `<?php\ndeclare(strict_types=1);\n\n${runtimeCode}\n\nif (\\OneDB\\Runtime::dispatch()) {\n    exit;\n}\n?>\n${appHtml}\n`;
+  const output = `<?php\ndeclare(strict_types=1);\n${runtimeCode}\nif(\\OneDB\\Runtime::dispatch()){exit;}\n?>${appHtml}`;
   fs.writeFileSync(outputPath, output, 'utf8');
 
   console.log(`Built: ${outputPath}`);
