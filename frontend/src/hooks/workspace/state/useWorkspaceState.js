@@ -62,9 +62,7 @@ export default function useWorkspaceState() {
   const [sqlHistory, setSqlHistory] = useState(() => {
     try {
       return (
-        JSON.parse(localStorage.getItem('dbm_sql_history')) || [
-          'SELECT * FROM users LIMIT 10;',
-        ]
+        JSON.parse(localStorage.getItem('dbm_sql_history')) || ['SELECT * FROM users LIMIT 10;']
       );
     } catch {
       return [];

@@ -182,8 +182,14 @@ test('handleExportDatabaseSql paginates each table and generates SQL dump', asyn
     assert.match(sqlText, /-- DB: appdb/);
     assert.match(sqlText, /-- Table: logs \(0 rows\)/);
     assert.match(sqlText, /-- Table: users \(3 rows\)/);
-    assert.match(sqlText, /INSERT INTO `users` \(`id`, `email`\) VALUES \(1, 'alpha@example.com'\);/);
-    assert.match(sqlText, /INSERT INTO `users` \(`id`, `email`\) VALUES \(3, 'gamma@example.com'\);/);
+    assert.match(
+      sqlText,
+      /INSERT INTO `users` \(`id`, `email`\) VALUES \(1, 'alpha@example.com'\);/,
+    );
+    assert.match(
+      sqlText,
+      /INSERT INTO `users` \(`id`, `email`\) VALUES \(3, 'gamma@example.com'\);/,
+    );
 
     const anchors = dom.getCapturedAnchors();
     assert.equal(anchors.length, 1);
@@ -221,7 +227,10 @@ test('handleExportTable exports only selected rows and respects hidden columns',
     assert.match(sqlText, /-- DB: appdb/);
     assert.match(sqlText, /-- Table: users/);
     assert.doesNotMatch(sqlText, /secret/);
-    assert.match(sqlText, /INSERT INTO "users" \("id", "email"\) VALUES \(2, 'beta@example.com'\);/);
+    assert.match(
+      sqlText,
+      /INSERT INTO "users" \("id", "email"\) VALUES \(2, 'beta@example.com'\);/,
+    );
 
     const anchors = dom.getCapturedAnchors();
     assert.equal(anchors.length, 1);

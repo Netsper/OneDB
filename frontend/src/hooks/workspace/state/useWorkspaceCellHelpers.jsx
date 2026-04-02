@@ -48,9 +48,9 @@ export default function useWorkspaceCellHelpers({ lang }) {
 
   const isJsonColumn = useCallback(
     (col) =>
-    String(col?.type || '')
-      .toLowerCase()
-      .includes('json'),
+      String(col?.type || '')
+        .toLowerCase()
+        .includes('json'),
     [],
   );
 

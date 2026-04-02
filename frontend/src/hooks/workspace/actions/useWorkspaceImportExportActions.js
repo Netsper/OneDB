@@ -393,11 +393,7 @@ export default function useWorkspaceImportExportActions({
     }
 
     try {
-      const sections = [
-        `-- DB: ${activeDb}`,
-        `-- Exported at: ${new Date().toISOString()}`,
-        '',
-      ];
+      const sections = [`-- DB: ${activeDb}`, `-- Exported at: ${new Date().toISOString()}`, ''];
 
       for (const tableName of tableEntries) {
         const allRows = await loadAllRowsForTableForExport(activeDb, tableName);
@@ -420,11 +416,7 @@ export default function useWorkspaceImportExportActions({
         sections.push('');
       }
 
-      downloadFile(
-        sections.join('\n'),
-        `${activeDb}_full_dump.sql`,
-        'text/sql;charset=utf-8;',
-      );
+      downloadFile(sections.join('\n'), `${activeDb}_full_dump.sql`, 'text/sql;charset=utf-8;');
       showToast(`${activeDb}_full_dump.sql downloaded!`, 'success');
       setModalConfig({ isOpen: false, type: null });
     } catch (error) {

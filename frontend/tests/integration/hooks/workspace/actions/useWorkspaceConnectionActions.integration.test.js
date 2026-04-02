@@ -60,7 +60,10 @@ test('handleConnect completes happy path and initializes active database state',
   assert.equal(preventDefaultCalled, true);
   assert.deepEqual(calls.setIsConnecting, [true, false]);
   assert.deepEqual(calls.setLoginError, ['']);
-  assert.deepEqual(calls.callApi.map((entry) => entry.action), ['test_connection']);
+  assert.deepEqual(
+    calls.callApi.map((entry) => entry.action),
+    ['test_connection'],
+  );
   assert.deepEqual(calls.setIsConnected, [true]);
   assert.deepEqual(calls.setQps, [0]);
   assert.deepEqual(calls.setActiveDb, ['appdb']);

@@ -38,7 +38,11 @@ export const mapExplainRowToPlanItem = (row, getFirstValue) => {
   const mysqlEntity = String(row.table || row.key || '-').trim();
 
   let mysqlCost = '-';
-  if (row.cost_info && typeof row.cost_info === 'object' && row.cost_info.query_cost !== undefined) {
+  if (
+    row.cost_info &&
+    typeof row.cost_info === 'object' &&
+    row.cost_info.query_cost !== undefined
+  ) {
     mysqlCost = String(row.cost_info.query_cost);
   } else if (row.query_cost !== undefined) {
     mysqlCost = String(row.query_cost);
@@ -99,7 +103,9 @@ export default function useWorkspaceSqlActions({
         if (/^(select|with)\b/i.test(sql)) {
           try {
             const explainResult = await executeSql(`EXPLAIN ${sql}`, activeDb || '');
-            plan = (explainResult.rows || []).map((row) => mapExplainRowToPlanItem(row, getFirstValue));
+            plan = (explainResult.rows || []).map((row) =>
+              mapExplainRowToPlanItem(row, getFirstValue),
+            );
           } catch {
             plan = null;
           }

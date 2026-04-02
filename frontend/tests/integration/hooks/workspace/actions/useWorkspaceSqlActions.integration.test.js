@@ -99,7 +99,7 @@ test('runSql stores result set and explain plan for SELECT queries', async () =>
 
 test('runSql refreshes schema and table cache after mutation queries', async () => {
   const { deps, calls, getQps, getHistory } = createDependencies({
-    sqlQuery: 'UPDATE users SET email = \'beta@example.com\' WHERE id = 1',
+    sqlQuery: "UPDATE users SET email = 'beta@example.com' WHERE id = 1",
     executeSql: async (sql) => {
       calls.executeSql.push(sql);
       return {
@@ -118,7 +118,9 @@ test('runSql refreshes schema and table cache after mutation queries', async () 
   assert.deepEqual(getHistory(), ["UPDATE users SET email = 'beta@example.com' WHERE id = 1"]);
   assert.deepEqual(calls.setSqlResult, [null]);
   assert.equal(calls.refreshSchemas, 1);
-  assert.deepEqual(calls.ensureDatabaseTablesLoaded, [{ dbName: 'appdb', options: { force: true } }]);
+  assert.deepEqual(calls.ensureDatabaseTablesLoaded, [
+    { dbName: 'appdb', options: { force: true } },
+  ]);
   assert.equal(calls.refreshActiveTable, 1);
   assert.deepEqual(calls.showToast.at(-1), { message: 'sqlExecuted', type: 'success' });
 });
