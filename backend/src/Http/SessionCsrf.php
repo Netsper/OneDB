@@ -26,6 +26,7 @@ final class SessionCsrf
         session_start([
             'cookie_httponly' => true,
             'cookie_samesite' => 'Lax',
+            'cookie_secure' => self::isHttpsRequest(),
             'use_strict_mode' => true,
         ]);
     }
@@ -54,7 +55,20 @@ final class SessionCsrf
 
         $token = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
         if ($token === '' || !hash_equals(self::token(), $token)) {
-            throw new \RuntimeException('CSRF validation failed.');
+            throw new HttpException('CSRF validation failed.', 403);
         }
+    }
+
+    /**
+     * Returns true when request is served over HTTPS.
+     */
+    private static function isHttpsRequest(): bool
+    {
+        if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') {
+            return true;
+        }
+
+        $forwardedProto = strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        return $forwardedProto === 'https';
     }
 }

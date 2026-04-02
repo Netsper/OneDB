@@ -121,10 +121,14 @@ Covered API actions:
 - `list_tables` (SQLite)
 - `browse_table` (SQLite)
 - `query` (mutation + result set + readonly behavior)
+- method/content-type/CSRF enforcement checks
 
 ## Security Notes
 
 - CSRF token validation is enforced for mutating API requests.
+- Non-API-safe HTTP methods are rejected per action (`405`).
+- JSON payloads are validated with content-type and max body size checks.
+- JSON responses include no-store and browser hardening headers.
 - Readonly mode can be enabled with:
 
 ```bash
@@ -132,6 +136,16 @@ ONEDB_READONLY=1
 ```
 
 When enabled, non-read SQL statements are blocked by the runtime.
+
+Useful hardening env flags:
+
+```bash
+# Comma-separated CORS origin allowlist
+ONEDB_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+# Max accepted JSON request body (bytes)
+ONEDB_MAX_BODY_BYTES=2097152
+```
 
 ## Repository Notes
 

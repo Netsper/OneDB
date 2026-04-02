@@ -48,6 +48,15 @@ function phpBodyWithoutTag(phpCode) {
     .trim();
 }
 
+function minifyPhpBody(phpCode) {
+  return phpCode
+    .replace(/\/\*\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/[^\n]*$/gm, '')
+    .replace(/^\s+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function listBackendSourceFiles(sourceDir) {
   const files = [];
 
@@ -89,7 +98,7 @@ function run() {
   }
 
   const runtimeCode = backendSourceFiles
-    .map((filePath) => phpBodyWithoutTag(fs.readFileSync(filePath, 'utf8')))
+    .map((filePath) => minifyPhpBody(phpBodyWithoutTag(fs.readFileSync(filePath, 'utf8'))))
     .join('\n\n');
 
   const appHtml = inlineDistHtml(frontendDistDir);

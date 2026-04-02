@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace OneDB\Http;
 
+use OneDB\Support\Environment;
+
 /**
- * Sends CORS headers for local development origins.
+ * Sends CORS headers for configured origins.
  */
 final class CorsPolicy
 {
@@ -15,14 +17,11 @@ final class CorsPolicy
     public static function sendDevelopmentHeaders(): void
     {
         $origin = (string)($_SERVER['HTTP_ORIGIN'] ?? '');
-        $allowed = [
-            'http://localhost:5173',
-            'http://127.0.0.1:5173',
-        ];
+        $allowed = Environment::allowedOrigins();
 
         header('Vary: Origin');
 
-        if (in_array($origin, $allowed, true)) {
+        if ($origin !== '' && in_array($origin, $allowed, true)) {
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Access-Control-Allow-Credentials: true');
         }

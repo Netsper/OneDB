@@ -50,33 +50,7 @@ final class MetadataService
         $pdo = ConnectionFactory::makePdo($connection);
 
         if ($driver === 'sqlite') {
-            $tableRows = $pdo->query("
-                SELECT name, type
-                FROM sqlite_master
-                WHERE type IN ('table', 'view')
-                  AND name NOT LIKE 'sqlite_%'
-                ORDER BY name;
-            ")->fetchAll(PDO::FETCH_ASSOC);
-
-            $tables = [];
-            foreach ($tableRows as $row) {
-                $tableName = (string)($row['name'] ?? '');
-                if ($tableName === '') {
-                    continue;
-                }
-
-                $pragmaRows = $pdo
-                    ->query('PRAGMA table_info(' . self::quoteIdentifier($tableName, $driver) . ')')
-                    ->fetchAll(PDO::FETCH_ASSOC);
-
-                $tables[] = [
-                    'name' => $tableName,
-                    'type' => strtolower((string)($row['type'] ?? 'table')) === 'view' ? 'view' : 'table',
-                    'columnCount' => count($pragmaRows),
-                ];
-            }
-
-            return $tables;
+            return self::listSqliteTables($pdo);
         }
 
         $sql = $driver === 'pgsql'
@@ -126,6 +100,76 @@ final class MetadataService
             },
             $rows
         )));
+    }
+
+    /**
+     * Lists SQLite tables/views with column counts.
+     *
+     * Uses `pragma_table_info` table-valued function when available to avoid
+     * N+1 PRAGMA queries, then falls back to legacy query-per-table behavior.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private static function listSqliteTables(PDO $pdo): array
+    {
+        try {
+            $rows = $pdo->query("
+                SELECT
+                    m.name AS name,
+                    m.type AS type,
+                    COUNT(p.name) AS column_count
+                FROM sqlite_master m
+                LEFT JOIN pragma_table_info(m.name) p
+                WHERE m.type IN ('table', 'view')
+                  AND m.name NOT LIKE 'sqlite_%'
+                GROUP BY m.name, m.type
+                ORDER BY m.name;
+            ")->fetchAll(PDO::FETCH_ASSOC);
+
+            return array_values(array_filter(array_map(
+                static function (array $row): array {
+                    $name = trim((string)($row['name'] ?? ''));
+                    if ($name === '') {
+                        return [];
+                    }
+
+                    return [
+                        'name' => $name,
+                        'type' => strtolower((string)($row['type'] ?? 'table')) === 'view' ? 'view' : 'table',
+                        'columnCount' => (int)($row['column_count'] ?? 0),
+                    ];
+                },
+                $rows
+            )));
+        } catch (\Throwable $_) {
+            $tableRows = $pdo->query("
+                SELECT name, type
+                FROM sqlite_master
+                WHERE type IN ('table', 'view')
+                  AND name NOT LIKE 'sqlite_%'
+                ORDER BY name;
+            ")->fetchAll(PDO::FETCH_ASSOC);
+
+            $tables = [];
+            foreach ($tableRows as $row) {
+                $tableName = (string)($row['name'] ?? '');
+                if ($tableName === '') {
+                    continue;
+                }
+
+                $pragmaRows = $pdo
+                    ->query('PRAGMA table_info(' . self::quoteIdentifier($tableName, 'sqlite') . ')')
+                    ->fetchAll(PDO::FETCH_ASSOC);
+
+                $tables[] = [
+                    'name' => $tableName,
+                    'type' => strtolower((string)($row['type'] ?? 'table')) === 'view' ? 'view' : 'table',
+                    'columnCount' => count($pragmaRows),
+                ];
+            }
+
+            return $tables;
+        }
     }
 
     /**

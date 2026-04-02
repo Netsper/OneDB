@@ -20,6 +20,16 @@ final class ConnectionFactory
     public static function makePdo(array $connection): PDO
     {
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ];
+
+        if ($driver === 'mysql' && defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY')) {
+            // Stream large SELECT result sets instead of buffering all rows in client memory.
+            $options[PDO::MYSQL_ATTR_USE_BUFFERED_QUERY] = false;
+        }
 
         if ($driver === 'sqlite') {
             $path = self::normalizeSqlitePath((string)($connection['path'] ?? ''));
@@ -52,11 +62,7 @@ final class ConnectionFactory
             }
         }
 
-        $pdo = new PDO($dsn, $user, $pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ]);
+        $pdo = new PDO($dsn, $user, $pass, $options);
 
         if (Environment::readonlyMode()) {
             self::configureReadonlySession($pdo, $driver);

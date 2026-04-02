@@ -100,6 +100,7 @@ function stop_backend_server(array $server): void
 
 /**
  * @param array<string,string> $cookieJar
+ * @param array<int,string> $extraHeaders
  * @return array{status:int, body:string, json:array<string,mixed>|null, headers:array<int,string>, cookies:array<string,string>}
  */
 function call_api(
@@ -108,14 +109,23 @@ function call_api(
     string $method = 'GET',
     ?array $payload = null,
     array $cookieJar = [],
-    string $csrfToken = ''
+    string $csrfToken = '',
+    array $extraHeaders = []
 ): array {
     $url = $baseUrl . '/?api=' . rawurlencode($action);
     $headers = [
         'Accept: application/json',
     ];
 
-    if ($payload !== null) {
+    $hasExplicitContentType = false;
+    foreach ($extraHeaders as $headerLine) {
+        if (stripos($headerLine, 'Content-Type:') === 0) {
+            $hasExplicitContentType = true;
+            break;
+        }
+    }
+
+    if ($payload !== null && !$hasExplicitContentType) {
         $headers[] = 'Content-Type: application/json';
     }
 
@@ -129,6 +139,10 @@ function call_api(
             $pairs[] = $name . '=' . $value;
         }
         $headers[] = 'Cookie: ' . implode('; ', $pairs);
+    }
+
+    foreach ($extraHeaders as $headerLine) {
+        $headers[] = $headerLine;
     }
 
     $context = stream_context_create([
@@ -241,6 +255,30 @@ function run_smoke_suite(): void
         assert_same(200, $dbList['status'], 'list_databases status must be 200');
         assert_true(is_array($dbList['json']) && ($dbList['json']['ok'] ?? false) === true, 'list_databases must return ok=true');
         assert_true(in_array('main', (array)($dbList['json']['databases'] ?? []), true), 'sqlite list_databases must contain main');
+
+        $methodNotAllowed = call_api($baseUrl, 'list_databases', 'GET', null, $cookieJar, $csrfToken);
+        assert_same(405, $methodNotAllowed['status'], 'list_databases GET must be rejected with 405');
+
+        $missingCsrf = call_api(
+            $baseUrl,
+            'list_tables',
+            'POST',
+            ['connection' => $connection],
+            $cookieJar,
+            ''
+        );
+        assert_same(403, $missingCsrf['status'], 'missing CSRF token must be rejected with 403');
+
+        $invalidContentType = call_api(
+            $baseUrl,
+            'list_tables',
+            'POST',
+            ['connection' => $connection],
+            $cookieJar,
+            $csrfToken,
+            ['Content-Type: text/plain']
+        );
+        assert_same(415, $invalidContentType['status'], 'invalid content type must be rejected with 415');
 
         $connectionTest = call_api(
             $baseUrl,

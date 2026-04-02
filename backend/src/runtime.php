@@ -10,6 +10,7 @@ use OneDB\Database\QueryService;
 use OneDB\Database\ReadOnlySqlGuard;
 use OneDB\Http\ApiRequest;
 use OneDB\Http\CorsPolicy;
+use OneDB\Http\HttpException;
 use OneDB\Http\JsonResponse;
 use OneDB\Http\SessionCsrf;
 use OneDB\Support\Environment;
@@ -53,6 +54,8 @@ final class Runtime
 
         try {
             self::dispatchAction($action);
+        } catch (HttpException $e) {
+            JsonResponse::send(['ok' => false, 'error' => $e->getMessage()], $e->statusCode());
         } catch (PDOException $e) {
             JsonResponse::send(['ok' => false, 'error' => ErrorResponder::safeMessage($e)], 500);
         } catch (Throwable $e) {
@@ -69,10 +72,12 @@ final class Runtime
     {
         switch ($action) {
             case 'csrf':
+                self::requireMethod(['GET']);
                 JsonResponse::send(['ok' => true, 'token' => SessionCsrf::token()]);
                 return;
 
             case 'ping':
+                self::requireMethod(['GET']);
                 JsonResponse::send([
                     'ok' => true,
                     'time' => gmdate('c'),
@@ -82,6 +87,7 @@ final class Runtime
                 return;
 
             case 'upload_limits':
+                self::requireMethod(['GET']);
                 JsonResponse::send([
                     'ok' => true,
                     'limits' => UploadLimits::collect(),
@@ -89,6 +95,7 @@ final class Runtime
                 return;
 
             case 'test_connection':
+                self::requireMethod(['POST']);
                 SessionCsrf::requireValidToken();
                 $payload = ApiRequest::readJson();
                 $pdo = ConnectionFactory::makePdo(self::connectionPayload($payload));
@@ -97,6 +104,7 @@ final class Runtime
                 return;
 
             case 'list_databases':
+                self::requireMethod(['POST']);
                 SessionCsrf::requireValidToken();
                 $payload = ApiRequest::readJson();
                 JsonResponse::send([
@@ -106,6 +114,7 @@ final class Runtime
                 return;
 
             case 'list_tables':
+                self::requireMethod(['POST']);
                 SessionCsrf::requireValidToken();
                 $payload = ApiRequest::readJson();
                 JsonResponse::send([
@@ -115,11 +124,13 @@ final class Runtime
                 return;
 
             case 'browse_table':
+                self::requireMethod(['POST']);
                 SessionCsrf::requireValidToken();
                 JsonResponse::send(MetadataService::browseTable(ApiRequest::readJson()));
                 return;
 
             case 'query':
+                self::requireMethod(['POST']);
                 SessionCsrf::requireValidToken();
                 self::handleQueryAction(ApiRequest::readJson());
                 return;
@@ -161,5 +172,20 @@ final class Runtime
     private static function connectionPayload(array $payload): array
     {
         return is_array($payload['connection'] ?? null) ? $payload['connection'] : [];
+    }
+
+    /**
+     * Enforces allowed HTTP methods for one API action.
+     *
+     * @param array<int,string> $allowed
+     */
+    private static function requireMethod(array $allowed): void
+    {
+        $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        $normalizedAllowed = array_map('strtoupper', $allowed);
+
+        if (!in_array($method, $normalizedAllowed, true)) {
+            throw new HttpException('HTTP method not allowed for this action.', 405);
+        }
     }
 }

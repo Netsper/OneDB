@@ -40,6 +40,7 @@ final class QueryService
         $rows = [];
         $truncated = false;
         $rowCount = 0;
+        $columns = [];
 
         while (($row = $stmt->fetch(PDO::FETCH_ASSOC)) !== false) {
             if ($rowCount >= $maxRows) {
@@ -47,15 +48,20 @@ final class QueryService
                 break;
             }
 
+            if ($rowCount === 0 && is_array($row)) {
+                $columns = array_map('strval', array_keys($row));
+            }
+
             $rows[] = $row;
             $rowCount++;
         }
 
-        $columns = [];
-        for ($index = 0; $index < $stmt->columnCount(); $index++) {
-            $meta = $stmt->getColumnMeta($index);
-            if (is_array($meta)) {
-                $columns[] = (string)($meta['name'] ?? '');
+        if ($columns === []) {
+            for ($index = 0; $index < $stmt->columnCount(); $index++) {
+                $meta = $stmt->getColumnMeta($index);
+                if (is_array($meta)) {
+                    $columns[] = (string)($meta['name'] ?? '');
+                }
             }
         }
 
