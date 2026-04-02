@@ -14,10 +14,18 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v php >/dev/null 2>&1; then
+  echo "php is required" >&2
+  exit 1
+fi
+
 if [ ! -d "frontend/node_modules" ]; then
   echo "Installing frontend dependencies..."
   npm --prefix frontend install
 fi
+
+echo "Running backend smoke tests..."
+php tests/backend/smoke.php
 
 echo "Building frontend..."
 ONEDB_EMBEDDED=1 npm --prefix frontend run build
