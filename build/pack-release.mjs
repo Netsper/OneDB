@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const frontendDistDir = path.join(rootDir, 'frontend', 'dist');
-const runtimePath = path.join(rootDir, 'backend', 'src', 'runtime.php');
+const backendSrcDir = path.join(rootDir, 'backend', 'src');
 const releaseDir = path.join(rootDir, 'release');
 const outputPath = path.join(releaseDir, 'OneDB.php');
 
@@ -44,19 +44,59 @@ function phpBodyWithoutTag(phpCode) {
   return phpCode
     .replace(/^<\?php\s*/i, '')
     .replace(/\?>\s*$/i, '')
+    .replace(/^declare\s*\(\s*strict_types\s*=\s*1\s*\)\s*;\s*/i, '')
     .trim();
 }
 
+function listBackendSourceFiles(sourceDir) {
+  const files = [];
+
+  const walk = (dir) => {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+
+      if (!entry.isFile() || path.extname(entry.name).toLowerCase() !== '.php') {
+        continue;
+      }
+
+      if (entry.name === 'bootstrap.php') {
+        continue;
+      }
+
+      files.push(fullPath);
+    }
+  };
+
+  walk(sourceDir);
+  return files;
+}
+
 function run() {
-  assertFileExists(runtimePath);
+  assertFileExists(backendSrcDir);
   assertFileExists(path.join(frontendDistDir, 'index.html'));
 
-  const runtimeCode = phpBodyWithoutTag(fs.readFileSync(runtimePath, 'utf8'));
+  const backendSourceFiles = listBackendSourceFiles(backendSrcDir);
+  if (backendSourceFiles.length === 0) {
+    throw new Error(`No backend PHP source files found in: ${backendSrcDir}`);
+  }
+
+  const runtimeCode = backendSourceFiles
+    .map((filePath) => phpBodyWithoutTag(fs.readFileSync(filePath, 'utf8')))
+    .join('\n\n');
+
   const appHtml = inlineDistHtml(frontendDistDir);
 
   fs.mkdirSync(releaseDir, { recursive: true });
 
-  const output = `<?php\n${runtimeCode}\n\nif (\\OneDB\\Runtime::dispatch()) {\n    exit;\n}\n?>\n${appHtml}\n`;
+  const output = `<?php\ndeclare(strict_types=1);\n\n${runtimeCode}\n\nif (\\OneDB\\Runtime::dispatch()) {\n    exit;\n}\n?>\n${appHtml}\n`;
   fs.writeFileSync(outputPath, output, 'utf8');
 
   console.log(`Built: ${outputPath}`);

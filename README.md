@@ -19,7 +19,11 @@ It is designed for quick database operations: connect, inspect schema, browse ta
 ## Project Structure
 
 - `frontend/` React + Vite application (development UI)
-- `backend/src/runtime.php` Core API/runtime dispatcher
+- `backend/src/runtime.php` API dispatcher/orchestrator
+- `backend/src/Database/` Database connection, query, and metadata services
+- `backend/src/Http/` Request/session/response helpers
+- `backend/src/Support/` Environment and runtime utility helpers
+- `backend/src/bootstrap.php` Development source loader
 - `backend/public/index.php` Development backend entrypoint
 - `build/pack-release.mjs` Release packer
 - `build.sh` End-to-end build pipeline
@@ -38,7 +42,7 @@ The UI is a React workspace (`frontend/src/DatabaseManager.jsx`) organized aroun
 
 ### Backend Runtime
 
-The PHP runtime dispatches API actions and handles DB access through PDO.
+The PHP runtime dispatches API actions and delegates DB access to modular service classes under `backend/src/Database`.
 
 Main API actions:
 

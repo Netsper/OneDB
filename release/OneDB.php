@@ -1,297 +1,22 @@
 <?php
 declare(strict_types=1);
 
-namespace OneDB;
+namespace OneDB\Database;
 
+use OneDB\Support\Environment;
 use PDO;
-use PDOException;
-use Throwable;
 
 /**
- * Runtime entrypoint for OneDB single-file backend API.
- *
- * The class handles request routing, security checks, connection bootstrap,
- * metadata listing and SQL execution for MySQL, PostgreSQL and SQLite.
+ * Creates and configures PDO instances for supported database engines.
  */
-final class Runtime
+final class ConnectionFactory
 {
     /**
-     * Session key used to persist the CSRF token.
-     */
-    private const CSRF_KEY = 'onedb_csrf_token';
-
-    /**
-     * Default maximum number of rows returned from the `query` API action.
-     *
-     * This keeps memory usage predictable when users run large SELECT queries.
-     */
-    private const DEFAULT_MAX_RESULT_ROWS = 2000;
-
-    /**
-     * Handles API dispatch for the embedded OneDB runtime.
-     *
-     * @return bool True if request is handled by API dispatcher, otherwise false.
-     */
-    public static function dispatch(): bool
-    {
-        if (!self::isApiRequest()) {
-            return false;
-        }
-
-        self::bootSession();
-        self::sendCorsHeaders();
-
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
-            http_response_code(204);
-            return true;
-        }
-
-        $action = self::resolveAction();
-        if ($action === '') {
-            self::json(['ok' => false, 'error' => 'Missing action parameter.'], 400);
-            return true;
-        }
-
-        try {
-            switch ($action) {
-                case 'csrf':
-                    self::json(['ok' => true, 'token' => self::csrfToken()]);
-                    break;
-
-                case 'ping':
-                    self::json([
-                        'ok' => true,
-                        'time' => gmdate('c'),
-                        'php' => PHP_VERSION,
-                        'readonly' => self::readonlyMode(),
-                    ]);
-                    break;
-
-                case 'upload_limits':
-                    self::json([
-                        'ok' => true,
-                        'limits' => self::uploadLimits(),
-                    ]);
-                    break;
-
-                case 'test_connection':
-                    self::requireCsrf();
-                    $payload = self::readJson();
-                    $pdo = self::makePdo($payload['connection'] ?? []);
-                    $pdo->query('SELECT 1');
-                    self::json(['ok' => true, 'message' => 'Connection successful.']);
-                    break;
-
-                case 'list_databases':
-                    self::requireCsrf();
-                    $payload = self::readJson();
-                    self::json([
-                        'ok' => true,
-                        'databases' => self::listDatabases($payload['connection'] ?? []),
-                    ]);
-                    break;
-
-                case 'list_tables':
-                    self::requireCsrf();
-                    $payload = self::readJson();
-                    self::json([
-                        'ok' => true,
-                        'tables' => self::listTables($payload['connection'] ?? []),
-                    ]);
-                    break;
-
-                case 'browse_table':
-                    self::requireCsrf();
-                    $payload = self::readJson();
-                    self::json(self::browseTable($payload));
-                    break;
-
-                case 'query':
-                    self::requireCsrf();
-                    $payload = self::readJson();
-                    $sql = trim((string)($payload['sql'] ?? ''));
-
-                    if ($sql === '') {
-                        self::json(['ok' => false, 'error' => 'SQL is required.'], 400);
-                        break;
-                    }
-
-                    if (self::readonlyMode() && !self::isReadOnlySql($sql)) {
-                        self::json(['ok' => false, 'error' => 'Readonly mode allows only read queries.'], 403);
-                        break;
-                    }
-
-                    $pdo = self::makePdo($payload['connection'] ?? []);
-                    $stmt = $pdo->prepare($sql);
-                    $startedAt = microtime(true);
-                    $stmt->execute();
-                    $durationMs = (microtime(true) - $startedAt) * 1000;
-
-                    if ($stmt->columnCount() > 0) {
-                        $maxRows = self::maxResultRows();
-                        $rows = [];
-                        $truncated = false;
-                        $rowCount = 0;
-
-                        while (($row = $stmt->fetch(PDO::FETCH_ASSOC)) !== false) {
-                            if ($rowCount >= $maxRows) {
-                                $truncated = true;
-                                break;
-                            }
-
-                            $rows[] = $row;
-                            $rowCount++;
-                        }
-
-                        $columns = [];
-                        for ($idx = 0; $idx < $stmt->columnCount(); $idx++) {
-                            $meta = $stmt->getColumnMeta($idx);
-                            if (is_array($meta)) {
-                                $columns[] = (string)($meta['name'] ?? '');
-                            }
-                        }
-
-                        self::json([
-                            'ok' => true,
-                            'kind' => 'result_set',
-                            'columns' => $columns,
-                            'rows' => $rows,
-                            'rowCount' => $rowCount,
-                            'durationMs' => round($durationMs, 2),
-                            'truncated' => $truncated,
-                            'maxRows' => $maxRows,
-                        ]);
-                    } else {
-                        self::json([
-                            'ok' => true,
-                            'kind' => 'mutation',
-                            'affectedRows' => $stmt->rowCount(),
-                            'durationMs' => round($durationMs, 2),
-                        ]);
-                    }
-                    break;
-
-                default:
-                    self::json(['ok' => false, 'error' => 'Unsupported action.'], 404);
-                    break;
-            }
-        } catch (PDOException $e) {
-            self::json(['ok' => false, 'error' => self::safeErrorMessage($e)], 500);
-        } catch (Throwable $e) {
-            self::json(['ok' => false, 'error' => self::safeErrorMessage($e)], 500);
-        }
-
-        return true;
-    }
-
-    /**
-     * Starts a secure HTTP session if one does not already exist.
-     */
-    private static function bootSession(): void
-    {
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            return;
-        }
-
-        session_start([
-            'cookie_httponly' => true,
-            'cookie_samesite' => 'Lax',
-            'use_strict_mode' => true,
-        ]);
-    }
-
-    /**
-     * Determines whether current request targets the API.
-     */
-    private static function isApiRequest(): bool
-    {
-        if (isset($_GET['action']) || isset($_GET['api'])) {
-            return true;
-        }
-
-        $uri = (string)($_SERVER['REQUEST_URI'] ?? '');
-        $path = (string)parse_url($uri, PHP_URL_PATH);
-
-        return $path === '/api' || strpos($path, '/api/') === 0;
-    }
-
-    /**
-     * Resolves API action name from query parameters or `/api/{action}` path.
-     */
-    private static function resolveAction(): string
-    {
-        if (isset($_GET['action'])) {
-            return trim((string)$_GET['action']);
-        }
-
-        if (isset($_GET['api'])) {
-            return trim((string)$_GET['api']);
-        }
-
-        $uri = (string)($_SERVER['REQUEST_URI'] ?? '');
-        $path = trim((string)parse_url($uri, PHP_URL_PATH), '/');
-
-        if ($path === 'api') {
-            return '';
-        }
-
-        if (strpos($path, 'api/') === 0) {
-            return trim(substr($path, 4));
-        }
-
-        return '';
-    }
-
-    /**
-     * Reads JSON payload from request body.
-     *
-     * @return array<string,mixed>
-     */
-    private static function readJson(): array
-    {
-        $raw = file_get_contents('php://input');
-        if ($raw === false || trim($raw) === '') {
-            return [];
-        }
-
-        $data = json_decode($raw, true);
-        return is_array($data) ? $data : [];
-    }
-
-    /**
-     * Returns current session CSRF token, creating one when missing.
-     */
-    private static function csrfToken(): string
-    {
-        if (!isset($_SESSION[self::CSRF_KEY])) {
-            $_SESSION[self::CSRF_KEY] = bin2hex(random_bytes(24));
-        }
-
-        return (string)$_SESSION[self::CSRF_KEY];
-    }
-
-    /**
-     * Validates CSRF header for state-changing HTTP verbs.
-     */
-    private static function requireCsrf(): void
-    {
-        $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
-        if (!in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
-            return;
-        }
-
-        $token = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-        if ($token === '' || !hash_equals(self::csrfToken(), $token)) {
-            throw new \RuntimeException('CSRF validation failed.');
-        }
-    }
-
-    /**
-     * Creates PDO connection from user-supplied connection payload.
+     * Builds a PDO connection from user-supplied connection payload.
      *
      * @param array<string,mixed> $connection
      */
-    private static function makePdo(array $connection): PDO
+    public static function makePdo(array $connection): PDO
     {
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
 
@@ -309,7 +34,7 @@ final class Runtime
             $pass = (string)($connection['password'] ?? '');
 
             if ($driver === 'pgsql') {
-                // Allow server-level connections (without an explicit database).
+                // Server-level connections are allowed even when no database is selected.
                 $dsn = sprintf(
                     'pgsql:host=%s;port=%s%s',
                     $host,
@@ -317,7 +42,7 @@ final class Runtime
                     $db !== '' ? ';dbname=' . $db : ''
                 );
             } else {
-                // Allow server-level connections (without an explicit database).
+                // Server-level connections are allowed even when no database is selected.
                 if ($db !== '') {
                     $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s', $host, $port, $db, $charset);
                 } else {
@@ -332,7 +57,7 @@ final class Runtime
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
 
-        if (self::readonlyMode()) {
+        if (Environment::readonlyMode()) {
             self::configureReadonlySession($pdo, $driver);
         }
 
@@ -340,312 +65,7 @@ final class Runtime
     }
 
     /**
-     * Performs a conservative SQL-level check for readonly mode.
-     *
-     * Note: this is intentionally strict and may reject edge-case queries.
-     */
-    private static function isReadOnlySql(string $sql): bool
-    {
-        $inspected = self::normalizeSqlForInspection($sql);
-        if ($inspected === '') {
-            return false;
-        }
-
-        $allowed = [
-            'select',
-            'show',
-            'describe',
-            'desc',
-            'explain',
-            'with',
-            'pragma',
-        ];
-
-        $firstToken = strtolower((string)strtok($inspected, " \t\n\r\0\x0B"));
-
-        if (!in_array($firstToken, $allowed, true)) {
-            return false;
-        }
-
-        // Block obvious mutating statements even when hidden in CTEs.
-        if (preg_match('/\b(insert|update|delete|merge|replace|upsert|create|alter|drop|truncate|grant|revoke|comment|attach|detach|copy)\b/i', $inspected)) {
-            return false;
-        }
-
-        // Block MySQL file write variants.
-        if (preg_match('/\binto\s+(outfile|dumpfile)\b/i', $inspected)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Returns readonly mode flag from environment.
-     */
-    private static function readonlyMode(): bool
-    {
-        $raw = strtolower((string)(getenv('ONEDB_READONLY') ?: '0'));
-        return in_array($raw, ['1', 'true', 'yes', 'on'], true);
-    }
-
-    /**
-     * Returns runtime debug mode flag from environment.
-     */
-    private static function debugMode(): bool
-    {
-        $raw = strtolower((string)(getenv('ONEDB_DEBUG') ?: '0'));
-        return in_array($raw, ['1', 'true', 'yes', 'on'], true);
-    }
-
-    /**
-     * Reads effective max row limit for SQL result-set responses.
-     */
-    private static function maxResultRows(): int
-    {
-        $raw = trim((string)(getenv('ONEDB_MAX_RESULT_ROWS') ?: ''));
-        if ($raw !== '' && ctype_digit($raw)) {
-            $value = (int)$raw;
-            if ($value > 0) {
-                return min($value, 10000);
-            }
-        }
-
-        return self::DEFAULT_MAX_RESULT_ROWS;
-    }
-
-    /**
-     * Returns sanitized error text for API responses.
-     */
-    private static function safeErrorMessage(Throwable $e): string
-    {
-        if (self::debugMode()) {
-            return $e->getMessage();
-        }
-
-        return $e instanceof PDOException
-            ? 'Database operation failed.'
-            : 'Unexpected server error.';
-    }
-
-    /**
-     * Parses and returns upload/memory related PHP runtime limits.
-     *
-     * @return array<string,mixed>
-     */
-    private static function uploadLimits(): array
-    {
-        $uploadRaw = trim((string)(ini_get('upload_max_filesize') ?: ''));
-        $postRaw = trim((string)(ini_get('post_max_size') ?: ''));
-        $memoryRaw = trim((string)(ini_get('memory_limit') ?: ''));
-
-        $uploadBytes = self::iniSizeToBytes($uploadRaw);
-        $postBytes = self::iniSizeToBytes($postRaw);
-        $memoryBytes = self::iniSizeToBytes($memoryRaw);
-
-        return [
-            'uploadMaxFilesize' => [
-                'raw' => $uploadRaw,
-                'bytes' => $uploadBytes,
-            ],
-            'postMaxSize' => [
-                'raw' => $postRaw,
-                'bytes' => $postBytes,
-            ],
-            'memoryLimit' => [
-                'raw' => $memoryRaw,
-                'bytes' => $memoryBytes,
-            ],
-            'maxFileUploads' => self::iniInt('max_file_uploads'),
-            'maxExecutionTime' => self::iniInt('max_execution_time'),
-            'effectiveUploadLimit' => [
-                'bytes' => self::smallestLimit([$uploadBytes, $postBytes]),
-            ],
-        ];
-    }
-
-    /**
-     * Reads integer value from php.ini.
-     */
-    private static function iniInt(string $key): ?int
-    {
-        $raw = ini_get($key);
-        if ($raw === false) {
-            return null;
-        }
-
-        $value = trim((string)$raw);
-        if ($value === '' || !is_numeric($value)) {
-            return null;
-        }
-
-        return (int)$value;
-    }
-
-    /**
-     * Parses php.ini style size value (`2M`, `512K`, `-1`) to bytes.
-     */
-    private static function iniSizeToBytes(string $raw): ?int
-    {
-        $value = strtolower(trim($raw));
-        if ($value === '') {
-            return null;
-        }
-
-        if ($value === '-1') {
-            return -1;
-        }
-
-        if (!preg_match('/^([0-9]+(?:\.[0-9]+)?)\s*([kmgtpe]?b?)?$/', $value, $matches)) {
-            return null;
-        }
-
-        $amount = (float)($matches[1] ?? 0);
-        $unit = rtrim((string)($matches[2] ?? ''), 'b');
-        $powerMap = [
-            '' => 0,
-            'k' => 1,
-            'm' => 2,
-            'g' => 3,
-            't' => 4,
-            'p' => 5,
-            'e' => 6,
-        ];
-
-        if (!array_key_exists($unit, $powerMap)) {
-            return null;
-        }
-
-        $bytes = $amount * (1024 ** $powerMap[$unit]);
-        if (!is_finite($bytes)) {
-            return PHP_INT_MAX;
-        }
-
-        return (int)round(min($bytes, (float)PHP_INT_MAX));
-    }
-
-    /**
-     * Returns smallest finite limit in bytes, preserving unlimited (`-1`) semantics.
-     *
-     * @param array<int|null> $limits
-     */
-    private static function smallestLimit(array $limits): ?int
-    {
-        $finiteLimits = [];
-        $hasUnlimited = false;
-
-        foreach ($limits as $limit) {
-            if (!is_int($limit)) {
-                continue;
-            }
-            if ($limit < 0) {
-                $hasUnlimited = true;
-                continue;
-            }
-            $finiteLimits[] = $limit;
-        }
-
-        if ($finiteLimits !== []) {
-            return min($finiteLimits);
-        }
-
-        return $hasUnlimited ? -1 : null;
-    }
-
-    /**
-     * Normalizes SQL text for readonly inspection.
-     *
-     * The method strips comments and string literals so keyword scans are more reliable.
-     */
-    private static function normalizeSqlForInspection(string $sql): string
-    {
-        $normalized = '';
-        $length = strlen($sql);
-        $inSingle = false;
-        $inDouble = false;
-        $inBacktick = false;
-        $inLineComment = false;
-        $inBlockComment = false;
-
-        for ($index = 0; $index < $length; $index++) {
-            $char = $sql[$index];
-            $next = $index + 1 < $length ? $sql[$index + 1] : '';
-            $prev = $index > 0 ? $sql[$index - 1] : '';
-
-            if ($inLineComment) {
-                if ($char === "\n") {
-                    $inLineComment = false;
-                    $normalized .= ' ';
-                }
-                continue;
-            }
-
-            if ($inBlockComment) {
-                if ($char === '*' && $next === '/') {
-                    $index++;
-                    $inBlockComment = false;
-                    $normalized .= ' ';
-                }
-                continue;
-            }
-
-            if (!$inSingle && !$inDouble && !$inBacktick) {
-                if ($char === '-' && $next === '-') {
-                    $inLineComment = true;
-                    $index++;
-                    continue;
-                }
-
-                if ($char === '/' && $next === '*') {
-                    $inBlockComment = true;
-                    $index++;
-                    continue;
-                }
-            }
-
-            if (!$inDouble && !$inBacktick && $char === "'") {
-                if ($inSingle && $next === "'") {
-                    $index++;
-                    continue;
-                }
-
-                if (!$inSingle || $prev !== '\\') {
-                    $inSingle = !$inSingle;
-                }
-
-                continue;
-            }
-
-            if (!$inSingle && !$inBacktick && $char === '"') {
-                if ($inDouble && $next === '"') {
-                    $index++;
-                    continue;
-                }
-
-                if (!$inDouble || $prev !== '\\') {
-                    $inDouble = !$inDouble;
-                }
-
-                continue;
-            }
-
-            if (!$inSingle && !$inDouble && $char === '`') {
-                $inBacktick = !$inBacktick;
-                continue;
-            }
-
-            if ($inSingle || $inDouble || $inBacktick) {
-                continue;
-            }
-
-            $normalized .= $char;
-        }
-
-        return trim(strtolower($normalized));
-    }
-
-    /**
-     * Enforces a readonly SQL session where supported by current driver.
+     * Configures server-side read-only constraints when supported by driver.
      */
     private static function configureReadonlySession(PDO $pdo, string $driver): void
     {
@@ -724,7 +144,7 @@ final class Runtime
     }
 
     /**
-     * Checks if path is absolute (POSIX or Windows style).
+     * Checks whether a path is absolute on POSIX or Windows systems.
      */
     private static function isAbsolutePath(string $path): bool
     {
@@ -740,7 +160,7 @@ final class Runtime
     }
 
     /**
-     * Returns true when $path is inside $root directory.
+     * Returns true when the given path is located within the configured root.
      */
     private static function pathStartsWith(string $path, string $root): bool
     {
@@ -749,51 +169,27 @@ final class Runtime
 
         return $normalizedPath === $normalizedRoot || strpos($normalizedPath, $normalizedRoot . '/') === 0;
     }
+}
 
+namespace OneDB\Database;
+
+use PDO;
+
+/**
+ * Provides schema and table-browse metadata for workspace views.
+ */
+final class MetadataService
+{
     /**
-     * Sends CORS headers for local development origins.
-     */
-    private static function sendCorsHeaders(): void
-    {
-        $origin = (string)($_SERVER['HTTP_ORIGIN'] ?? '');
-        $allowed = [
-            'http://localhost:5173',
-            'http://127.0.0.1:5173',
-        ];
-
-        header('Vary: Origin');
-
-        if (in_array($origin, $allowed, true)) {
-            header('Access-Control-Allow-Origin: ' . $origin);
-            header('Access-Control-Allow-Credentials: true');
-        }
-
-        header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token');
-        header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    }
-
-    /**
-     * Writes a JSON HTTP response.
-     *
-     * @param array<string,mixed> $payload
-     */
-    private static function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    }
-
-    /**
-     * Lists available databases for the active connection driver.
+     * Lists databases visible to the current connection.
      *
      * @param array<string,mixed> $connection
      * @return array<int,string>
      */
-    private static function listDatabases(array $connection): array
+    public static function listDatabases(array $connection): array
     {
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
-        $pdo = self::makePdo($connection);
+        $pdo = ConnectionFactory::makePdo($connection);
 
         if ($driver === 'sqlite') {
             return ['main'];
@@ -812,15 +208,15 @@ final class Runtime
     }
 
     /**
-     * Lists tables/views and basic metadata for selected database.
+     * Lists tables/views and basic metadata for the selected database.
      *
      * @param array<string,mixed> $connection
      * @return array<int,array<string,mixed>>
      */
-    private static function listTables(array $connection): array
+    public static function listTables(array $connection): array
     {
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
-        $pdo = self::makePdo($connection);
+        $pdo = ConnectionFactory::makePdo($connection);
 
         if ($driver === 'sqlite') {
             $tableRows = $pdo->query("
@@ -838,13 +234,14 @@ final class Runtime
                     continue;
                 }
 
-                $pragmaRows = $pdo->query('PRAGMA table_info(' . self::quoteIdentifier($tableName, $driver) . ')')->fetchAll(PDO::FETCH_ASSOC);
-                $columnCount = count($pragmaRows);
+                $pragmaRows = $pdo
+                    ->query('PRAGMA table_info(' . self::quoteIdentifier($tableName, $driver) . ')')
+                    ->fetchAll(PDO::FETCH_ASSOC);
 
                 $tables[] = [
                     'name' => $tableName,
                     'type' => strtolower((string)($row['type'] ?? 'table')) === 'view' ? 'view' : 'table',
-                    'columnCount' => $columnCount,
+                    'columnCount' => count($pragmaRows),
                 ];
             }
 
@@ -901,12 +298,12 @@ final class Runtime
     }
 
     /**
-     * Returns paginated table rows with optional filtering and sorting.
+     * Returns paginated rows with filtering and sorting for one table/view.
      *
      * @param array<string,mixed> $payload
      * @return array<string,mixed>
      */
-    private static function browseTable(array $payload): array
+    public static function browseTable(array $payload): array
     {
         $connection = is_array($payload['connection'] ?? null) ? $payload['connection'] : [];
         $table = trim((string)($payload['table'] ?? ''));
@@ -917,8 +314,10 @@ final class Runtime
 
         $page = max(1, (int)($payload['page'] ?? 1));
         $perPage = max(1, min(200, (int)($payload['perPage'] ?? 25)));
+        $includeRowCount = !array_key_exists('includeRowCount', $payload) || (bool)$payload['includeRowCount'];
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
-        $pdo = self::makePdo($connection);
+
+        $pdo = ConnectionFactory::makePdo($connection);
         $columns = self::describeTable($pdo, $connection, $table);
         $columnMap = [];
 
@@ -926,10 +325,9 @@ final class Runtime
             $columnMap[$column['name']] = true;
         }
 
-        $whereSql = '';
         $bindings = [];
-        $filters = is_array($payload['filters'] ?? null) ? $payload['filters'] : [];
         $whereParts = [];
+        $filters = is_array($payload['filters'] ?? null) ? $payload['filters'] : [];
 
         foreach ($filters as $index => $filter) {
             if (!is_array($filter)) {
@@ -1000,9 +398,7 @@ final class Runtime
             }
         }
 
-        if ($whereParts !== []) {
-            $whereSql = ' WHERE ' . implode(' AND ', $whereParts);
-        }
+        $whereSql = $whereParts === [] ? '' : ' WHERE ' . implode(' AND ', $whereParts);
 
         $sortPayload = is_array($payload['sort'] ?? null) ? $payload['sort'] : [];
         $sortColumn = trim((string)($sortPayload['column'] ?? ''));
@@ -1025,19 +421,24 @@ final class Runtime
         }
 
         $qualifiedTable = self::quoteIdentifier($table, $driver);
-        $countStmt = $pdo->prepare('SELECT COUNT(*) AS total_count FROM ' . $qualifiedTable . $whereSql);
-        foreach ($bindings as $key => $value) {
-            $countStmt->bindValue($key, $value);
+        $rowCount = null;
+        if ($includeRowCount) {
+            $countStmt = $pdo->prepare('SELECT COUNT(*) AS total_count FROM ' . $qualifiedTable . $whereSql);
+            foreach ($bindings as $key => $value) {
+                $countStmt->bindValue($key, $value);
+            }
+            $countStmt->execute();
+            $rowCount = (int)($countStmt->fetchColumn() ?: 0);
         }
-        $countStmt->execute();
-        $rowCount = (int)($countStmt->fetchColumn() ?: 0);
 
         $offset = ($page - 1) * $perPage;
         $dataSql = 'SELECT * FROM ' . $qualifiedTable . $whereSql . $orderSql . ' LIMIT ' . $perPage . ' OFFSET ' . $offset;
         $dataStmt = $pdo->prepare($dataSql);
+
         foreach ($bindings as $key => $value) {
             $dataStmt->bindValue($key, $value);
         }
+
         $startedAt = microtime(true);
         $dataStmt->execute();
         $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1056,7 +457,7 @@ final class Runtime
     }
 
     /**
-     * Reads column metadata for selected table.
+     * Reads column and foreign-key metadata for one table/view.
      *
      * @param array<string,mixed> $connection
      * @return array<int,array<string,mixed>>
@@ -1206,7 +607,7 @@ final class Runtime
     }
 
     /**
-     * Quotes SQL identifier based on driver-specific rules.
+     * Quotes SQL identifiers according to the selected driver.
      */
     private static function quoteIdentifier(string $name, string $driver): string
     {
@@ -1218,7 +619,7 @@ final class Runtime
     }
 
     /**
-     * Returns SQL cast expression for string-like filtering.
+     * Returns cast expression used for string-based filter operations.
      */
     private static function stringExpression(string $quotedColumn, string $driver): string
     {
@@ -1227,6 +628,760 @@ final class Runtime
         }
 
         return 'CAST(' . $quotedColumn . ' AS TEXT)';
+    }
+}
+
+namespace OneDB\Database;
+
+use OneDB\Support\Environment;
+use PDO;
+
+/**
+ * Executes user SQL statements and shapes API payload responses.
+ */
+final class QueryService
+{
+    /**
+     * Executes SQL and returns a normalized API response payload.
+     *
+     * @param array<string,mixed> $connection
+     * @return array<string,mixed>
+     */
+    public static function execute(array $connection, string $sql): array
+    {
+        $pdo = ConnectionFactory::makePdo($connection);
+        $stmt = $pdo->prepare($sql);
+
+        $startedAt = microtime(true);
+        $stmt->execute();
+        $durationMs = (microtime(true) - $startedAt) * 1000;
+
+        if ($stmt->columnCount() === 0) {
+            return [
+                'ok' => true,
+                'kind' => 'mutation',
+                'affectedRows' => $stmt->rowCount(),
+                'durationMs' => round($durationMs, 2),
+            ];
+        }
+
+        $maxRows = Environment::maxResultRows();
+        $rows = [];
+        $truncated = false;
+        $rowCount = 0;
+
+        while (($row = $stmt->fetch(PDO::FETCH_ASSOC)) !== false) {
+            if ($rowCount >= $maxRows) {
+                $truncated = true;
+                break;
+            }
+
+            $rows[] = $row;
+            $rowCount++;
+        }
+
+        $columns = [];
+        for ($index = 0; $index < $stmt->columnCount(); $index++) {
+            $meta = $stmt->getColumnMeta($index);
+            if (is_array($meta)) {
+                $columns[] = (string)($meta['name'] ?? '');
+            }
+        }
+
+        return [
+            'ok' => true,
+            'kind' => 'result_set',
+            'columns' => $columns,
+            'rows' => $rows,
+            'rowCount' => $rowCount,
+            'durationMs' => round($durationMs, 2),
+            'truncated' => $truncated,
+            'maxRows' => $maxRows,
+        ];
+    }
+}
+
+namespace OneDB\Database;
+
+/**
+ * Performs conservative read-only SQL validation.
+ */
+final class ReadOnlySqlGuard
+{
+    /**
+     * Returns true when the SQL text is considered read-only.
+     *
+     * The check is intentionally strict and can reject uncommon but safe queries.
+     */
+    public static function isReadOnly(string $sql): bool
+    {
+        $inspected = self::normalizeSqlForInspection($sql);
+        if ($inspected === '') {
+            return false;
+        }
+
+        $allowed = [
+            'select',
+            'show',
+            'describe',
+            'desc',
+            'explain',
+            'with',
+            'pragma',
+        ];
+
+        $firstToken = strtolower((string)strtok($inspected, " \t\n\r\0\x0B"));
+        if (!in_array($firstToken, $allowed, true)) {
+            return false;
+        }
+
+        // Block obvious mutating statements even when hidden inside CTE bodies.
+        if (preg_match('/\b(insert|update|delete|merge|replace|upsert|create|alter|drop|truncate|grant|revoke|comment|attach|detach|copy)\b/i', $inspected)) {
+            return false;
+        }
+
+        // Block file write variants supported by MySQL.
+        if (preg_match('/\binto\s+(outfile|dumpfile)\b/i', $inspected)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Normalizes SQL text for inspection by stripping comments and quoted content.
+     */
+    private static function normalizeSqlForInspection(string $sql): string
+    {
+        $normalized = '';
+        $length = strlen($sql);
+        $inSingle = false;
+        $inDouble = false;
+        $inBacktick = false;
+        $inLineComment = false;
+        $inBlockComment = false;
+
+        for ($index = 0; $index < $length; $index++) {
+            $char = $sql[$index];
+            $next = $index + 1 < $length ? $sql[$index + 1] : '';
+            $prev = $index > 0 ? $sql[$index - 1] : '';
+
+            if ($inLineComment) {
+                if ($char === "\n") {
+                    $inLineComment = false;
+                    $normalized .= ' ';
+                }
+                continue;
+            }
+
+            if ($inBlockComment) {
+                if ($char === '*' && $next === '/') {
+                    $index++;
+                    $inBlockComment = false;
+                    $normalized .= ' ';
+                }
+                continue;
+            }
+
+            if (!$inSingle && !$inDouble && !$inBacktick) {
+                if ($char === '-' && $next === '-') {
+                    $inLineComment = true;
+                    $index++;
+                    continue;
+                }
+
+                if ($char === '/' && $next === '*') {
+                    $inBlockComment = true;
+                    $index++;
+                    continue;
+                }
+            }
+
+            if (!$inDouble && !$inBacktick && $char === "'") {
+                if ($inSingle && $next === "'") {
+                    $index++;
+                    continue;
+                }
+
+                if (!$inSingle || $prev !== '\\') {
+                    $inSingle = !$inSingle;
+                }
+
+                continue;
+            }
+
+            if (!$inSingle && !$inBacktick && $char === '"') {
+                if ($inDouble && $next === '"') {
+                    $index++;
+                    continue;
+                }
+
+                if (!$inDouble || $prev !== '\\') {
+                    $inDouble = !$inDouble;
+                }
+
+                continue;
+            }
+
+            if (!$inSingle && !$inDouble && $char === '`') {
+                $inBacktick = !$inBacktick;
+                continue;
+            }
+
+            if ($inSingle || $inDouble || $inBacktick) {
+                continue;
+            }
+
+            $normalized .= $char;
+        }
+
+        return trim(strtolower($normalized));
+    }
+}
+
+namespace OneDB\Http;
+
+/**
+ * Helpers for API route detection and payload extraction.
+ */
+final class ApiRequest
+{
+    /**
+     * Determines whether current request targets the API.
+     */
+    public static function isApiRequest(): bool
+    {
+        if (isset($_GET['action']) || isset($_GET['api'])) {
+            return true;
+        }
+
+        $uri = (string)($_SERVER['REQUEST_URI'] ?? '');
+        $path = (string)parse_url($uri, PHP_URL_PATH);
+
+        return $path === '/api' || strpos($path, '/api/') === 0;
+    }
+
+    /**
+     * Resolves API action name from query parameters or `/api/{action}` path.
+     */
+    public static function resolveAction(): string
+    {
+        if (isset($_GET['action'])) {
+            return trim((string)$_GET['action']);
+        }
+
+        if (isset($_GET['api'])) {
+            return trim((string)$_GET['api']);
+        }
+
+        $uri = (string)($_SERVER['REQUEST_URI'] ?? '');
+        $path = trim((string)parse_url($uri, PHP_URL_PATH), '/');
+
+        if ($path === 'api') {
+            return '';
+        }
+
+        if (strpos($path, 'api/') === 0) {
+            return trim(substr($path, 4));
+        }
+
+        return '';
+    }
+
+    /**
+     * Reads JSON payload from request body.
+     *
+     * @return array<string,mixed>
+     */
+    public static function readJson(): array
+    {
+        $raw = file_get_contents('php://input');
+        if ($raw === false || trim($raw) === '') {
+            return [];
+        }
+
+        $data = json_decode($raw, true);
+        return is_array($data) ? $data : [];
+    }
+}
+
+namespace OneDB\Http;
+
+/**
+ * Sends CORS headers for local development origins.
+ */
+final class CorsPolicy
+{
+    /**
+     * Emits allowed CORS headers.
+     */
+    public static function sendDevelopmentHeaders(): void
+    {
+        $origin = (string)($_SERVER['HTTP_ORIGIN'] ?? '');
+        $allowed = [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+        ];
+
+        header('Vary: Origin');
+
+        if (in_array($origin, $allowed, true)) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Credentials: true');
+        }
+
+        header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token');
+        header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    }
+}
+
+namespace OneDB\Http;
+
+/**
+ * Small HTTP JSON response helper.
+ */
+final class JsonResponse
+{
+    /**
+     * Writes JSON HTTP response with status code.
+     *
+     * @param array<string,mixed> $payload
+     */
+    public static function send(array $payload, int $status = 200): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+}
+
+namespace OneDB\Http;
+
+/**
+ * Session bootstrap and CSRF token validation.
+ */
+final class SessionCsrf
+{
+    /**
+     * Session key used to persist the CSRF token.
+     */
+    private const CSRF_KEY = 'onedb_csrf_token';
+
+    /**
+     * Starts a secure HTTP session if one does not already exist.
+     */
+    public static function bootSession(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return;
+        }
+
+        session_start([
+            'cookie_httponly' => true,
+            'cookie_samesite' => 'Lax',
+            'use_strict_mode' => true,
+        ]);
+    }
+
+    /**
+     * Returns current session CSRF token, creating one when missing.
+     */
+    public static function token(): string
+    {
+        if (!isset($_SESSION[self::CSRF_KEY])) {
+            $_SESSION[self::CSRF_KEY] = bin2hex(random_bytes(24));
+        }
+
+        return (string)$_SESSION[self::CSRF_KEY];
+    }
+
+    /**
+     * Validates CSRF header for state-changing HTTP verbs.
+     */
+    public static function requireValidToken(): void
+    {
+        $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        if (!in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            return;
+        }
+
+        $token = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        if ($token === '' || !hash_equals(self::token(), $token)) {
+            throw new \RuntimeException('CSRF validation failed.');
+        }
+    }
+}
+
+namespace OneDB;
+
+use OneDB\Database\ConnectionFactory;
+use OneDB\Database\MetadataService;
+use OneDB\Database\QueryService;
+use OneDB\Database\ReadOnlySqlGuard;
+use OneDB\Http\ApiRequest;
+use OneDB\Http\CorsPolicy;
+use OneDB\Http\JsonResponse;
+use OneDB\Http\SessionCsrf;
+use OneDB\Support\Environment;
+use OneDB\Support\ErrorResponder;
+use OneDB\Support\UploadLimits;
+use PDOException;
+use Throwable;
+
+/**
+ * Runtime API dispatcher for OneDB.
+ *
+ * This class stays intentionally small and delegates data operations to
+ * specialized service classes under `backend/src/Database` and `backend/src/Http`.
+ */
+final class Runtime
+{
+    /**
+     * Handles API dispatch for backend requests.
+     *
+     * @return bool True when request is handled by runtime API, false otherwise.
+     */
+    public static function dispatch(): bool
+    {
+        if (!ApiRequest::isApiRequest()) {
+            return false;
+        }
+
+        SessionCsrf::bootSession();
+        CorsPolicy::sendDevelopmentHeaders();
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+            http_response_code(204);
+            return true;
+        }
+
+        $action = ApiRequest::resolveAction();
+        if ($action === '') {
+            JsonResponse::send(['ok' => false, 'error' => 'Missing action parameter.'], 400);
+            return true;
+        }
+
+        try {
+            self::dispatchAction($action);
+        } catch (PDOException $e) {
+            JsonResponse::send(['ok' => false, 'error' => ErrorResponder::safeMessage($e)], 500);
+        } catch (Throwable $e) {
+            JsonResponse::send(['ok' => false, 'error' => ErrorResponder::safeMessage($e)], 500);
+        }
+
+        return true;
+    }
+
+    /**
+     * Routes one action to the matching service layer operation.
+     */
+    private static function dispatchAction(string $action): void
+    {
+        switch ($action) {
+            case 'csrf':
+                JsonResponse::send(['ok' => true, 'token' => SessionCsrf::token()]);
+                return;
+
+            case 'ping':
+                JsonResponse::send([
+                    'ok' => true,
+                    'time' => gmdate('c'),
+                    'php' => PHP_VERSION,
+                    'readonly' => Environment::readonlyMode(),
+                ]);
+                return;
+
+            case 'upload_limits':
+                JsonResponse::send([
+                    'ok' => true,
+                    'limits' => UploadLimits::collect(),
+                ]);
+                return;
+
+            case 'test_connection':
+                SessionCsrf::requireValidToken();
+                $payload = ApiRequest::readJson();
+                $pdo = ConnectionFactory::makePdo(self::connectionPayload($payload));
+                $pdo->query('SELECT 1');
+                JsonResponse::send(['ok' => true, 'message' => 'Connection successful.']);
+                return;
+
+            case 'list_databases':
+                SessionCsrf::requireValidToken();
+                $payload = ApiRequest::readJson();
+                JsonResponse::send([
+                    'ok' => true,
+                    'databases' => MetadataService::listDatabases(self::connectionPayload($payload)),
+                ]);
+                return;
+
+            case 'list_tables':
+                SessionCsrf::requireValidToken();
+                $payload = ApiRequest::readJson();
+                JsonResponse::send([
+                    'ok' => true,
+                    'tables' => MetadataService::listTables(self::connectionPayload($payload)),
+                ]);
+                return;
+
+            case 'browse_table':
+                SessionCsrf::requireValidToken();
+                JsonResponse::send(MetadataService::browseTable(ApiRequest::readJson()));
+                return;
+
+            case 'query':
+                SessionCsrf::requireValidToken();
+                self::handleQueryAction(ApiRequest::readJson());
+                return;
+
+            default:
+                JsonResponse::send(['ok' => false, 'error' => 'Unsupported action.'], 404);
+                return;
+        }
+    }
+
+    /**
+     * Executes SQL query action including readonly and payload validation.
+     *
+     * @param array<string,mixed> $payload
+     */
+    private static function handleQueryAction(array $payload): void
+    {
+        $sql = trim((string)($payload['sql'] ?? ''));
+        if ($sql === '') {
+            JsonResponse::send(['ok' => false, 'error' => 'SQL is required.'], 400);
+            return;
+        }
+
+        if (Environment::readonlyMode() && !ReadOnlySqlGuard::isReadOnly($sql)) {
+            JsonResponse::send(['ok' => false, 'error' => 'Readonly mode allows only read queries.'], 403);
+            return;
+        }
+
+        $result = QueryService::execute(self::connectionPayload($payload), $sql);
+        JsonResponse::send($result);
+    }
+
+    /**
+     * Extracts connection payload in a type-safe way.
+     *
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>
+     */
+    private static function connectionPayload(array $payload): array
+    {
+        return is_array($payload['connection'] ?? null) ? $payload['connection'] : [];
+    }
+}
+
+namespace OneDB\Support;
+
+/**
+ * Centralized environment-flag readers for runtime behavior.
+ */
+final class Environment
+{
+    /**
+     * Default maximum number of rows returned from `query` result sets.
+     */
+    private const DEFAULT_MAX_RESULT_ROWS = 2000;
+
+    /**
+     * Returns readonly mode flag (`ONEDB_READONLY`).
+     */
+    public static function readonlyMode(): bool
+    {
+        return self::boolFlag('ONEDB_READONLY');
+    }
+
+    /**
+     * Returns debug mode flag (`ONEDB_DEBUG`).
+     */
+    public static function debugMode(): bool
+    {
+        return self::boolFlag('ONEDB_DEBUG');
+    }
+
+    /**
+     * Reads effective max row limit for SQL result-set responses.
+     */
+    public static function maxResultRows(): int
+    {
+        $raw = trim((string)(getenv('ONEDB_MAX_RESULT_ROWS') ?: ''));
+        if ($raw !== '' && ctype_digit($raw)) {
+            $value = (int)$raw;
+            if ($value > 0) {
+                return min($value, 10000);
+            }
+        }
+
+        return self::DEFAULT_MAX_RESULT_ROWS;
+    }
+
+    /**
+     * Returns normalized boolean value for known env flag conventions.
+     */
+    private static function boolFlag(string $key): bool
+    {
+        $raw = strtolower((string)(getenv($key) ?: '0'));
+        return in_array($raw, ['1', 'true', 'yes', 'on'], true);
+    }
+}
+
+namespace OneDB\Support;
+
+use PDOException;
+use Throwable;
+
+/**
+ * Produces safe client-facing error messages.
+ */
+final class ErrorResponder
+{
+    /**
+     * Returns sanitized error text for API responses.
+     */
+    public static function safeMessage(Throwable $e): string
+    {
+        if (Environment::debugMode()) {
+            return $e->getMessage();
+        }
+
+        return $e instanceof PDOException
+            ? 'Database operation failed.'
+            : 'Unexpected server error.';
+    }
+}
+
+namespace OneDB\Support;
+
+/**
+ * Reads upload and execution limits from php.ini.
+ */
+final class UploadLimits
+{
+    /**
+     * Parses and returns upload/memory related PHP runtime limits.
+     *
+     * @return array<string,mixed>
+     */
+    public static function collect(): array
+    {
+        $uploadRaw = trim((string)(ini_get('upload_max_filesize') ?: ''));
+        $postRaw = trim((string)(ini_get('post_max_size') ?: ''));
+        $memoryRaw = trim((string)(ini_get('memory_limit') ?: ''));
+
+        $uploadBytes = self::iniSizeToBytes($uploadRaw);
+        $postBytes = self::iniSizeToBytes($postRaw);
+        $memoryBytes = self::iniSizeToBytes($memoryRaw);
+
+        return [
+            'uploadMaxFilesize' => [
+                'raw' => $uploadRaw,
+                'bytes' => $uploadBytes,
+            ],
+            'postMaxSize' => [
+                'raw' => $postRaw,
+                'bytes' => $postBytes,
+            ],
+            'memoryLimit' => [
+                'raw' => $memoryRaw,
+                'bytes' => $memoryBytes,
+            ],
+            'maxFileUploads' => self::iniInt('max_file_uploads'),
+            'maxExecutionTime' => self::iniInt('max_execution_time'),
+            'effectiveUploadLimit' => [
+                'bytes' => self::smallestLimit([$uploadBytes, $postBytes]),
+            ],
+        ];
+    }
+
+    /**
+     * Reads integer value from php.ini.
+     */
+    private static function iniInt(string $key): ?int
+    {
+        $raw = ini_get($key);
+        if ($raw === false) {
+            return null;
+        }
+
+        $value = trim((string)$raw);
+        if ($value === '' || !is_numeric($value)) {
+            return null;
+        }
+
+        return (int)$value;
+    }
+
+    /**
+     * Parses php.ini style size value (`2M`, `512K`, `-1`) to bytes.
+     */
+    private static function iniSizeToBytes(string $raw): ?int
+    {
+        $value = strtolower(trim($raw));
+        if ($value === '') {
+            return null;
+        }
+
+        if ($value === '-1') {
+            return -1;
+        }
+
+        if (!preg_match('/^([0-9]+(?:\.[0-9]+)?)\s*([kmgtpe]?b?)?$/', $value, $matches)) {
+            return null;
+        }
+
+        $amount = (float)($matches[1] ?? 0);
+        $unit = rtrim((string)($matches[2] ?? ''), 'b');
+        $powerMap = [
+            '' => 0,
+            'k' => 1,
+            'm' => 2,
+            'g' => 3,
+            't' => 4,
+            'p' => 5,
+            'e' => 6,
+        ];
+
+        if (!array_key_exists($unit, $powerMap)) {
+            return null;
+        }
+
+        $bytes = $amount * (1024 ** $powerMap[$unit]);
+        if (!is_finite($bytes)) {
+            return PHP_INT_MAX;
+        }
+
+        return (int)round(min($bytes, (float)PHP_INT_MAX));
+    }
+
+    /**
+     * Returns smallest finite limit in bytes, preserving unlimited (`-1`) semantics.
+     *
+     * @param array<int|null> $limits
+     */
+    private static function smallestLimit(array $limits): ?int
+    {
+        $finiteLimits = [];
+        $hasUnlimited = false;
+
+        foreach ($limits as $limit) {
+            if (!is_int($limit)) {
+                continue;
+            }
+            if ($limit < 0) {
+                $hasUnlimited = true;
+                continue;
+            }
+            $finiteLimits[] = $limit;
+        }
+
+        if ($finiteLimits !== []) {
+            return min($finiteLimits);
+        }
+
+        return $hasUnlimited ? -1 : null;
     }
 }
 
