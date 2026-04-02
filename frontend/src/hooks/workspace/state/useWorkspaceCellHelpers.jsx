@@ -1,7 +1,17 @@
+import { useCallback, useMemo } from 'react';
 import { Calendar, Hash, ToggleLeft, Type } from 'lucide-react';
 
 export default function useWorkspaceCellHelpers({ lang }) {
-  const getColumnIcon = (type) => {
+  const dateTimeFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : 'en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'medium',
+      }),
+    [lang],
+  );
+
+  const getColumnIcon = useCallback((type) => {
     const normalizedType = type?.toLowerCase() || '';
     if (
       normalizedType.includes('int') ||
@@ -22,9 +32,9 @@ export default function useWorkspaceCellHelpers({ lang }) {
     )
       return <ToggleLeft className="w-3.5 h-3.5 text-zinc-500" />;
     return <Type className="w-3.5 h-3.5 text-zinc-500" />;
-  };
+  }, []);
 
-  const getCellTextValue = (value) => {
+  const getCellTextValue = useCallback((value) => {
     if (value === null || value === undefined) return '';
     if (typeof value === 'object') {
       try {
@@ -34,14 +44,17 @@ export default function useWorkspaceCellHelpers({ lang }) {
       }
     }
     return String(value);
-  };
+  }, []);
 
-  const isJsonColumn = (col) =>
+  const isJsonColumn = useCallback(
+    (col) =>
     String(col?.type || '')
       .toLowerCase()
-      .includes('json');
+      .includes('json'),
+    [],
+  );
 
-  const parseJsonCellValue = (value) => {
+  const parseJsonCellValue = useCallback((value) => {
     if (value === null || value === undefined || value === '') return null;
     if (typeof value === 'object') return value;
     if (typeof value !== 'string') return null;
@@ -51,15 +64,18 @@ export default function useWorkspaceCellHelpers({ lang }) {
     } catch {
       return null;
     }
-  };
+  }, []);
 
-  const formatJsonCellValue = (value) => {
-    const parsed = parseJsonCellValue(value);
-    if (parsed === null) return '';
-    return JSON.stringify(parsed, null, 2);
-  };
+  const formatJsonCellValue = useCallback(
+    (value) => {
+      const parsed = parseJsonCellValue(value);
+      if (parsed === null) return '';
+      return JSON.stringify(parsed, null, 2);
+    },
+    [parseJsonCellValue],
+  );
 
-  const isTimestampColumn = (col) => {
+  const isTimestampColumn = useCallback((col) => {
     const type = String(col?.type || '').toLowerCase();
     return (
       type.includes('timestamp') ||
@@ -67,9 +83,9 @@ export default function useWorkspaceCellHelpers({ lang }) {
       type === 'date' ||
       /_at$/i.test(String(col?.name || ''))
     );
-  };
+  }, []);
 
-  const parseTimestampValue = (value) => {
+  const parseTimestampValue = useCallback((value) => {
     if (value === null || value === undefined || value === '') return null;
     if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
 
@@ -86,18 +102,17 @@ export default function useWorkspaceCellHelpers({ lang }) {
     const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
     const date = new Date(normalized);
     return Number.isNaN(date.getTime()) ? null : date;
-  };
+  }, []);
 
-  const getTimestampTooltip = (value, col) => {
-    if (!isTimestampColumn(col)) return '';
-    const date = parseTimestampValue(value);
-    if (!date) return '';
-
-    return new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : 'en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'medium',
-    }).format(date);
-  };
+  const getTimestampTooltip = useCallback(
+    (value, col) => {
+      if (!isTimestampColumn(col)) return '';
+      const date = parseTimestampValue(value);
+      if (!date) return '';
+      return dateTimeFormatter.format(date);
+    },
+    [dateTimeFormatter, isTimestampColumn, parseTimestampValue],
+  );
 
   return {
     getColumnIcon,

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import {
   ArrowDownUp,
   Check,
@@ -85,6 +85,7 @@ export default function TableBrowserView({
   const filterButtonRef = useRef(null);
   const columnsButtonRef = useRef(null);
   const columnTriggerRefs = useRef({});
+  const rowOffset = (page - 1) * rowsPerPage;
   const allRowsSelected = paginatedData.length > 0 && selectedRows.size === paginatedData.length;
   const appliedServerFilterEntries = Object.entries(serverColumnFilters || {}).filter(
     ([, filterConfig]) =>
@@ -92,6 +93,41 @@ export default function TableBrowserView({
       typeof filterConfig === 'object' &&
       String(filterConfig.value ?? '').trim() !== '',
   );
+  const cellMetaByRow = useMemo(() => {
+    const metadata = new Map();
+
+    for (const row of paginatedData) {
+      const columnMeta = {};
+
+      for (const col of visibleColumns) {
+        const rawValue = row[col.name];
+        const cellTextValue = getCellTextValue(rawValue);
+        const timestampTooltip = getTimestampTooltip(rawValue, col);
+        const hoverTooltip = timestampTooltip || (cellTextValue.length > 35 ? cellTextValue : '');
+
+        columnMeta[col.name] = {
+          rawValue,
+          cellTextValue,
+          timestampTooltip,
+          hoverTooltip,
+          jsonPreview: isJsonColumn(col) ? formatJsonCellValue(rawValue) : '',
+          renderedValue: renderCellContent(row, col),
+        };
+      }
+
+      metadata.set(row._origIndex, columnMeta);
+    }
+
+    return metadata;
+  }, [
+    formatJsonCellValue,
+    getCellTextValue,
+    getTimestampTooltip,
+    isJsonColumn,
+    paginatedData,
+    renderCellContent,
+    visibleColumns,
+  ]);
 
   return (
     <div className="flex-1 flex flex-col h-full relative">
@@ -454,18 +490,21 @@ export default function TableBrowserView({
                       </span>
                     )}
                     <span className={selectedRows.has(row._origIndex) ? tc.textLight : ''}>
-                      {(page - 1) * rowsPerPage + index + 1}
+                      {rowOffset + index + 1}
                     </span>
                   </div>
                 </td>
 
                 {visibleColumns.map((col) => {
-                  const rawValue = row[col.name];
-                  const cellTextValue = getCellTextValue(rawValue);
-                  const timestampTooltip = getTimestampTooltip(rawValue, col);
-                  const hoverTooltip =
-                    timestampTooltip || (cellTextValue.length > 35 ? cellTextValue : '');
-                  const jsonPreview = isJsonColumn(col) ? formatJsonCellValue(rawValue) : '';
+                  const cellMeta = cellMetaByRow.get(row._origIndex)?.[col.name];
+                  const rawValue = cellMeta?.rawValue ?? row[col.name];
+                  const cellTextValue = cellMeta?.cellTextValue ?? getCellTextValue(rawValue);
+                  const timestampTooltip =
+                    cellMeta?.timestampTooltip ?? getTimestampTooltip(rawValue, col);
+                  const hoverTooltip = cellMeta?.hoverTooltip ?? '';
+                  const jsonPreview =
+                    cellMeta?.jsonPreview ??
+                    (isJsonColumn(col) ? formatJsonCellValue(rawValue) : '');
                   const isEditingThisCell =
                     editingCell?.rowIndex === row._origIndex && editingCell?.colName === col.name;
 
@@ -505,7 +544,7 @@ export default function TableBrowserView({
                         ) : (
                           <HoverTooltip content={hoverTooltip}>
                             <div className="truncate w-full block">
-                              {renderCellContent(row, col)}
+                              {cellMeta?.renderedValue ?? renderCellContent(row, col)}
                             </div>
                           </HoverTooltip>
                         )}
