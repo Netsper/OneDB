@@ -100,7 +100,7 @@ The backend allows CORS for local frontend origins (`localhost:5173` / `127.0.0.
 Build flow:
 
 1. Install frontend dependencies if missing
-2. Run backend smoke tests (`php tests/backend/smoke.php`)
+2. Run backend smoke tests (`php backend/tests/smoke.php`)
 3. Build frontend with `ONEDB_EMBEDDED=1`
 4. Pack frontend output + PHP runtime into `release/OneDB.php`
 
@@ -109,7 +109,7 @@ Build flow:
 Run manually:
 
 ```bash
-php tests/backend/smoke.php
+php backend/tests/smoke.php
 ```
 
 Covered API actions:

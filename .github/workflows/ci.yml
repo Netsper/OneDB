@@ -35,7 +35,7 @@ jobs:
         run: npm --prefix frontend ci
 
       - name: Backend smoke tests
-        run: php tests/backend/smoke.php
+        run: php backend/tests/smoke.php
 
       - name: Frontend unit and integration tests
         run: npm --prefix frontend test

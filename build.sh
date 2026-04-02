@@ -25,7 +25,7 @@ if [ ! -d "frontend/node_modules" ]; then
 fi
 
 echo "Running backend smoke tests..."
-php tests/backend/smoke.php
+php backend/tests/smoke.php
 
 echo "Building frontend..."
 ONEDB_EMBEDDED=1 npm --prefix frontend run build
