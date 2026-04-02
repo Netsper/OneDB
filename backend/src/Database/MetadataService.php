@@ -190,6 +190,7 @@ final class MetadataService
         $page = max(1, (int)($payload['page'] ?? 1));
         $perPage = max(1, min(200, (int)($payload['perPage'] ?? 25)));
         $includeRowCount = !array_key_exists('includeRowCount', $payload) || (bool)$payload['includeRowCount'];
+        $includeInsights = (bool)($payload['includeInsights'] ?? false);
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
 
         $pdo = ConnectionFactory::makePdo($connection);
@@ -319,6 +320,17 @@ final class MetadataService
         $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
         $durationMs = (microtime(true) - $startedAt) * 1000;
 
+        $insights = null;
+        if ($includeInsights) {
+            $tableType = 'table';
+            if (is_array($payload['tableType'] ?? null)) {
+                $tableType = 'table';
+            } elseif (is_string($payload['tableType'] ?? null)) {
+                $tableType = strtolower((string)$payload['tableType']) === 'view' ? 'view' : 'table';
+            }
+            $insights = self::describeTableInsights($pdo, $connection, $table, $tableType);
+        }
+
         return [
             'ok' => true,
             'kind' => 'browse_table',
@@ -328,6 +340,7 @@ final class MetadataService
             'page' => $page,
             'perPage' => $perPage,
             'durationMs' => round($durationMs, 2),
+            'insights' => $insights,
         ];
     }
 
@@ -503,5 +516,462 @@ final class MetadataService
         }
 
         return 'CAST(' . $quotedColumn . ' AS TEXT)';
+    }
+
+    /**
+     * Returns advanced schema insights for one table/view.
+     *
+     * @param array<string,mixed> $connection
+     * @return array<string,mixed>
+     */
+    private static function describeTableInsights(
+        PDO $pdo,
+        array $connection,
+        string $table,
+        string $tableType
+    ): array {
+        $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
+
+        return [
+            'indexes' => self::listTableIndexes($pdo, $driver, $table),
+            'foreignKeys' => self::listForeignKeys($pdo, $driver, $table),
+            'referencedBy' => self::listReferencedBy($pdo, $driver, $table),
+            'viewDefinition' => $tableType === 'view'
+                ? self::loadViewDefinition($pdo, $driver, $table)
+                : null,
+            'relatedRoutines' => self::listRelatedRoutines($pdo, $driver, $table),
+        ];
+    }
+
+    /**
+     * Lists table indexes with column ordering and uniqueness metadata.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private static function listTableIndexes(PDO $pdo, string $driver, string $table): array
+    {
+        if ($driver === 'sqlite') {
+            return self::listSqliteIndexes($pdo, $table);
+        }
+
+        if ($driver === 'pgsql') {
+            $stmt = $pdo->prepare("
+                SELECT
+                    i.indexname AS index_name,
+                    i.indexdef AS index_definition
+                FROM pg_indexes i
+                WHERE i.schemaname = 'public'
+                  AND i.tablename = :table_name
+                ORDER BY i.indexname;
+            ");
+            $stmt->bindValue(':table_name', $table);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return array_values(array_filter(array_map(
+                static function (array $row): array {
+                    $indexName = trim((string)($row['index_name'] ?? ''));
+                    if ($indexName === '') {
+                        return [];
+                    }
+
+                    $definition = trim((string)($row['index_definition'] ?? ''));
+                    $isUnique = stripos($definition, 'UNIQUE INDEX') !== false;
+                    $columns = [];
+                    if (preg_match('/\((.+)\)\s*$/', $definition, $matches) === 1) {
+                        $columnParts = explode(',', (string)($matches[1] ?? ''));
+                        foreach ($columnParts as $part) {
+                            $clean = trim((string)$part);
+                            if ($clean !== '') {
+                                $columns[] = $clean;
+                            }
+                        }
+                    }
+
+                    return [
+                        'name' => $indexName,
+                        'unique' => $isUnique,
+                        'columns' => $columns,
+                        'definition' => $definition,
+                    ];
+                },
+                $rows
+            )));
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT
+                s.INDEX_NAME AS index_name,
+                MIN(s.NON_UNIQUE) AS non_unique,
+                GROUP_CONCAT(s.COLUMN_NAME ORDER BY s.SEQ_IN_INDEX SEPARATOR ',') AS column_list
+            FROM information_schema.statistics s
+            WHERE s.table_schema = DATABASE()
+              AND s.table_name = :table_name
+            GROUP BY s.INDEX_NAME
+            ORDER BY s.INDEX_NAME;
+        ");
+        $stmt->bindValue(':table_name', $table);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return array_values(array_filter(array_map(
+            static function (array $row): array {
+                $indexName = trim((string)($row['index_name'] ?? ''));
+                if ($indexName === '') {
+                    return [];
+                }
+
+                $columnList = trim((string)($row['column_list'] ?? ''));
+                $columns = $columnList === '' ? [] : array_map('trim', explode(',', $columnList));
+
+                return [
+                    'name' => $indexName,
+                    'unique' => (int)($row['non_unique'] ?? 1) === 0,
+                    'columns' => $columns,
+                    'definition' => null,
+                ];
+            },
+            $rows
+        )));
+    }
+
+    /**
+     * Lists SQLite indexes for the selected table.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private static function listSqliteIndexes(PDO $pdo, string $table): array
+    {
+        $quoted = self::quoteIdentifier($table, 'sqlite');
+        $indexRows = $pdo->query('PRAGMA index_list(' . $quoted . ')')->fetchAll(PDO::FETCH_ASSOC);
+        $indexes = [];
+
+        foreach ($indexRows as $indexRow) {
+            $indexName = trim((string)($indexRow['name'] ?? ''));
+            if ($indexName === '') {
+                continue;
+            }
+
+            $indexInfo = $pdo
+                ->query('PRAGMA index_info(' . self::quoteIdentifier($indexName, 'sqlite') . ')')
+                ->fetchAll(PDO::FETCH_ASSOC);
+            $columns = [];
+            foreach ($indexInfo as $columnRow) {
+                $columnName = trim((string)($columnRow['name'] ?? ''));
+                if ($columnName !== '') {
+                    $columns[] = $columnName;
+                }
+            }
+
+            $indexes[] = [
+                'name' => $indexName,
+                'unique' => (int)($indexRow['unique'] ?? 0) === 1,
+                'columns' => $columns,
+                'definition' => null,
+            ];
+        }
+
+        return $indexes;
+    }
+
+    /**
+     * Lists outgoing foreign keys for the selected table.
+     *
+     * @return array<int,array<string,string>>
+     */
+    private static function listForeignKeys(PDO $pdo, string $driver, string $table): array
+    {
+        if ($driver === 'sqlite') {
+            $rows = $pdo
+                ->query('PRAGMA foreign_key_list(' . self::quoteIdentifier($table, 'sqlite') . ')')
+                ->fetchAll(PDO::FETCH_ASSOC);
+
+            return array_values(array_filter(array_map(
+                static function (array $row): array {
+                    $from = trim((string)($row['from'] ?? ''));
+                    $toTable = trim((string)($row['table'] ?? ''));
+                    $toColumn = trim((string)($row['to'] ?? ''));
+                    if ($from === '' || $toTable === '' || $toColumn === '') {
+                        return [];
+                    }
+
+                    return [
+                        'constraint' => 'fk_' . $from,
+                        'column' => $from,
+                        'referencedTable' => $toTable,
+                        'referencedColumn' => $toColumn,
+                    ];
+                },
+                $rows
+            )));
+        }
+
+        if ($driver === 'pgsql') {
+            $stmt = $pdo->prepare("
+                SELECT
+                    tc.constraint_name AS constraint_name,
+                    kcu.column_name AS column_name,
+                    ccu.table_name AS referenced_table_name,
+                    ccu.column_name AS referenced_column_name
+                FROM information_schema.table_constraints tc
+                INNER JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                   AND tc.table_schema = kcu.table_schema
+                INNER JOIN information_schema.constraint_column_usage ccu
+                    ON ccu.constraint_name = tc.constraint_name
+                   AND ccu.table_schema = tc.table_schema
+                WHERE tc.constraint_type = 'FOREIGN KEY'
+                  AND tc.table_schema = 'public'
+                  AND tc.table_name = :table_name
+                ORDER BY tc.constraint_name, kcu.ordinal_position;
+            ");
+            $stmt->bindValue(':table_name', $table);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT
+                    CONSTRAINT_NAME AS constraint_name,
+                    COLUMN_NAME AS column_name,
+                    REFERENCED_TABLE_NAME AS referenced_table_name,
+                    REFERENCED_COLUMN_NAME AS referenced_column_name
+                FROM information_schema.key_column_usage
+                WHERE table_schema = DATABASE()
+                  AND table_name = :table_name
+                  AND REFERENCED_TABLE_NAME IS NOT NULL
+                ORDER BY CONSTRAINT_NAME, ORDINAL_POSITION;
+            ");
+            $stmt->bindValue(':table_name', $table);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        return array_values(array_filter(array_map(
+            static function (array $row): array {
+                $column = trim((string)($row['column_name'] ?? ''));
+                $toTable = trim((string)($row['referenced_table_name'] ?? ''));
+                $toColumn = trim((string)($row['referenced_column_name'] ?? ''));
+                if ($column === '' || $toTable === '' || $toColumn === '') {
+                    return [];
+                }
+
+                return [
+                    'constraint' => trim((string)($row['constraint_name'] ?? '')),
+                    'column' => $column,
+                    'referencedTable' => $toTable,
+                    'referencedColumn' => $toColumn,
+                ];
+            },
+            $rows
+        )));
+    }
+
+    /**
+     * Lists incoming references from other tables to the selected table.
+     *
+     * @return array<int,array<string,string>>
+     */
+    private static function listReferencedBy(PDO $pdo, string $driver, string $table): array
+    {
+        if ($driver === 'sqlite') {
+            $tables = $pdo->query("
+                SELECT name
+                FROM sqlite_master
+                WHERE type = 'table'
+                  AND name NOT LIKE 'sqlite_%'
+                ORDER BY name;
+            ")->fetchAll(PDO::FETCH_ASSOC);
+            $relations = [];
+            foreach ($tables as $tableRow) {
+                $fromTable = trim((string)($tableRow['name'] ?? ''));
+                if ($fromTable === '') {
+                    continue;
+                }
+                $fkRows = $pdo
+                    ->query('PRAGMA foreign_key_list(' . self::quoteIdentifier($fromTable, 'sqlite') . ')')
+                    ->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($fkRows as $fkRow) {
+                    $toTable = trim((string)($fkRow['table'] ?? ''));
+                    if ($toTable !== $table) {
+                        continue;
+                    }
+                    $fromColumn = trim((string)($fkRow['from'] ?? ''));
+                    $toColumn = trim((string)($fkRow['to'] ?? ''));
+                    if ($fromColumn === '' || $toColumn === '') {
+                        continue;
+                    }
+                    $relations[] = [
+                        'constraint' => 'fk_' . $fromTable . '_' . $fromColumn,
+                        'table' => $fromTable,
+                        'column' => $fromColumn,
+                        'targetColumn' => $toColumn,
+                    ];
+                }
+            }
+
+            return $relations;
+        }
+
+        if ($driver === 'pgsql') {
+            $stmt = $pdo->prepare("
+                SELECT
+                    tc.constraint_name AS constraint_name,
+                    kcu.table_name AS table_name,
+                    kcu.column_name AS column_name,
+                    ccu.column_name AS referenced_column_name
+                FROM information_schema.table_constraints tc
+                INNER JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                   AND tc.table_schema = kcu.table_schema
+                INNER JOIN information_schema.constraint_column_usage ccu
+                    ON ccu.constraint_name = tc.constraint_name
+                   AND ccu.table_schema = tc.table_schema
+                WHERE tc.constraint_type = 'FOREIGN KEY'
+                  AND tc.table_schema = 'public'
+                  AND ccu.table_name = :table_name
+                ORDER BY kcu.table_name, tc.constraint_name, kcu.ordinal_position;
+            ");
+            $stmt->bindValue(':table_name', $table);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT
+                    CONSTRAINT_NAME AS constraint_name,
+                    TABLE_NAME AS table_name,
+                    COLUMN_NAME AS column_name,
+                    REFERENCED_COLUMN_NAME AS referenced_column_name
+                FROM information_schema.key_column_usage
+                WHERE table_schema = DATABASE()
+                  AND REFERENCED_TABLE_NAME = :table_name
+                ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION;
+            ");
+            $stmt->bindValue(':table_name', $table);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        return array_values(array_filter(array_map(
+            static function (array $row): array {
+                $fromTable = trim((string)($row['table_name'] ?? ''));
+                $fromColumn = trim((string)($row['column_name'] ?? ''));
+                $targetColumn = trim((string)($row['referenced_column_name'] ?? ''));
+                if ($fromTable === '' || $fromColumn === '' || $targetColumn === '') {
+                    return [];
+                }
+
+                return [
+                    'constraint' => trim((string)($row['constraint_name'] ?? '')),
+                    'table' => $fromTable,
+                    'column' => $fromColumn,
+                    'targetColumn' => $targetColumn,
+                ];
+            },
+            $rows
+        )));
+    }
+
+    /**
+     * Loads SQL definition text for a view.
+     */
+    private static function loadViewDefinition(PDO $pdo, string $driver, string $viewName): ?string
+    {
+        if ($driver === 'sqlite') {
+            $stmt = $pdo->prepare("
+                SELECT sql
+                FROM sqlite_master
+                WHERE type = 'view'
+                  AND name = :view_name
+                LIMIT 1;
+            ");
+            $stmt->bindValue(':view_name', $viewName);
+            $stmt->execute();
+            $value = $stmt->fetchColumn();
+            return is_string($value) && trim($value) !== '' ? trim($value) : null;
+        }
+
+        if ($driver === 'pgsql') {
+            $stmt = $pdo->prepare("
+                SELECT view_definition
+                FROM information_schema.views
+                WHERE table_schema = 'public'
+                  AND table_name = :view_name
+                LIMIT 1;
+            ");
+            $stmt->bindValue(':view_name', $viewName);
+            $stmt->execute();
+            $value = $stmt->fetchColumn();
+            return is_string($value) && trim($value) !== '' ? trim($value) : null;
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT view_definition
+            FROM information_schema.views
+            WHERE table_schema = DATABASE()
+              AND table_name = :view_name
+            LIMIT 1;
+        ");
+        $stmt->bindValue(':view_name', $viewName);
+        $stmt->execute();
+        $value = $stmt->fetchColumn();
+        return is_string($value) && trim($value) !== '' ? trim($value) : null;
+    }
+
+    /**
+     * Lists routines that reference the selected table/view name in definition text.
+     *
+     * @return array<int,array<string,string>>
+     */
+    private static function listRelatedRoutines(PDO $pdo, string $driver, string $table): array
+    {
+        if ($driver === 'sqlite') {
+            return [];
+        }
+
+        $needle = '%' . $table . '%';
+
+        if ($driver === 'pgsql') {
+            $stmt = $pdo->prepare("
+                SELECT
+                    routine_name,
+                    routine_type
+                FROM information_schema.routines
+                WHERE specific_schema = 'public'
+                  AND COALESCE(routine_definition, '') ILIKE :needle
+                ORDER BY routine_type, routine_name
+                LIMIT 50;
+            ");
+            $stmt->bindValue(':needle', $needle);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT
+                    ROUTINE_NAME AS routine_name,
+                    ROUTINE_TYPE AS routine_type
+                FROM information_schema.routines
+                WHERE ROUTINE_SCHEMA = DATABASE()
+                  AND COALESCE(ROUTINE_DEFINITION, '') LIKE :needle
+                ORDER BY ROUTINE_TYPE, ROUTINE_NAME
+                LIMIT 50;
+            ");
+            $stmt->bindValue(':needle', $needle);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        return array_values(array_filter(array_map(
+            static function (array $row): array {
+                $name = trim((string)($row['routine_name'] ?? ''));
+                if ($name === '') {
+                    return [];
+                }
+                return [
+                    'name' => $name,
+                    'type' => strtoupper(trim((string)($row['routine_type'] ?? 'ROUTINE'))),
+                ];
+            },
+            $rows
+        )));
     }
 }

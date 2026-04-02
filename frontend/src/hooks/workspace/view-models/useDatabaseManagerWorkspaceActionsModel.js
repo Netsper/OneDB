@@ -72,6 +72,7 @@ export default function useDatabaseManagerWorkspaceActionsModel(model, apiModel)
     refreshActiveTable,
     showToast,
     t,
+    currentDriver,
   });
 
   const workspaceTableViewState = useWorkspaceTableViewState({

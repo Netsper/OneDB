@@ -250,15 +250,21 @@ export default function useOneDbApi({
       const nextPage = overrides.page ?? page;
       const nextPerPage = overrides.perPage ?? rowsPerPage;
       const includeRowCount = shouldIncludeBrowseRowCount(nextPage, overrides.includeRowCount);
+      const hasInsights = Boolean(databases?.[dbName]?.[tableName]?.insightsLoaded);
+      const includeInsights =
+        typeof overrides.includeInsights === 'boolean' ? overrides.includeInsights : !hasInsights;
       const nextSort = overrides.sort ?? (sortConfig.key ? sortConfig : null);
       const nextColumnFilters = overrides.columnFilters ?? serverColumnFilters;
       const nextRuleFilters = overrides.ruleFilters ?? filterRules;
+      const tableType = String(databases?.[dbName]?.[tableName]?.type || 'table').toLowerCase();
       const result = await callApi('browse_table', {
         connection: buildConnectionPayload(dbName),
         table: tableName,
+        tableType,
         page: nextPage,
         perPage: nextPerPage,
         includeRowCount,
+        includeInsights,
         sort: nextSort?.key ? { column: nextSort.key, direction: nextSort.direction } : null,
         filters: buildBrowseFilters(nextColumnFilters, nextRuleFilters),
       });
@@ -284,6 +290,9 @@ export default function useOneDbApi({
               data: rows,
               rowCount,
               columnCount: columns.length,
+              insights: includeInsights ? result.insights || null : currentEntry.insights || null,
+              insightsLoaded:
+                includeInsights || Boolean(currentEntry.insightsLoaded || result.insights),
               loaded: true,
               page: Number(result.page || nextPage),
               perPage: Number(result.perPage || nextPerPage),
@@ -298,6 +307,7 @@ export default function useOneDbApi({
       buildBrowseFilters,
       buildConnectionPayload,
       callApi,
+      databases,
       filterRules,
       page,
       rowsPerPage,

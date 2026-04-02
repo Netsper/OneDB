@@ -357,6 +357,8 @@ function run_smoke_suite(): void
                 'page' => 1,
                 'perPage' => 25,
                 'includeRowCount' => true,
+                'includeInsights' => true,
+                'tableType' => 'table',
                 'sort' => ['column' => 'id', 'direction' => 'asc'],
             ],
             $cookieJar,
@@ -365,6 +367,12 @@ function run_smoke_suite(): void
         assert_same(200, $browse['status'], 'browse_table status must be 200');
         assert_same(2, (int)($browse['json']['rowCount'] ?? -1), 'browse_table rowCount must be 2');
         assert_same(2, count((array)($browse['json']['rows'] ?? [])), 'browse_table must return two rows');
+        $insights = (array)($browse['json']['insights'] ?? []);
+        assert_true(array_key_exists('indexes', $insights), 'browse_table insights must include indexes');
+        assert_true(array_key_exists('foreignKeys', $insights), 'browse_table insights must include foreign keys');
+        assert_true(array_key_exists('referencedBy', $insights), 'browse_table insights must include incoming references');
+        assert_true(array_key_exists('viewDefinition', $insights), 'browse_table insights must include view definition key');
+        assert_true(array_key_exists('relatedRoutines', $insights), 'browse_table insights must include related routines');
 
         $select = call_api(
             $baseUrl,

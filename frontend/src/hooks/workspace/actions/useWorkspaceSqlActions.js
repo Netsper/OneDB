@@ -60,6 +60,44 @@ export const mapExplainRowToPlanItem = (row, getFirstValue) => {
   };
 };
 
+const mapMysqlJsonToPlanItems = (planJson) => {
+  const queryCost =
+    planJson?.query_block?.cost_info?.query_cost ??
+    planJson?.cost_info?.query_cost ??
+    planJson?.query_cost ??
+    '-';
+
+  return [
+    {
+      node: 'JSON PLAN',
+      entity: String(planJson?.query_block?.select_id ?? '-'),
+      cost: String(queryCost),
+      rows: '-',
+      time: '-',
+      raw: planJson,
+    },
+  ];
+};
+
+const mapExplainRowsToPlanItems = (rows, getFirstValue) => {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  if (safeRows.length === 0) return [];
+
+  const firstValue = getFirstValue(safeRows[0]);
+  const firstText = String(firstValue ?? '').trim();
+
+  if (firstText.startsWith('{') || firstText.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(firstText);
+      return mapMysqlJsonToPlanItems(parsed);
+    } catch {
+      // fall through to row mapper
+    }
+  }
+
+  return safeRows.map((row) => mapExplainRowToPlanItem(row, getFirstValue));
+};
+
 export default function useWorkspaceSqlActions({
   sqlQuery,
   setIsQueryRunning,
@@ -79,6 +117,7 @@ export default function useWorkspaceSqlActions({
   t,
   setSqlQuery,
   setSqlSnippets,
+  currentDriver,
 }) {
   const runSql = async () => {
     const sql = sqlQuery.trim();
@@ -100,14 +139,57 @@ export default function useWorkspaceSqlActions({
           (name) => ({ name: String(name) }),
         );
         let plan = null;
+        let planCompare = null;
         if (/^(select|with)\b/i.test(sql)) {
           try {
             const explainResult = await executeSql(`EXPLAIN ${sql}`, activeDb || '');
-            plan = (explainResult.rows || []).map((row) =>
-              mapExplainRowToPlanItem(row, getFirstValue),
-            );
+            plan = mapExplainRowsToPlanItems(explainResult.rows || [], getFirstValue);
           } catch {
             plan = null;
+          }
+
+          if (plan && plan.length > 0) {
+            try {
+              if (currentDriver === 'pgsql') {
+                const analyzeResult = await executeSql(
+                  `EXPLAIN (ANALYZE, BUFFERS) ${sql}`,
+                  activeDb || '',
+                );
+                const actualPlan = mapExplainRowsToPlanItems(analyzeResult.rows || [], getFirstValue);
+                if (actualPlan.length > 0) {
+                  planCompare = {
+                    estimated: plan,
+                    actual: actualPlan,
+                  };
+                }
+              } else if (currentDriver === 'mysql') {
+                const jsonPlanResult = await executeSql(`EXPLAIN FORMAT=JSON ${sql}`, activeDb || '');
+                const actualPlan = mapExplainRowsToPlanItems(
+                  jsonPlanResult.rows || [],
+                  getFirstValue,
+                );
+                if (actualPlan.length > 0) {
+                  planCompare = {
+                    estimated: plan,
+                    actual: actualPlan,
+                  };
+                }
+              } else if (currentDriver === 'sqlite') {
+                const sqlitePlanResult = await executeSql(`EXPLAIN QUERY PLAN ${sql}`, activeDb || '');
+                const actualPlan = mapExplainRowsToPlanItems(
+                  sqlitePlanResult.rows || [],
+                  getFirstValue,
+                );
+                if (actualPlan.length > 0) {
+                  planCompare = {
+                    estimated: plan,
+                    actual: actualPlan,
+                  };
+                }
+              }
+            } catch {
+              planCompare = null;
+            }
           }
         }
 
@@ -116,6 +198,7 @@ export default function useWorkspaceSqlActions({
           data: result.rows || [],
           time: elapsedSec,
           plan,
+          planCompare,
         });
       } else {
         setSqlResult(null);

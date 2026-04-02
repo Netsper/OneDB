@@ -38,6 +38,29 @@ export default function SqlEditorView({
   exportToCSV,
   copyToClipboard,
 }) {
+  const renderPlanSteps = (steps) =>
+    (Array.isArray(steps) ? steps : []).map((planItem, i) => (
+      <div key={i} className="flex items-start gap-4 mb-3 relative pl-6">
+        <div className="absolute left-1.5 top-1.5 bottom-[-1rem] w-[1px] bg-[#333]" />
+        <GitCommit className="w-3 h-3 text-zinc-500 absolute left-0 top-1 bg-[#1c1c1c]" />
+        <div className="flex-1">
+          <div className="text-emerald-400 font-bold mb-1">
+            {planItem.node}{' '}
+            {planItem.entity !== '-' && (
+              <>
+                on <span className="text-zinc-200">"{planItem.entity}"</span>
+              </>
+            )}
+          </div>
+          <div className="text-zinc-500">
+            {t('cost')}: <span className="text-zinc-400">{planItem.cost}</span> • {t('rows')}:{' '}
+            <span className="text-zinc-400">{planItem.rows}</span> • {t('time')}:{' '}
+            <span className="text-zinc-400">{planItem.time}s</span>
+          </div>
+        </div>
+      </div>
+    ));
+
   return (
     <div className="flex-1 flex flex-col h-full bg-[#18181b]" ref={sqlContainerRef}>
       <div
@@ -251,30 +274,32 @@ export default function SqlEditorView({
                     </div>
                   </div>
                   {sqlResult.plan ? (
-                    sqlResult.plan.map((planItem, i) => (
-                      <div key={i} className="flex items-start gap-4 mb-3 relative pl-6">
-                        <div className="absolute left-1.5 top-1.5 bottom-[-1rem] w-[1px] bg-[#333]" />
-                        <GitCommit className="w-3 h-3 text-zinc-500 absolute left-0 top-1 bg-[#1c1c1c]" />
-                        <div className="flex-1">
-                          <div className="text-emerald-400 font-bold mb-1">
-                            {planItem.node}{' '}
-                            {planItem.entity !== '-' && (
-                              <>
-                                on <span className="text-zinc-200">"{planItem.entity}"</span>
-                              </>
-                            )}
-                          </div>
-                          <div className="text-zinc-500">
-                            {t('cost')}: <span className="text-zinc-400">{planItem.cost}</span> •{' '}
-                            {t('rows')}: <span className="text-zinc-400">{planItem.rows}</span> •{' '}
-                            {t('time')}: <span className="text-zinc-400">{planItem.time}s</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
+                    renderPlanSteps(sqlResult.plan)
                   ) : (
                     <div className="text-zinc-500">{t('noPlan')}</div>
                   )}
+
+                  <div className="mt-4 pt-4 border-t border-[#2e2e32]">
+                    <div className="text-zinc-300 font-semibold mb-3">{t('explainCompareTitle')}</div>
+                    {sqlResult.planCompare ? (
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <div className="border border-[#2e2e32] rounded bg-[#18181b] p-3">
+                          <div className="text-[11px] uppercase tracking-wide text-zinc-500 mb-3">
+                            {t('explainEstimated')}
+                          </div>
+                          {renderPlanSteps(sqlResult.planCompare.estimated)}
+                        </div>
+                        <div className="border border-[#2e2e32] rounded bg-[#18181b] p-3">
+                          <div className="text-[11px] uppercase tracking-wide text-zinc-500 mb-3">
+                            {t('explainActual')}
+                          </div>
+                          {renderPlanSteps(sqlResult.planCompare.actual)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-zinc-500 text-xs">{t('explainCompareEmpty')}</div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
