@@ -340,18 +340,33 @@ export default function useWorkspaceImportExportActions({
         filters: [],
       });
 
-      if (expectedRowCount === null) {
-        expectedRowCount = Number(result.rowCount || 0);
+      if (
+        expectedRowCount === null &&
+        result.rowCount !== undefined &&
+        result.rowCount !== null &&
+        result.rowCount !== ''
+      ) {
+        const parsedRowCount = Number(result.rowCount);
+        if (Number.isFinite(parsedRowCount) && parsedRowCount >= 0) {
+          expectedRowCount = parsedRowCount;
+        }
       }
 
       const pageRows = Array.isArray(result.rows) ? result.rows : [];
       rows.push(...pageRows);
 
-      if (
-        pageRows.length === 0 ||
-        (expectedRowCount !== null && rows.length >= expectedRowCount) ||
-        pageRows.length < perPage
-      ) {
+      const expectedRowCountKnown =
+        expectedRowCount !== null && Number.isFinite(expectedRowCount) && expectedRowCount >= 0;
+
+      if (pageRows.length === 0) {
+        break;
+      }
+
+      if (expectedRowCountKnown && rows.length >= expectedRowCount) {
+        break;
+      }
+
+      if (!expectedRowCountKnown && pageRows.length < perPage) {
         break;
       }
 
