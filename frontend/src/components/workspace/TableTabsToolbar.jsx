@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Code,
   Columns,
@@ -79,6 +79,8 @@ export default function TableTabsToolbar({
     [openTableTabs, activeDb, activeTable],
   );
   const shouldShowTableTabs = tableTabs.length > 1;
+  const tabsScrollRef = useRef(null);
+  const tabButtonRefs = useRef({});
   const [tabContextMenu, setTabContextMenu] = useState({
     visible: false,
     x: 0,
@@ -109,6 +111,23 @@ export default function TableTabsToolbar({
     };
   }, [tabContextMenu.visible]);
 
+  useEffect(() => {
+    if (!shouldShowTableTabs || !activeTableTabId) return;
+    const activeNode = tabButtonRefs.current[activeTableTabId];
+    const scrollNode = tabsScrollRef.current;
+    if (!activeNode || !scrollNode) return;
+
+    const timeoutId = window.setTimeout(() => {
+      activeNode.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTableTabId, shouldShowTableTabs, tableTabs]);
+
   const openTabContextMenu = (event, tabId) => {
     event.preventDefault();
     event.stopPropagation();
@@ -127,13 +146,23 @@ export default function TableTabsToolbar({
   return (
     <div className="px-6 border-b border-[#2e2e32] bg-[#1c1c1c] shrink-0">
       {shouldShowTableTabs && (
-        <div className="flex items-center gap-2 py-2 border-b border-[#252529] overflow-x-auto scrollbar-none">
+        <div
+          ref={tabsScrollRef}
+          className="flex items-center gap-2 py-2 border-b border-[#252529] overflow-x-auto scrollbar-none"
+        >
           {tableTabs.map((tab) => {
             const isActive = tab.id === activeTableTabId;
             const isPinned = Boolean(tab.pinned);
             return (
               <button
                 key={tab.id}
+                ref={(node) => {
+                  if (node) {
+                    tabButtonRefs.current[tab.id] = node;
+                  } else {
+                    delete tabButtonRefs.current[tab.id];
+                  }
+                }}
                 type="button"
                 onClick={() => onActivateTableTab(tab.id)}
                 onContextMenu={(event) => openTabContextMenu(event, tab.id)}

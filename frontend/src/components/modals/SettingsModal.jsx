@@ -13,11 +13,11 @@ import {
 
 function AccordionSection({ icon: Icon, title, description, isOpen, onToggle, children }) {
   return (
-    <section className="rounded-xl border border-[#2f2f33] bg-[#151518] overflow-hidden">
+    <section className="border-b border-[#2b2b30] overflow-hidden bg-transparent">
       <button
         type="button"
         onClick={onToggle}
-        className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#1b1b1f] transition-colors"
+        className="sticky top-0 z-20 w-full px-4 py-3.5 flex items-center justify-between text-left bg-[#17171a]/96 backdrop-blur-sm hover:bg-[#1b1b1f] transition-colors border-b border-[#232327]"
       >
         <div className="min-w-0">
           <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
@@ -33,24 +33,24 @@ function AccordionSection({ icon: Icon, title, description, isOpen, onToggle, ch
         />
       </button>
 
-      {isOpen ? <div className="px-4 pb-4 border-t border-[#2a2a2e] space-y-3 pt-3">{children}</div> : null}
+      {isOpen ? <div className="space-y-0">{children}</div> : null}
     </section>
   );
 }
 
 function SettingRow({ title, description, children }) {
   return (
-    <div className="rounded-lg border border-[#2d2d31] bg-[#111113] px-3 py-2.5 space-y-1.5">
+    <div className="border-b border-[#25252a] bg-[#131316] px-4 py-3 space-y-1.5">
       <p className="text-sm text-zinc-100">{title}</p>
-      {description ? <p className="text-xs text-zinc-400">{description}</p> : null}
-      <div className="pt-1">{children}</div>
+      {description ? <p className="text-xs text-zinc-500">{description}</p> : null}
+      <div className="pt-1.5">{children}</div>
     </div>
   );
 }
 
 function ToggleRow({ label, description, checked, onChange, tc }) {
   return (
-    <label className="flex items-center justify-between gap-4 rounded-lg border border-[#2d2d31] bg-[#111113] px-3 py-2.5 transition-colors hover:border-[#3b3b42]">
+    <label className="flex items-center justify-between gap-4 border-b border-[#25252a] bg-[#131316] px-4 py-3 transition-colors hover:bg-[#18181d]">
       <div className="space-y-0.5 min-w-0">
         <p className="text-sm text-zinc-100">{label}</p>
         {description ? <p className="text-xs text-zinc-400">{description}</p> : null}
@@ -84,14 +84,17 @@ function ChoiceButton({ active, onClick, title, subtitle, tc }) {
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+      className={`w-full text-left px-3 py-2.5 border transition-colors flex items-center justify-between gap-3 ${
         active
           ? `${tc.border} ${tc.lightBg} ${tc.textLight}`
-          : 'border-[#333] text-zinc-300 hover:bg-[#232323]'
+          : 'border-[#2f2f34] text-zinc-300 hover:bg-[#1e1e23]'
       }`}
     >
-      <span className="block text-sm">{title}</span>
-      {subtitle ? <span className="block text-xs text-zinc-500 mt-0.5">{subtitle}</span> : null}
+      <span className="min-w-0">
+        <span className="block text-sm">{title}</span>
+        {subtitle ? <span className="block text-xs text-zinc-500 mt-0.5">{subtitle}</span> : null}
+      </span>
+      {active ? <Check className={`w-4 h-4 shrink-0 ${tc.textLight}`} /> : null}
     </button>
   );
 }
@@ -222,7 +225,7 @@ export default function SettingsModal({
           </button>
         </div>
 
-        <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-3">
+        <div className="p-0 overflow-y-auto flex-1 custom-scrollbar">
           {sections.map((section) => (
             <AccordionSection
               key={section.key}

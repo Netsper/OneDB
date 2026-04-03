@@ -424,7 +424,7 @@ export default function TableBrowserView({
             <tr>
               <th
                 ref={indexHeaderRef}
-                className={`px-3 py-2 w-20 border-r border-[#2e2e32] font-normal ${currentTableData.type !== 'view' ? 'cursor-pointer' : ''}`}
+                className={`px-3 py-2 w-20 border-r border-[#2e2e32] font-normal sticky left-0 z-[26] bg-[#1c1c1c] shadow-[inset_-1px_0_0_rgba(46,46,50,1)] ${currentTableData.type !== 'view' ? 'cursor-pointer' : ''}`}
                 onClick={currentTableData.type !== 'view' ? toggleAllRows : undefined}
               >
                 <div className="flex items-center justify-center gap-1.5">
@@ -645,7 +645,7 @@ export default function TableBrowserView({
                 className={`border-b border-[#2e2e32] group transition-colors ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/50' : 'hover:bg-[#232323]/60'}`}
               >
                 <td
-                  className={`px-3 py-1.5 border-r border-[#2e2e32] text-zinc-600 text-xs ${currentTableData.type !== 'view' ? 'cursor-pointer' : ''}`}
+                  className={`px-3 py-1.5 border-r border-[#2e2e32] text-zinc-600 text-xs sticky left-0 z-[12] shadow-[inset_-1px_0_0_rgba(46,46,50,1)] ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/70' : 'bg-[#18181b] group-hover:bg-[#232323]'} ${currentTableData.type !== 'view' ? 'cursor-pointer' : ''}`}
                   onClick={
                     currentTableData.type !== 'view'
                       ? () => toggleRowSelection(row._origIndex)
