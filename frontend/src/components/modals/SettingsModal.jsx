@@ -3,15 +3,15 @@ import { Check, Code2, Eye, Languages, Palette, Settings2, X } from 'lucide-reac
 
 function Section({ icon: Icon, title, description, children }) {
   return (
-    <section className="rounded-lg border border-[#2f2f33] bg-[#141417] p-4 space-y-3">
-      <header className="space-y-1">
+    <section className="rounded-xl border border-[#2f2f33] bg-[#151518] p-4 space-y-3">
+      <header className="space-y-1 pb-1 border-b border-[#2a2a2e]">
         <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
           <Icon className="w-4 h-4 text-zinc-300" />
           {title}
         </h4>
-        {description && <p className="text-xs text-zinc-400">{description}</p>}
+        {description && <p className="text-xs text-zinc-500">{description}</p>}
       </header>
-      {children}
+      <div className="space-y-3">{children}</div>
     </section>
   );
 }
@@ -103,178 +103,186 @@ export default function SettingsModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-6 space-y-4 overflow-y-auto flex-1">
-          <Section
-            icon={Languages}
-            title={t('settingsGeneral')}
-            description={t('settingsGeneralDesc')}
-          >
-            <p className="text-sm text-zinc-400">{t('languageSelect')}</p>
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => setLang('en')}
-                className={`flex-1 py-2 rounded-md text-sm transition-colors border ${lang === 'en' ? `${tc.bg} ${tc.border} text-white` : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'}`}
+        <div className="p-6 overflow-y-auto flex-1">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <Section
+                icon={Languages}
+                title={t('settingsGeneral')}
+                description={t('settingsGeneralDesc')}
               >
-                English
-              </button>
-              <button
-                onClick={() => setLang('tr')}
-                className={`flex-1 py-2 rounded-md text-sm transition-colors border ${lang === 'tr' ? `${tc.bg} ${tc.border} text-white` : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'}`}
+                <p className="text-sm text-zinc-400">{t('languageSelect')}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setLang('en')}
+                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${lang === 'en' ? `${tc.bg} ${tc.border} text-white` : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'}`}
+                  >
+                    English
+                  </button>
+                  <button
+                    onClick={() => setLang('tr')}
+                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${lang === 'tr' ? `${tc.bg} ${tc.border} text-white` : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'}`}
+                  >
+                    Türkçe
+                  </button>
+                </div>
+                <p className="text-sm text-zinc-400">{t('settingsDensity')}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      updateSetting((prev) => ({
+                        ...prev,
+                        uiDensity: 'comfortable',
+                      }))
+                    }
+                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
+                      settings.uiDensity === 'comfortable'
+                        ? `${tc.bg} ${tc.border} text-white`
+                        : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
+                    }`}
+                  >
+                    {t('settingsDensityComfortable')}
+                  </button>
+                  <button
+                    onClick={() =>
+                      updateSetting((prev) => ({
+                        ...prev,
+                        uiDensity: 'compact',
+                      }))
+                    }
+                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
+                      settings.uiDensity === 'compact'
+                        ? `${tc.bg} ${tc.border} text-white`
+                        : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
+                    }`}
+                  >
+                    {t('settingsDensityCompact')}
+                  </button>
+                </div>
+              </Section>
+
+              <Section
+                icon={Palette}
+                title={t('settingsAppearance')}
+                description={t('settingsAppearanceDesc')}
               >
-                Türkçe
-              </button>
+                <p className="text-sm text-zinc-400">{t('accentColor')}</p>
+                <div className="flex gap-3 flex-wrap">
+                  {Object.entries(themes).map(([key, themeObj]) => (
+                    <button
+                      key={key}
+                      onClick={() => setTheme(key)}
+                      className={`w-8 h-8 rounded-full ${themeObj.previewClass} border-2 transition-all flex items-center justify-center ${theme === key ? 'border-white scale-110 shadow-lg' : 'border-transparent hover:scale-110 opacity-70 hover:opacity-100'}`}
+                      title={themeObj.nameKey}
+                    >
+                      {theme === key && <Check className="w-4 h-4 text-white" />}
+                    </button>
+                  ))}
+                </div>
+              </Section>
             </div>
-            <div className="mt-4">
-              <p className="text-sm text-zinc-400">{t('settingsDensity')}</p>
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={() =>
+
+            <div className="space-y-4">
+              <Section icon={Eye} title={t('settingsTable')} description={t('settingsTableDesc')}>
+                <ToggleRow
+                  label={t('settingsTooltipOnHover')}
+                  description={t('settingsTooltipOnHoverDesc')}
+                  checked={settings.showCellTooltipOnHover}
+                  onChange={() =>
                     updateSetting((prev) => ({
                       ...prev,
-                      uiDensity: 'comfortable',
+                      showCellTooltipOnHover: !prev.showCellTooltipOnHover,
                     }))
                   }
-                  className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
-                    settings.uiDensity === 'comfortable'
-                      ? `${tc.bg} ${tc.border} text-white`
-                      : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
-                  }`}
-                >
-                  {t('settingsDensityComfortable')}
-                </button>
-                <button
-                  onClick={() =>
-                    updateSetting((prev) => ({
-                      ...prev,
-                      uiDensity: 'compact',
-                    }))
+                />
+              </Section>
+
+              <Section icon={Code2} title={t('settingsSqlEditor')} description={t('settingsSqlDesc')}>
+                <ToggleRow
+                  label={t('settingsSqlSyntaxHighlight')}
+                  checked={settings.sqlEditor.syntaxHighlight}
+                  onChange={() =>
+                    updateSqlEditor('syntaxHighlight', !settings.sqlEditor.syntaxHighlight)
                   }
-                  className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
-                    settings.uiDensity === 'compact'
-                      ? `${tc.bg} ${tc.border} text-white`
-                      : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
-                  }`}
-                >
-                  {t('settingsDensityCompact')}
-                </button>
-              </div>
-            </div>
-          </Section>
+                />
+                <ToggleRow
+                  label={t('settingsSqlAutocomplete')}
+                  checked={settings.sqlEditor.autocomplete}
+                  onChange={() => updateSqlEditor('autocomplete', !settings.sqlEditor.autocomplete)}
+                />
+                <ToggleRow
+                  label={t('settingsSqlWordWrap')}
+                  checked={settings.sqlEditor.wordWrap}
+                  onChange={() => updateSqlEditor('wordWrap', !settings.sqlEditor.wordWrap)}
+                />
+                <ToggleRow
+                  label={t('settingsSqlLineNumbers')}
+                  checked={settings.sqlEditor.lineNumbers}
+                  onChange={() => updateSqlEditor('lineNumbers', !settings.sqlEditor.lineNumbers)}
+                />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-zinc-100">{t('settingsSqlFontSize')}</p>
+                    <span className="text-xs text-zinc-400">{settings.sqlEditor.fontSize}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={11}
+                    max={20}
+                    value={settings.sqlEditor.fontSize}
+                    onChange={(event) => updateSqlEditor('fontSize', Number(event.target.value))}
+                    className="w-full accent-emerald-500"
+                  />
+                </div>
+              </Section>
 
-          <Section
-            icon={Palette}
-            title={t('settingsAppearance')}
-            description={t('settingsAppearanceDesc')}
-          >
-            <p className="text-sm text-zinc-400">{t('accentColor')}</p>
-            <div className="flex gap-4">
-              {Object.entries(themes).map(([key, themeObj]) => (
-                <button
-                  key={key}
-                  onClick={() => setTheme(key)}
-                  className={`w-8 h-8 rounded-full ${themeObj.previewClass} border-2 transition-all flex items-center justify-center ${theme === key ? 'border-white scale-110 shadow-lg' : 'border-transparent hover:scale-110 opacity-70 hover:opacity-100'}`}
-                  title={themeObj.nameKey}
-                >
-                  {theme === key && <Check className="w-4 h-4 text-white" />}
-                </button>
-              ))}
-            </div>
-          </Section>
-
-          <Section icon={Eye} title={t('settingsTable')} description={t('settingsTableDesc')}>
-            <ToggleRow
-              label={t('settingsTooltipOnHover')}
-              description={t('settingsTooltipOnHoverDesc')}
-              checked={settings.showCellTooltipOnHover}
-              onChange={() =>
-                updateSetting((prev) => ({
-                  ...prev,
-                  showCellTooltipOnHover: !prev.showCellTooltipOnHover,
-                }))
-              }
-            />
-          </Section>
-
-          <Section icon={Code2} title={t('settingsSqlEditor')} description={t('settingsSqlDesc')}>
-            <ToggleRow
-              label={t('settingsSqlSyntaxHighlight')}
-              checked={settings.sqlEditor.syntaxHighlight}
-              onChange={() =>
-                updateSqlEditor('syntaxHighlight', !settings.sqlEditor.syntaxHighlight)
-              }
-            />
-            <ToggleRow
-              label={t('settingsSqlAutocomplete')}
-              checked={settings.sqlEditor.autocomplete}
-              onChange={() => updateSqlEditor('autocomplete', !settings.sqlEditor.autocomplete)}
-            />
-            <ToggleRow
-              label={t('settingsSqlWordWrap')}
-              checked={settings.sqlEditor.wordWrap}
-              onChange={() => updateSqlEditor('wordWrap', !settings.sqlEditor.wordWrap)}
-            />
-            <ToggleRow
-              label={t('settingsSqlLineNumbers')}
-              checked={settings.sqlEditor.lineNumbers}
-              onChange={() => updateSqlEditor('lineNumbers', !settings.sqlEditor.lineNumbers)}
-            />
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-100">{t('settingsSqlFontSize')}</p>
-                <span className="text-xs text-zinc-400">{settings.sqlEditor.fontSize}px</span>
-              </div>
-              <input
-                type="range"
-                min={11}
-                max={20}
-                value={settings.sqlEditor.fontSize}
-                onChange={(event) => updateSqlEditor('fontSize', Number(event.target.value))}
-                className="w-full accent-emerald-500"
-              />
-            </div>
-          </Section>
-
-          <Section icon={Code2} title={t('settingsJsonViewer')} description={t('settingsJsonDesc')}>
-            <p className="text-sm text-zinc-400">{t('settingsJsonDefaultMode')}</p>
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() =>
-                  updateSetting((prev) => ({
-                    ...prev,
-                    jsonViewer: {
-                      ...prev.jsonViewer,
-                      defaultMode: 'tree',
-                    },
-                  }))
-                }
-                className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
-                  settings.jsonViewer.defaultMode === 'tree'
-                    ? `${tc.bg} ${tc.border} text-white`
-                    : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
-                }`}
+              <Section
+                icon={Code2}
+                title={t('settingsJsonViewer')}
+                description={t('settingsJsonDesc')}
               >
-                {t('settingsJsonModeTree')}
-              </button>
-              <button
-                onClick={() =>
-                  updateSetting((prev) => ({
-                    ...prev,
-                    jsonViewer: {
-                      ...prev.jsonViewer,
-                      defaultMode: 'raw',
-                    },
-                  }))
-                }
-                className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
-                  settings.jsonViewer.defaultMode === 'raw'
-                    ? `${tc.bg} ${tc.border} text-white`
-                    : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
-                }`}
-              >
-                {t('settingsJsonModeRaw')}
-              </button>
+                <p className="text-sm text-zinc-400">{t('settingsJsonDefaultMode')}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      updateSetting((prev) => ({
+                        ...prev,
+                        jsonViewer: {
+                          ...prev.jsonViewer,
+                          defaultMode: 'tree',
+                        },
+                      }))
+                    }
+                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
+                      settings.jsonViewer.defaultMode === 'tree'
+                        ? `${tc.bg} ${tc.border} text-white`
+                        : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
+                    }`}
+                  >
+                    {t('settingsJsonModeTree')}
+                  </button>
+                  <button
+                    onClick={() =>
+                      updateSetting((prev) => ({
+                        ...prev,
+                        jsonViewer: {
+                          ...prev.jsonViewer,
+                          defaultMode: 'raw',
+                        },
+                      }))
+                    }
+                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
+                      settings.jsonViewer.defaultMode === 'raw'
+                        ? `${tc.bg} ${tc.border} text-white`
+                        : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
+                    }`}
+                  >
+                    {t('settingsJsonModeRaw')}
+                  </button>
+                </div>
+              </Section>
             </div>
-          </Section>
+          </div>
         </div>
       </div>
     </div>
