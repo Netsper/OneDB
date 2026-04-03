@@ -135,6 +135,7 @@ export default function useDatabaseManagerWorkspaceActionsModel(model, apiModel)
     themes,
     currentTableData,
     currentDriver,
+    executeSql,
     quoteIdentifier,
     escapeLiteral,
     baseFieldClass,

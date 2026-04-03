@@ -254,6 +254,7 @@ export default function useWorkspaceState() {
   const [modalConfig, setModalConfig] = useState({ isOpen: false, type: null, data: null });
   const [formData, setFormData] = useState({});
   const [inputVal, setInputVal] = useState('');
+  const [dbCharset, setDbCharset] = useState('utf8mb4');
   const [dbCollation, setDbCollation] = useState('utf8mb4_general_ci');
   const [newColForm, setNewColForm] = useState({
     name: '',
@@ -405,6 +406,8 @@ export default function useWorkspaceState() {
     setFormData,
     inputVal,
     setInputVal,
+    dbCharset,
+    setDbCharset,
     dbCollation,
     setDbCollation,
     newColForm,

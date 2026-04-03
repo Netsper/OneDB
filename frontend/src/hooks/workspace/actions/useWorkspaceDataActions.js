@@ -30,6 +30,7 @@ export default function useWorkspaceDataActions({
   setNewColForm,
   inputVal,
   setInputVal,
+  dbCharset,
   dbCollation,
   executeSql,
   refreshActiveTable,
@@ -335,8 +336,10 @@ export default function useWorkspaceDataActions({
       if (currentDriver === 'pgsql') {
         await executeSql(`CREATE DATABASE ${quoteIdentifier(dbName)};`, '');
       } else {
+        const charset = /^[a-zA-Z0-9_]+$/.test(String(dbCharset || '')) ? dbCharset : 'utf8mb4';
+        const collation = /^[a-zA-Z0-9_]+$/.test(String(dbCollation || '')) ? dbCollation : '';
         await executeSql(
-          `CREATE DATABASE ${quoteIdentifier(dbName)} CHARACTER SET utf8mb4 COLLATE ${dbCollation};`,
+          `CREATE DATABASE ${quoteIdentifier(dbName)} CHARACTER SET ${charset}${collation ? ` COLLATE ${collation}` : ''};`,
           '',
         );
       }
