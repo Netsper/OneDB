@@ -18,7 +18,7 @@ function Section({ icon: Icon, title, description, children }) {
 
 function ToggleRow({ label, description, checked, onChange }) {
   return (
-    <label className="flex items-start justify-between gap-4">
+    <label className="flex items-center justify-between gap-4 rounded-lg border border-[#2d2d31] bg-[#111113] px-3 py-2.5 transition-colors hover:border-[#3b3b42]">
       <div className="space-y-0.5">
         <p className="text-sm text-zinc-100">{label}</p>
         {description && <p className="text-xs text-zinc-400">{description}</p>}
@@ -26,16 +26,20 @@ function ToggleRow({ label, description, checked, onChange }) {
       <button
         type="button"
         onClick={onChange}
-        className={`mt-0.5 h-6 w-11 rounded-full border transition-colors relative ${
-          checked ? 'border-emerald-400 bg-emerald-500/30' : 'border-[#3b3b40] bg-[#232327]'
+        className={`relative inline-flex h-7 w-12 items-center rounded-full p-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 ${
+          checked
+            ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_0_1px_rgba(16,185,129,0.45)]'
+            : 'border border-[#3b3b42] bg-[#25252a]'
         }`}
         aria-pressed={checked}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-            checked ? 'translate-x-5' : 'translate-x-0.5'
+          className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow transition-transform ${
+            checked ? 'translate-x-5 text-emerald-600' : 'translate-x-0 text-zinc-400'
           }`}
-        />
+        >
+          {checked ? <Check className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />}
+        </span>
       </button>
     </label>
   );
