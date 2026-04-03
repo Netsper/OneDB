@@ -84,9 +84,15 @@ export default function SettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-6">
-      <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95">
-        <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl">
+    <div className="fixed inset-0 z-50">
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+        aria-label={t('close')}
+      />
+      <div className="absolute inset-y-0 right-0 w-full max-w-2xl bg-[#1c1c1c] border-l border-[#333] flex flex-col shadow-2xl animate-in slide-in-from-right">
+        <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b]">
           <h3 className="text-base font-medium text-zinc-100 flex items-center gap-2">
             <Settings2 className="w-4 h-4" /> {t('themeSettings')}
           </h3>
@@ -97,7 +103,7 @@ export default function SettingsModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-6 space-y-4 overflow-y-auto">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <Section
             icon={Languages}
             title={t('settingsGeneral')}
