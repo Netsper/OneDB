@@ -148,10 +148,13 @@ function sanitizeOpenTableTabs(rawValue) {
       id,
       dbName,
       tableName,
+      pinned: Boolean(item.pinned),
     });
   });
 
-  return tabs;
+  const pinnedTabs = tabs.filter((tab) => tab.pinned);
+  const normalTabs = tabs.filter((tab) => !tab.pinned);
+  return [...pinnedTabs, ...normalTabs];
 }
 
 export default function useWorkspaceState() {

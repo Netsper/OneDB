@@ -46,6 +46,42 @@ export default function useWorkspaceNavigationActions({
   setPinnedItems,
 }) {
   const buildTableTabId = (dbName, tableName) => `${dbName}::${tableName}`;
+  const orderTabs = (tabs) => {
+    const pinned = tabs.filter((tab) => tab.pinned);
+    const normal = tabs.filter((tab) => !tab.pinned);
+    return [...pinned, ...normal];
+  };
+
+  const syncActiveAfterTabUpdate = (nextTabs, preferredTabId = null) => {
+    if (nextTabs.length === 0) {
+      setActiveTableTabId(null);
+      setActiveTable(null);
+      return;
+    }
+
+    const stillActive = nextTabs.find((tab) => tab.id === activeTableTabId);
+    if (stillActive) {
+      return;
+    }
+
+    const preferredActive = preferredTabId
+      ? nextTabs.find((tab) => tab.id === preferredTabId)
+      : null;
+    const fallbackTab = stillActive || preferredActive || nextTabs[0];
+
+    if (!fallbackTab) {
+      setActiveTableTabId(null);
+      setActiveTable(null);
+      return;
+    }
+
+    setActiveTableTabId(fallbackTab.id);
+    setActiveDb(fallbackTab.dbName);
+    setActiveTable(fallbackTab.tableName);
+    setActiveTab('browse');
+    setSqlQuery(`SELECT * FROM ${quoteIdentifier(fallbackTab.tableName)} LIMIT 50;`);
+    setSqlResult(null);
+  };
 
   const registerTableTab = (dbName, tableName) => {
     const tabId = buildTableTabId(dbName, tableName);
@@ -53,7 +89,7 @@ export default function useWorkspaceNavigationActions({
       if (prev.some((tab) => tab.id === tabId)) {
         return prev;
       }
-      return [...prev, { id: tabId, dbName, tableName }];
+      return orderTabs([...prev, { id: tabId, dbName, tableName, pinned: false }]);
     });
     setActiveTableTabId(tabId);
   };
@@ -117,30 +153,68 @@ export default function useWorkspaceNavigationActions({
 
   const closeTableTab = (tabId) => {
     if (!tabId) return;
-    const currentTabs = [...openTableTabs];
-    const closingIndex = currentTabs.findIndex((tab) => tab.id === tabId);
-    if (closingIndex < 0) return;
+    setOpenTableTabs((prev) => {
+      const closingIndex = prev.findIndex((tab) => tab.id === tabId);
+      if (closingIndex < 0) return prev;
+      const nextTabs = prev.filter((tab) => tab.id !== tabId);
+      if (activeTableTabId === tabId) {
+        const fallbackTab =
+          nextTabs[Math.max(0, closingIndex - 1)] || nextTabs[closingIndex] || nextTabs[0] || null;
+        syncActiveAfterTabUpdate(nextTabs, fallbackTab?.id || null);
+      }
+      return nextTabs;
+    });
+  };
 
-    const nextTabs = currentTabs.filter((tab) => tab.id !== tabId);
-    setOpenTableTabs(nextTabs);
+  const closeOtherTableTabs = (tabId) => {
+    if (!tabId) return;
+    setOpenTableTabs((prev) => {
+      const keep = prev.filter((tab) => tab.id === tabId || tab.pinned);
+      const dedupedKeep = keep.filter(
+        (tab, index, arr) => arr.findIndex((entry) => entry.id === tab.id) === index,
+      );
+      syncActiveAfterTabUpdate(dedupedKeep, tabId);
+      return dedupedKeep;
+    });
+  };
 
-    if (activeTableTabId !== tabId) {
-      return;
-    }
+  const closeTableTabsToRight = (tabId) => {
+    if (!tabId) return;
+    setOpenTableTabs((prev) => {
+      const currentIndex = prev.findIndex((tab) => tab.id === tabId);
+      if (currentIndex < 0) return prev;
+      const nextTabs = prev.filter((tab, index) => tab.pinned || index <= currentIndex);
+      syncActiveAfterTabUpdate(nextTabs, tabId);
+      return nextTabs;
+    });
+  };
 
-    const fallbackTab = nextTabs[Math.max(0, closingIndex - 1)] || nextTabs[closingIndex] || null;
-    if (!fallbackTab) {
-      setActiveTableTabId(null);
-      setActiveTable(null);
-      return;
-    }
+  const closeAllTableTabs = () => {
+    setOpenTableTabs((prev) => {
+      const nextTabs = prev.filter((tab) => tab.pinned);
+      syncActiveAfterTabUpdate(nextTabs);
+      return nextTabs;
+    });
+  };
 
-    setActiveTableTabId(fallbackTab.id);
-    setActiveDb(fallbackTab.dbName);
-    setActiveTable(fallbackTab.tableName);
-    setActiveTab('browse');
-    setSqlQuery(`SELECT * FROM ${quoteIdentifier(fallbackTab.tableName)} LIMIT 50;`);
-    setSqlResult(null);
+  const toggleTableTabPin = (tabId) => {
+    if (!tabId) return;
+    setOpenTableTabs((prev) => {
+      const nextTabs = prev.map((tab) =>
+        tab.id === tabId
+          ? {
+              ...tab,
+              pinned: !tab.pinned,
+            }
+          : tab,
+      );
+      return orderTabs(nextTabs);
+    });
+  };
+
+  const isTableTabPinned = (tabId) => {
+    if (!tabId) return false;
+    return openTableTabs.some((tab) => tab.id === tabId && tab.pinned);
   };
 
   const handleContextMenu = (e, dbName, tableName) => {
@@ -248,5 +322,10 @@ export default function useWorkspaceNavigationActions({
     togglePinTable,
     activateTableTab,
     closeTableTab,
+    closeOtherTableTabs,
+    closeTableTabsToRight,
+    closeAllTableTabs,
+    toggleTableTabPin,
+    isTableTabPinned,
   };
 }

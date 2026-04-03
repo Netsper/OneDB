@@ -27,8 +27,11 @@ export default function TableTabsToolbar({
   activeTableTabId,
   onActivateTableTab,
   onCloseTableTab,
-  onTogglePinTable,
-  isTablePinned,
+  onCloseOtherTableTabs,
+  onCloseTableTabsToRight,
+  onCloseAllTableTabs,
+  onToggleTableTabPin,
+  isTableTabPinned,
   activeDb,
   activeTable,
   selectedRows,
@@ -121,26 +124,13 @@ export default function TableTabsToolbar({
     setTabContextMenu((prev) => ({ ...prev, visible: false }));
   };
 
-  const closeOtherTabs = (tabId) => {
-    tableTabs.filter((tab) => tab.id !== tabId).forEach((tab) => onCloseTableTab(tab.id));
-  };
-
-  const closeTabsToRight = (tabId) => {
-    const activeIndex = tableTabs.findIndex((tab) => tab.id === tabId);
-    if (activeIndex < 0) return;
-    tableTabs.slice(activeIndex + 1).forEach((tab) => onCloseTableTab(tab.id));
-  };
-
-  const closeAllTabs = () => {
-    tableTabs.forEach((tab) => onCloseTableTab(tab.id));
-  };
-
   return (
     <div className="px-6 border-b border-[#2e2e32] bg-[#1c1c1c] shrink-0">
       {shouldShowTableTabs && (
         <div className="flex items-center gap-2 py-2 border-b border-[#252529] overflow-x-auto scrollbar-none">
           {tableTabs.map((tab) => {
             const isActive = tab.id === activeTableTabId;
+            const isPinned = Boolean(tab.pinned);
             return (
               <button
                 key={tab.id}
@@ -154,6 +144,7 @@ export default function TableTabsToolbar({
                 }`}
                 title={`${tab.dbName}.${tab.tableName}`}
               >
+                {isPinned && <Star className="w-3 h-3 text-amber-400" />}
                 <span className="max-w-[12rem] truncate">{tab.tableName}</span>
                 <span className="text-[10px] text-zinc-500">{tab.dbName}</span>
                 <span
@@ -201,7 +192,7 @@ export default function TableTabsToolbar({
               <button
                 type="button"
                 onClick={() => {
-                  closeOtherTabs(contextTab.id);
+                  onCloseOtherTableTabs?.(contextTab.id);
                   closeTabContextMenu();
                 }}
                 className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white"
@@ -211,7 +202,7 @@ export default function TableTabsToolbar({
               <button
                 type="button"
                 onClick={() => {
-                  closeTabsToRight(contextTab.id);
+                  onCloseTableTabsToRight?.(contextTab.id);
                   closeTabContextMenu();
                 }}
                 className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white"
@@ -221,7 +212,7 @@ export default function TableTabsToolbar({
               <button
                 type="button"
                 onClick={() => {
-                  closeAllTabs();
+                  onCloseAllTableTabs?.();
                   closeTabContextMenu();
                 }}
                 className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-400/10"
@@ -232,13 +223,13 @@ export default function TableTabsToolbar({
               <button
                 type="button"
                 onClick={() => {
-                  onTogglePinTable?.(contextTab.dbName, contextTab.tableName);
+                  onToggleTableTabPin?.(contextTab.id);
                   closeTabContextMenu();
                 }}
                 className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-400/10 flex items-center gap-2"
               >
                 <Star className="w-3.5 h-3.5" />
-                {isTablePinned?.(contextTab.dbName, contextTab.tableName)
+                {isTableTabPinned?.(contextTab.id)
                   ? t('tabUnpin')
                   : t('tabPin')}
               </button>
