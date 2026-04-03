@@ -79,6 +79,8 @@ export const tr = {
   clearFilter: 'Filtreyi temizle',
   apply: 'Uygula',
   columnOptions: 'Sutun secenekleri',
+  pinColumn: 'Sutunu pinle',
+  unpinColumn: 'Sutun pinini kaldir',
 
   rowsPerPage: 'Sayfa başı:',
   noRecords: 'Gösterilecek kayıt bulunamadı.',

@@ -12,6 +12,7 @@ export default function useWorkspacePersistenceEffects({
   databaseVisibility,
   openTableTabs,
   activeTableTabId,
+  pinnedColumnsByTable,
 }) {
   useEffect(() => {
     localStorage.setItem('dbm_lang', lang);
@@ -60,4 +61,8 @@ export default function useWorkspacePersistenceEffects({
     }
     localStorage.removeItem('dbm_active_table_tab');
   }, [activeTableTabId]);
+
+  useEffect(() => {
+    localStorage.setItem('dbm_pinned_columns', JSON.stringify(pinnedColumnsByTable || {}));
+  }, [pinnedColumnsByTable]);
 }

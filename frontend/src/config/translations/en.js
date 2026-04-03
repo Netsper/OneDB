@@ -85,6 +85,8 @@ export const en = {
   clearFilter: 'Clear filter',
   apply: 'Apply',
   columnOptions: 'Column options',
+  pinColumn: 'Pin column',
+  unpinColumn: 'Unpin column',
 
   // Data Table & Pagination
   rowsPerPage: 'Rows per page:',

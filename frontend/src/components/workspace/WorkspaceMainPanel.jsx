@@ -50,6 +50,9 @@ export default function WorkspaceMainPanel({
   setIsColsPanelOpen,
   hiddenColumns,
   toggleColumnVisibility,
+  pinnedColumnNames,
+  isColumnPinned,
+  toggleColumnPin,
   autoRefreshButtonRef,
   autoRefreshInt,
   isAutoRefreshMenuOpen,
@@ -193,6 +196,9 @@ export default function WorkspaceMainPanel({
               visibleColumns={visibleColumns}
               hiddenColumns={hiddenColumns}
               toggleColumnVisibility={toggleColumnVisibility}
+              pinnedColumnNames={pinnedColumnNames}
+              isColumnPinned={isColumnPinned}
+              toggleColumnPin={toggleColumnPin}
               isColsPanelOpen={isColsPanelOpen}
               setIsColsPanelOpen={setIsColsPanelOpen}
               selectedRows={selectedRows}

@@ -4,11 +4,14 @@ import { generateSchemaDDL } from '../../../utils/schema.js';
 export default function useWorkspaceTableViewState({
   currentTableData,
   currentDriver,
+  activeDb,
   activeTable,
   hiddenColumns,
   setHiddenColumns,
   sortConfig,
   setSortConfig,
+  pinnedColumnsByTable,
+  setPinnedColumnsByTable,
   selectedRows,
   setSelectedRows,
   rowsPerPage,
@@ -34,10 +37,60 @@ export default function useWorkspaceTableViewState({
     [activeTable, currentDriver, currentTableData],
   );
 
+  const currentTableKey = useMemo(() => {
+    if (!activeDb || !activeTable) return '';
+    return `${activeDb}::${activeTable}`;
+  }, [activeDb, activeTable]);
+
+  const pinnedColumnNames = useMemo(() => {
+    if (!currentTableData || !currentTableKey) return [];
+    const fromState = Array.isArray(pinnedColumnsByTable?.[currentTableKey])
+      ? pinnedColumnsByTable[currentTableKey]
+      : [];
+    const valid = new Set(currentTableData.columns.map((column) => column.name));
+    return fromState.filter((columnName) => valid.has(columnName));
+  }, [currentTableData, currentTableKey, pinnedColumnsByTable]);
+
+  const pinnedColumnSet = useMemo(() => new Set(pinnedColumnNames), [pinnedColumnNames]);
+
   const visibleColumns = useMemo(() => {
     if (!currentTableData) return [];
-    return currentTableData.columns.filter((col) => !hiddenColumns.has(col.name));
-  }, [currentTableData, hiddenColumns]);
+    const filteredColumns = currentTableData.columns.filter((col) => !hiddenColumns.has(col.name));
+    if (pinnedColumnNames.length === 0) {
+      return filteredColumns;
+    }
+
+    const pinnedByName = new Map(filteredColumns.map((column) => [column.name, column]));
+    const pinnedColumns = pinnedColumnNames
+      .map((columnName) => pinnedByName.get(columnName))
+      .filter(Boolean);
+    const unpinnedColumns = filteredColumns.filter((column) => !pinnedColumnSet.has(column.name));
+    return [...pinnedColumns, ...unpinnedColumns];
+  }, [currentTableData, hiddenColumns, pinnedColumnNames, pinnedColumnSet]);
+
+  const isColumnPinned = (columnName) => pinnedColumnSet.has(columnName);
+
+  const toggleColumnPin = (columnName) => {
+    if (!columnName || !currentTableData || !currentTableKey) return;
+
+    setPinnedColumnsByTable((prev) => {
+      const next = { ...(prev || {}) };
+      const currentPinned = Array.isArray(next[currentTableKey]) ? next[currentTableKey] : [];
+
+      if (currentPinned.includes(columnName)) {
+        const updated = currentPinned.filter((name) => name !== columnName);
+        if (updated.length > 0) {
+          next[currentTableKey] = updated;
+        } else {
+          delete next[currentTableKey];
+        }
+      } else {
+        next[currentTableKey] = [...currentPinned, columnName];
+      }
+
+      return next;
+    });
+  };
 
   const copyRowWithHeaders = (row) => {
     if (!row || !currentTableData) return;
@@ -81,6 +134,9 @@ export default function useWorkspaceTableViewState({
     handleSort,
     currentTableDdl,
     visibleColumns,
+    pinnedColumnNames,
+    isColumnPinned,
+    toggleColumnPin,
     copyRowWithHeaders,
     toggleColumnVisibility,
     processedData,

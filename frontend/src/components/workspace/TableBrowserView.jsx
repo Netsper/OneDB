@@ -14,6 +14,7 @@ import {
   Link as LinkIcon,
   Maximize2,
   MoreHorizontal,
+  Pin,
   Plus,
   Settings,
   SlidersHorizontal,
@@ -32,6 +33,9 @@ export default function TableBrowserView({
   visibleColumns,
   hiddenColumns,
   toggleColumnVisibility,
+  pinnedColumnNames = [],
+  isColumnPinned = () => false,
+  toggleColumnPin = () => {},
   isColsPanelOpen,
   setIsColsPanelOpen,
   selectedRows,
@@ -84,11 +88,14 @@ export default function TableBrowserView({
 }) {
   const selectClass = `w-full appearance-none bg-[#18181b] border border-[#3a3a3f] rounded-md text-zinc-100 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] ${tc.focusRing}`;
   const scrollContainerRef = useRef(null);
+  const indexHeaderRef = useRef(null);
+  const columnHeaderRefs = useRef({});
   const filterButtonRef = useRef(null);
   const columnsButtonRef = useRef(null);
   const columnTriggerRefs = useRef({});
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
+  const [pinnedLeftOffsets, setPinnedLeftOffsets] = useState({});
   const ROW_HEIGHT = 36;
   const OVERSCAN_ROWS = 10;
   const rowOffset = (page - 1) * rowsPerPage;
@@ -160,6 +167,49 @@ export default function TableBrowserView({
     container.scrollTop = 0;
     setScrollTop(0);
   }, [page, rowsPerPage]);
+
+  useEffect(() => {
+    const recalcPinnedOffsets = () => {
+      if (!indexHeaderRef.current || !Array.isArray(pinnedColumnNames) || pinnedColumnNames.length === 0) {
+        setPinnedLeftOffsets({});
+        return;
+      }
+
+      let runningLeft = indexHeaderRef.current.offsetWidth || 80;
+      const nextOffsets = {};
+
+      pinnedColumnNames.forEach((columnName) => {
+        const headerNode = columnHeaderRefs.current[columnName];
+        if (!headerNode) return;
+        nextOffsets[columnName] = runningLeft;
+        runningLeft += headerNode.offsetWidth || 160;
+      });
+
+      setPinnedLeftOffsets(nextOffsets);
+    };
+
+    recalcPinnedOffsets();
+
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(recalcPinnedOffsets);
+      if (indexHeaderRef.current) {
+        resizeObserver.observe(indexHeaderRef.current);
+      }
+      pinnedColumnNames.forEach((columnName) => {
+        const node = columnHeaderRefs.current[columnName];
+        if (node) {
+          resizeObserver.observe(node);
+        }
+      });
+    }
+
+    window.addEventListener('resize', recalcPinnedOffsets);
+    return () => {
+      window.removeEventListener('resize', recalcPinnedOffsets);
+      resizeObserver?.disconnect();
+    };
+  }, [pinnedColumnNames, visibleColumns, currentTableData?.name]);
 
   const cellMetaByRow = useMemo(() => {
     const metadata = new Map();
@@ -373,6 +423,7 @@ export default function TableBrowserView({
           <thead className="bg-[#1c1c1c] text-zinc-400 sticky top-0 z-10 shadow-sm border-b border-[#2e2e32]">
             <tr>
               <th
+                ref={indexHeaderRef}
                 className={`px-3 py-2 w-20 border-r border-[#2e2e32] font-normal ${currentTableData.type !== 'view' ? 'cursor-pointer' : ''}`}
                 onClick={currentTableData.type !== 'view' ? toggleAllRows : undefined}
               >
@@ -387,16 +438,37 @@ export default function TableBrowserView({
                   <span>#</span>
                 </div>
               </th>
-              {visibleColumns.map((col) => (
+              {visibleColumns.map((col) => {
+                const pinned = isColumnPinned(col.name);
+                const pinnedLeft = pinnedLeftOffsets[col.name];
+
+                return (
                 <th
                   key={col.name}
-                  className="px-4 py-2 border-r border-[#2e2e32] font-normal last:border-r-0 hover:bg-[#232323] transition-colors group relative align-top"
-                  style={{ resize: 'horizontal', overflow: 'visible', minWidth: '100px' }}
+                  ref={(node) => {
+                    if (node) {
+                      columnHeaderRefs.current[col.name] = node;
+                    } else {
+                      delete columnHeaderRefs.current[col.name];
+                    }
+                  }}
+                  className={`px-4 py-2 border-r border-[#2e2e32] font-normal last:border-r-0 hover:bg-[#232323] transition-colors group relative align-top ${
+                    pinned ? 'sticky bg-[#1c1c1c] shadow-[inset_-1px_0_0_rgba(46,46,50,1)]' : ''
+                  }`}
+                  style={{
+                    resize: 'horizontal',
+                    overflow: 'visible',
+                    minWidth: '100px',
+                    ...(pinned && pinnedLeft !== undefined
+                      ? { left: `${pinnedLeft}px`, zIndex: 24 }
+                      : {}),
+                  }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {getColumnIcon(col.type)}
                       <span className="text-zinc-200 font-medium">{col.name}</span>
+                      {pinned ? <Pin className={`w-3 h-3 ${tc.textLight} opacity-80`} /> : null}
                       {col.isPrimary && <Key className="w-3 h-3 text-amber-500 opacity-70" />}
                       {col.isForeign && (
                         <LinkIcon
@@ -444,6 +516,21 @@ export default function TableBrowserView({
                           {t('columnOptions')}
                         </div>
                         <div className="grid grid-cols-2 gap-2 mb-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toggleColumnPin(col.name);
+                              setColumnMenu({ columnName: null, draft: null });
+                            }}
+                            className={`col-span-2 px-2 py-1.5 rounded text-xs border flex items-center justify-center gap-1.5 ${
+                              pinned
+                                ? `${tc.border} ${tc.textLight} ${tc.lightBg}`
+                                : 'border-[#333] text-zinc-300 hover:bg-[#2e2e32]'
+                            }`}
+                          >
+                            <Pin className="w-3.5 h-3.5" />
+                            {pinned ? t('unpinColumn') : t('pinColumn')}
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
@@ -534,7 +621,8 @@ export default function TableBrowserView({
                     ) : null}
                   </MenuSurface>
                 </th>
-              ))}
+                );
+              })}
               <th className="px-4 py-2 font-normal w-[140px] border-b border-[#2e2e32] sticky right-0 z-20 bg-[#1c1c1c]" />
             </tr>
           </thead>
@@ -590,6 +678,11 @@ export default function TableBrowserView({
                     (isJsonColumn(col) ? formatJsonCellValue(rawValue) : '');
                   const isEditingThisCell =
                     editingCell?.rowIndex === row._origIndex && editingCell?.colName === col.name;
+                  const pinned = isColumnPinned(col.name);
+                  const pinnedLeft = pinnedLeftOffsets[col.name];
+                  const pinnedBackground = selectedRows.has(row._origIndex)
+                    ? 'bg-zinc-800/70'
+                    : 'bg-[#18181b] group-hover:bg-[#232323]';
 
                   return (
                     <td
@@ -602,7 +695,12 @@ export default function TableBrowserView({
                           value: row[col.name],
                         })
                       }
-                      className="px-4 py-1 border-r border-[#2e2e32] last:border-r-0 max-w-[250px] relative group/cell cursor-text"
+                      className={`px-4 py-1 border-r border-[#2e2e32] last:border-r-0 max-w-[250px] relative group/cell cursor-text ${
+                        pinned ? `sticky ${pinnedBackground} shadow-[inset_-1px_0_0_rgba(46,46,50,1)]` : ''
+                      }`}
+                      style={
+                        pinned && pinnedLeft !== undefined ? { left: `${pinnedLeft}px`, zIndex: 6 } : undefined
+                      }
                       title={showCellTooltipOnHover ? timestampTooltip || undefined : undefined}
                     >
                       <div

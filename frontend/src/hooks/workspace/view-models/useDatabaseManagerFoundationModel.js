@@ -45,6 +45,7 @@ export default function useDatabaseManagerFoundationModel() {
     databaseVisibility: workspace.databaseVisibility,
     openTableTabs: workspace.openTableTabs,
     activeTableTabId: workspace.activeTableTabId,
+    pinnedColumnsByTable: workspace.pinnedColumnsByTable,
   });
 
   const { currentDriver, quoteIdentifier, escapeLiteral } = useWorkspaceSqlDialectHelpers(

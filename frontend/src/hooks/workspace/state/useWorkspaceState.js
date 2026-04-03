@@ -157,6 +157,35 @@ function sanitizeOpenTableTabs(rawValue) {
   return [...pinnedTabs, ...normalTabs];
 }
 
+function sanitizePinnedColumnsByTable(rawValue) {
+  if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
+    return {};
+  }
+
+  return Object.entries(rawValue).reduce((acc, [tableKey, value]) => {
+    if (typeof tableKey !== 'string' || tableKey.trim() === '') {
+      return acc;
+    }
+    if (!Array.isArray(value)) {
+      return acc;
+    }
+
+    const deduped = [];
+    const seen = new Set();
+    value.forEach((columnName) => {
+      const normalized = String(columnName || '').trim();
+      if (!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      deduped.push(normalized);
+    });
+
+    if (deduped.length > 0) {
+      acc[tableKey] = deduped;
+    }
+    return acc;
+  }, {});
+}
+
 export default function useWorkspaceState() {
   const [lang, setLang] = useState(() => localStorage.getItem('dbm_lang') || 'en');
 
@@ -296,6 +325,14 @@ export default function useWorkspaceState() {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [serverColumnFilters, setServerColumnFilters] = useState({});
   const [columnMenu, setColumnMenu] = useState({ columnName: null, draft: null });
+  const [pinnedColumnsByTable, setPinnedColumnsByTable] = useState(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('dbm_pinned_columns') || '{}');
+      return sanitizePinnedColumnsByTable(parsed);
+    } catch {
+      return {};
+    }
+  });
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
@@ -448,6 +485,8 @@ export default function useWorkspaceState() {
     setServerColumnFilters,
     columnMenu,
     setColumnMenu,
+    pinnedColumnsByTable,
+    setPinnedColumnsByTable,
     selectedRows,
     setSelectedRows,
     page,
