@@ -119,6 +119,23 @@ function JsonTreeNode({ label, value, path, expandedPaths, togglePath }) {
   );
 }
 
+function collectExpandablePaths(value, path = '$') {
+  const isArray = Array.isArray(value);
+  const isObject = value !== null && typeof value === 'object' && !isArray;
+  if (!isArray && !isObject) {
+    return [];
+  }
+
+  const entries = isArray
+    ? value.map((item, index) => [String(index), item])
+    : Object.entries(value || {});
+
+  return entries.reduce(
+    (acc, [key, child]) => [...acc, `${path}.${key}`, ...collectExpandablePaths(child, `${path}.${key}`)],
+    [path],
+  );
+}
+
 export default function JsonViewerModal({
   t,
   tc,
@@ -138,6 +155,16 @@ export default function JsonViewerModal({
     [formattedValue, rawValue],
   );
   const parsedJson = useMemo(() => parseJsonValue(rawValue, rawJsonText), [rawJsonText, rawValue]);
+  const expandablePaths = useMemo(
+    () => (parsedJson !== null ? collectExpandablePaths(parsedJson) : []),
+    [parsedJson],
+  );
+  const areAllTreeNodesExpanded = useMemo(
+    () =>
+      expandablePaths.length > 0 &&
+      expandablePaths.every((path) => expandedPaths.has(path)),
+    [expandablePaths, expandedPaths],
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -156,6 +183,15 @@ export default function JsonViewerModal({
       }
       return next;
     });
+  };
+
+  const toggleAllTreeNodes = () => {
+    if (!parsedJson) return;
+    if (areAllTreeNodesExpanded) {
+      setExpandedPaths(new Set(['$']));
+      return;
+    }
+    setExpandedPaths(new Set(expandablePaths));
   };
 
   if (!isOpen) return null;
@@ -189,6 +225,15 @@ export default function JsonViewerModal({
                 {t('settingsJsonModeRaw')}
               </button>
             </div>
+            {viewMode === 'tree' && parsedJson !== null ? (
+              <button
+                type="button"
+                onClick={toggleAllTreeNodes}
+                className="px-2.5 py-1 text-[11px] rounded border border-[#323239] text-zinc-300 hover:bg-[#2a2a2f] transition-colors"
+              >
+                {areAllTreeNodesExpanded ? t('collapseAll') : t('expandAll')}
+              </button>
+            ) : null}
             <button
               onClick={onClose}
               className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"

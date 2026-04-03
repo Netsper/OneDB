@@ -91,6 +91,8 @@ export const en = {
   noRecords: 'No records found.',
   noFilterResults: 'No data matched the current filter.',
   viewJson: 'View JSON',
+  expandAll: 'Expand all',
+  collapseAll: 'Collapse all',
   copy: 'Copy',
   copied: 'Copied to clipboard',
   setNull: 'Set NULL',

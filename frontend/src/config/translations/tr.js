@@ -84,6 +84,8 @@ export const tr = {
   noRecords: 'Gösterilecek kayıt bulunamadı.',
   noFilterResults: 'Filtreye uygun veri bulunamadi.',
   viewJson: 'JSON goster',
+  expandAll: 'Tümünü aç',
+  collapseAll: 'Tümünü kapa',
   copy: 'Kopyala',
   copied: 'Kopyalandı',
   setNull: 'NULL ata',
