@@ -171,6 +171,7 @@ export const en = {
   dbNamePlaceholder: 'Database Name',
   tableNamePlaceholder: 'Table Name',
   createDatabaseTab: 'Create database',
+  databaseTools: 'Database tools',
   privilegesTab: 'Privileges',
   processListTab: 'Process list',
   variablesTab: 'Variables',

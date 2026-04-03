@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -6,6 +6,7 @@ import {
   Database,
   Eye,
   Loader2,
+  MoreHorizontal,
   Plus,
   PlusCircle,
   Search,
@@ -57,6 +58,7 @@ export default function AppSidebar({
   setSidebarQuery,
   openCommandPalette,
   openCreateDatabase,
+  openDatabaseAdminModal,
   pinnedDatabases,
   sidebarDatabases,
   activeDb,
@@ -78,6 +80,26 @@ export default function AppSidebar({
   handleContextMenu,
 }) {
   const [databaseQueries, setDatabaseQueries] = useState({});
+  const [isDbToolsMenuOpen, setIsDbToolsMenuOpen] = useState(false);
+  const dbToolsMenuRef = useRef(null);
+  const dbToolsButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (!isDbToolsMenuOpen) return;
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (
+        dbToolsMenuRef.current &&
+        !dbToolsMenuRef.current.contains(target) &&
+        dbToolsButtonRef.current &&
+        !dbToolsButtonRef.current.contains(target)
+      ) {
+        setIsDbToolsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [isDbToolsMenuOpen]);
 
   return (
     <div
@@ -183,6 +205,45 @@ export default function AppSidebar({
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
+              <div className="relative" ref={dbToolsMenuRef}>
+                <button
+                  ref={dbToolsButtonRef}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIsDbToolsMenuOpen((prev) => !prev);
+                  }}
+                  className={`transition-colors p-1 rounded hover:bg-[#2e2e32] ${isDbToolsMenuOpen ? `${tc.textLight} ${tc.lightBg}` : 'text-zinc-500 hover:text-zinc-200'}`}
+                  title={t('databaseTools') || 'Database tools'}
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                </button>
+                <MenuSurface
+                  open={isDbToolsMenuOpen}
+                  anchor={dbToolsButtonRef}
+                  placement="bottom-end"
+                  onClick={(event) => event.stopPropagation()}
+                  className="p-1.5 z-[140] flex flex-col min-w-[220px]"
+                >
+                  {[
+                    { key: 'db_privileges', label: t('privilegesTab') || 'Privileges' },
+                    { key: 'db_process_list', label: t('processListTab') || 'Process list' },
+                    { key: 'db_variables', label: t('variablesTab') || 'Variables' },
+                    { key: 'db_status', label: t('statusTab') || 'Status' },
+                  ].map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => {
+                        setIsDbToolsMenuOpen(false);
+                        openDatabaseAdminModal(item.key);
+                      }}
+                      className="w-full text-left px-2.5 py-2 text-xs text-zinc-300 hover:bg-[#2a2a2f] rounded transition-colors"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </MenuSurface>
+              </div>
             </div>
           </div>
           <div className="relative mb-2">

@@ -4,9 +4,9 @@ import {
   Database,
   FileDown,
   History,
-  Loader2,
   ListChecks,
   ListTree,
+  Loader2,
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
@@ -60,11 +60,13 @@ export default function DatabaseActionModals({
   handleExportTable,
   handleExportDatabaseSql,
 }) {
-  const isCreateDbModalOpen = modalConfig.isOpen && modalConfig.type === 'create_db';
   const isMysql = currentDriver === 'mysql';
-  const [createDbTab, setCreateDbTab] = useState('create');
+  const isCreateDbModalOpen = modalConfig.isOpen && modalConfig.type === 'create_db';
+
   const [isCharsetLoading, setIsCharsetLoading] = useState(false);
   const [isCollationLoading, setIsCollationLoading] = useState(false);
+  const [charsetSearch, setCharsetSearch] = useState('');
+  const [collationSearch, setCollationSearch] = useState('');
   const [charsetOptions, setCharsetOptions] = useState([
     { value: 'utf8mb4', label: 'utf8mb4' },
     { value: 'utf8', label: 'utf8' },
@@ -73,23 +75,41 @@ export default function DatabaseActionModals({
     { value: 'utf8mb4_general_ci', label: 'utf8mb4_general_ci' },
     { value: 'utf8mb4_unicode_ci', label: 'utf8mb4_unicode_ci' },
   ]);
-  const [adminPanels, setAdminPanels] = useState({
-    privileges: { loading: false, loaded: false, error: '', rows: [] },
-    process: { loading: false, loaded: false, error: '', rows: [] },
-    variables: { loading: false, loaded: false, error: '', rows: [] },
-    status: { loading: false, loaded: false, error: '', rows: [] },
+
+  const [dbAdminData, setDbAdminData] = useState({
+    loading: false,
+    error: '',
+    rows: [],
   });
 
-  const createDbTabs = useMemo(
-    () => [
-      { key: 'create', label: t('createDatabaseTab') || 'Create database', icon: Database },
-      { key: 'privileges', label: t('privilegesTab') || 'Privileges', icon: ShieldCheck },
-      { key: 'process', label: t('processListTab') || 'Process list', icon: ListChecks },
-      { key: 'variables', label: t('variablesTab') || 'Variables', icon: SlidersHorizontal },
-      { key: 'status', label: t('statusTab') || 'Status', icon: ListTree },
-    ],
+  const dbAdminModalMap = useMemo(
+    () => ({
+      db_privileges: {
+        title: t('privilegesTab') || 'Privileges',
+        icon: ShieldCheck,
+        sql: 'SHOW GRANTS FOR CURRENT_USER;',
+      },
+      db_process_list: {
+        title: t('processListTab') || 'Process list',
+        icon: ListChecks,
+        sql: 'SHOW FULL PROCESSLIST;',
+      },
+      db_variables: {
+        title: t('variablesTab') || 'Variables',
+        icon: SlidersHorizontal,
+        sql: 'SHOW VARIABLES;',
+      },
+      db_status: {
+        title: t('statusTab') || 'Status',
+        icon: ListTree,
+        sql: 'SHOW STATUS;',
+      },
+    }),
     [t],
   );
+
+  const activeDbAdminConfig = dbAdminModalMap[modalConfig.type] || null;
+  const isDbAdminModalOpen = modalConfig.isOpen && Boolean(activeDbAdminConfig);
 
   const fallbackCharsetList = useMemo(
     () => [
@@ -166,14 +186,23 @@ export default function DatabaseActionModals({
     return [];
   };
 
-  const resetAdminPanels = () => {
-    setAdminPanels({
-      privileges: { loading: false, loaded: false, error: '', rows: [] },
-      process: { loading: false, loaded: false, error: '', rows: [] },
-      variables: { loading: false, loaded: false, error: '', rows: [] },
-      status: { loading: false, loaded: false, error: '', rows: [] },
-    });
-  };
+  const filteredCharsetOptions = useMemo(() => {
+    const query = charsetSearch.trim().toLowerCase();
+    if (!query) return charsetOptions;
+    return charsetOptions.filter((entry) => entry.label.toLowerCase().includes(query));
+  }, [charsetOptions, charsetSearch]);
+
+  const filteredCollationOptions = useMemo(() => {
+    const query = collationSearch.trim().toLowerCase();
+    if (!query) return collationOptions;
+    return collationOptions.filter((entry) => entry.label.toLowerCase().includes(query));
+  }, [collationOptions, collationSearch]);
+
+  const adminRows = Array.isArray(dbAdminData.rows) ? dbAdminData.rows : [];
+  const adminColumns = useMemo(
+    () => (adminRows[0] && typeof adminRows[0] === 'object' ? Object.keys(adminRows[0]) : []),
+    [adminRows],
+  );
 
   const loadAvailableCharsets = async () => {
     if (!isMysql) return;
@@ -248,51 +277,26 @@ export default function DatabaseActionModals({
     }
   };
 
-  const loadAdminTabData = async (tabKey) => {
-    if (!isMysql) return;
-    const queryMap = {
-      privileges: 'SHOW GRANTS FOR CURRENT_USER;',
-      process: 'SHOW FULL PROCESSLIST;',
-      variables: 'SHOW VARIABLES;',
-      status: 'SHOW STATUS;',
-    };
-    const sql = queryMap[tabKey];
-    if (!sql) return;
-
-    setAdminPanels((prev) => ({
-      ...prev,
-      [tabKey]: { ...prev[tabKey], loading: true, error: '' },
-    }));
-
+  const loadDbAdminData = async () => {
+    if (!isMysql || !activeDbAdminConfig?.sql) return;
+    setDbAdminData({ loading: true, error: '', rows: [] });
     try {
-      const result = await executeSql(sql, activeDb || '');
+      const result = await executeSql(activeDbAdminConfig.sql, activeDb || '');
       const rows = normalizeResultRows(result);
-      setAdminPanels((prev) => ({
-        ...prev,
-        [tabKey]: { loading: false, loaded: true, error: '', rows },
-      }));
+      setDbAdminData({ loading: false, error: '', rows });
     } catch (error) {
-      setAdminPanels((prev) => ({
-        ...prev,
-        [tabKey]: {
-          ...prev[tabKey],
-          loading: false,
-          loaded: true,
-          error: error?.message || t('loadFailed') || 'Failed to load data.',
-          rows: [],
-        },
-      }));
+      setDbAdminData({
+        loading: false,
+        error: error?.message || t('loadFailed') || 'Failed to load data.',
+        rows: [],
+      });
     }
   };
 
-  const activeAdminPanel =
-    createDbTab !== 'create' ? adminPanels[createDbTab] : { loading: false, error: '', rows: [] };
-  const activeAdminRows = Array.isArray(activeAdminPanel.rows) ? activeAdminPanel.rows : [];
-
   useEffect(() => {
     if (!isCreateDbModalOpen) return;
-    setCreateDbTab('create');
-    resetAdminPanels();
+    setCharsetSearch('');
+    setCollationSearch('');
     if (isMysql) {
       loadAvailableCharsets();
     }
@@ -304,29 +308,158 @@ export default function DatabaseActionModals({
   }, [isCreateDbModalOpen, isMysql, dbCharset]);
 
   useEffect(() => {
-    if (!isCreateDbModalOpen || !isMysql || createDbTab === 'create') return;
-    const currentPanel = adminPanels[createDbTab];
-    if (!currentPanel || currentPanel.loading || currentPanel.loaded) return;
-    loadAdminTabData(createDbTab);
-  }, [isCreateDbModalOpen, isMysql, createDbTab, adminPanels]);
-
-  const adminColumns = useMemo(
-    () => (activeAdminRows[0] && typeof activeAdminRows[0] === 'object' ? Object.keys(activeAdminRows[0]) : []),
-    [activeAdminRows],
-  );
+    if (!isDbAdminModalOpen) return;
+    if (!isMysql) {
+      setDbAdminData({
+        loading: false,
+        error:
+          t('mysqlOnlyAdminTabNotice') ||
+          'This section is currently available for MySQL-compatible drivers.',
+        rows: [],
+      });
+      return;
+    }
+    loadDbAdminData();
+  }, [isDbAdminModalOpen, isMysql, activeDbAdminConfig, activeDb, t]);
 
   return (
     <>
       {isCreateDbModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-lg flex flex-col shadow-2xl animate-in zoom-in-95">
+            <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl">
+              <h3 className="text-base font-semibold text-zinc-100">{t('newDatabase')}</h3>
+              <button
+                onClick={() => setModalConfig({ isOpen: false })}
+                className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateDB} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-2">
+                  {t('dbNamePlaceholder')}
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                  className={`w-full bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`}
+                />
+              </div>
+
+              {isMysql ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-2">
+                      {t('charset') || 'Charset'}
+                    </label>
+                    <input
+                      type="text"
+                      value={charsetSearch}
+                      onChange={(event) => setCharsetSearch(event.target.value)}
+                      placeholder={t('search')}
+                      className={`w-full mb-2 bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`}
+                    />
+                    <SelectField
+                      value={dbCharset}
+                      onChange={(event) => setDbCharset(event.target.value)}
+                      className={baseSelectClass}
+                    >
+                      {filteredCharsetOptions.length > 0 ? (
+                        filteredCharsetOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))
+                      ) : (
+                        <option value={dbCharset}>{dbCharset}</option>
+                      )}
+                    </SelectField>
+                    {isCharsetLoading ? (
+                      <p className="text-[11px] text-zinc-500 mt-2">
+                        {t('loadingCharsets') || 'Loading charsets...'}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-2">
+                      {t('collation')}
+                    </label>
+                    <input
+                      type="text"
+                      value={collationSearch}
+                      onChange={(event) => setCollationSearch(event.target.value)}
+                      placeholder={t('search')}
+                      className={`w-full mb-2 bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`}
+                    />
+                    <SelectField
+                      value={dbCollation}
+                      onChange={(event) => setDbCollation(event.target.value)}
+                      className={baseSelectClass}
+                    >
+                      {filteredCollationOptions.length > 0 ? (
+                        filteredCollationOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))
+                      ) : (
+                        <option value={dbCollation}>{dbCollation}</option>
+                      )}
+                    </SelectField>
+                    {isCollationLoading ? (
+                      <p className="text-[11px] text-zinc-500 mt-2">
+                        {t('loadingCollations') || 'Loading collations...'}
+                      </p>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <div className="bg-[#151518] border border-[#333] rounded-lg p-3">
+                  <p className="text-xs text-zinc-400">
+                    {t('charsetDriverNotice') ||
+                      'Charset and collation options are available for MySQL connections.'}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setModalConfig({ isOpen: false })}
+                  className="px-4 py-2 text-xs font-medium text-zinc-300 border border-[#333] hover:bg-[#2e2e32] rounded"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className={`px-4 py-2 text-xs font-medium text-white ${tc.bg} ${tc.hoverBg} rounded`}
+                >
+                  {t('create')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isDbAdminModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-5xl flex flex-col shadow-2xl animate-in zoom-in-95 max-h-[88vh]">
             <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl shrink-0">
-              <div>
-                <h3 className="text-base font-semibold text-zinc-100">{t('newDatabase')}</h3>
-                <p className="text-xs text-zinc-500 mt-1">
-                  {t('newDatabasePanelDesc') ||
-                    'Create databases and inspect runtime metadata from a single panel.'}
-                </p>
+              <div className="flex items-center gap-2">
+                {activeDbAdminConfig?.icon ? (
+                  <activeDbAdminConfig.icon className="w-4 h-4 text-zinc-300" />
+                ) : (
+                  <Database className="w-4 h-4 text-zinc-300" />
+                )}
+                <h3 className="text-base font-semibold text-zinc-100">
+                  {activeDbAdminConfig?.title || ''}
+                </h3>
               </div>
               <button
                 onClick={() => setModalConfig({ isOpen: false })}
@@ -336,194 +469,68 @@ export default function DatabaseActionModals({
               </button>
             </div>
 
-            <div className="px-4 pt-4 border-b border-[#2e2e32] bg-[#18181b] shrink-0">
-              <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-3">
-                {createDbTabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = createDbTab === tab.key;
-                  const isDisabled = !isMysql && tab.key !== 'create';
-                  return (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => setCreateDbTab(tab.key)}
-                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
-                        isActive
-                          ? `${tc.border} ${tc.bgSoft} ${tc.textLight}`
-                          : 'border-[#333] text-zinc-400 hover:text-zinc-200 hover:border-[#4a4a4f]'
-                      } ${isDisabled ? 'opacity-50 cursor-not-allowed hover:text-zinc-400 hover:border-[#333]' : ''}`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             <div className="p-6 overflow-auto custom-scrollbar">
-              {createDbTab === 'create' ? (
-                <form onSubmit={handleCreateDB} className="space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-zinc-400 mb-2">
-                        {t('dbNamePlaceholder')}
-                      </label>
-                      <input
-                        type="text"
-                        autoFocus
-                        value={inputVal}
-                        onChange={(e) => setInputVal(e.target.value)}
-                        className={`w-full bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`}
-                      />
-                    </div>
-                    {isMysql ? (
-                      <div>
-                        <label className="block text-xs font-medium text-zinc-400 mb-2">
-                          {t('charset') || 'Charset'}
-                        </label>
-                        <SelectField
-                          value={dbCharset}
-                          onChange={(e) => setDbCharset(e.target.value)}
-                          className={baseSelectClass}
-                        >
-                          {charsetOptions.map((charset) => (
-                            <option key={charset.value} value={charset.value}>
-                              {charset.label}
-                            </option>
-                          ))}
-                        </SelectField>
-                        {isCharsetLoading ? (
-                          <p className="text-[11px] text-zinc-500 mt-2">
-                            {t('loadingCharsets') || 'Loading charsets...'}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <div className="md:col-span-1 bg-[#151518] border border-[#333] rounded-lg p-3">
-                        <p className="text-xs text-zinc-400">
-                          {t('charsetDriverNotice') ||
-                            'Charset and collation options are available for MySQL connections.'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {isMysql ? (
-                    <div>
-                      <label className="block text-xs font-medium text-zinc-400 mb-2">
-                        {t('collation')}
-                      </label>
-                      <SelectField
-                        value={dbCollation}
-                        onChange={(e) => setDbCollation(e.target.value)}
-                        className={baseSelectClass}
-                      >
-                        {collationOptions.map((collation) => (
-                          <option key={collation.value} value={collation.value}>
-                            {collation.label}
-                          </option>
-                        ))}
-                      </SelectField>
-                      {isCollationLoading ? (
-                        <p className="text-[11px] text-zinc-500 mt-2">
-                          {t('loadingCollations') || 'Loading collations...'}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <div className="bg-[#151518] border border-[#333] rounded-lg p-3">
-                    <p className="text-xs text-zinc-400">
-                      {t('createDbHint') ||
-                        'Choose a charset/collation pair compatible with your application before creating the database.'}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setModalConfig({ isOpen: false })}
-                      className="px-4 py-2 text-xs font-medium text-zinc-300 border border-[#333] hover:bg-[#2e2e32] rounded"
-                    >
-                      {t('cancel')}
-                    </button>
-                    <button
-                      type="submit"
-                      className={`px-4 py-2 text-xs font-medium text-white ${tc.bg} ${tc.hoverBg} rounded`}
-                    >
-                      {t('create')}
-                    </button>
-                  </div>
-                </form>
-              ) : !isMysql ? (
-                <div className="bg-[#151518] border border-[#333] rounded-lg p-4">
-                  <p className="text-sm text-zinc-400">
-                    {t('mysqlOnlyAdminTabNotice') ||
-                      'This section is currently available for MySQL-compatible drivers.'}
-                  </p>
+              {!isMysql ? (
+                <div className="bg-[#151518] border border-[#333] rounded-lg p-4 text-sm text-zinc-400">
+                  {t('mysqlOnlyAdminTabNotice') ||
+                    'This section is currently available for MySQL-compatible drivers.'}
+                </div>
+              ) : dbAdminData.loading ? (
+                <div className="bg-[#151518] border border-[#333] rounded-lg p-6 flex items-center justify-center gap-2 text-zinc-400 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{t('loading') || 'Loading...'}</span>
+                </div>
+              ) : dbAdminData.error ? (
+                <div className="bg-[#151518] border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
+                  {dbAdminData.error}
+                </div>
+              ) : adminRows.length === 0 ? (
+                <div className="bg-[#151518] border border-[#333] rounded-lg p-4 text-sm text-zinc-400">
+                  {t('noRecords')}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {activeAdminPanel.loading ? (
-                    <div className="bg-[#151518] border border-[#333] rounded-lg p-6 flex items-center justify-center gap-2 text-zinc-400 text-sm">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{t('loading') || 'Loading...'}</span>
-                    </div>
-                  ) : activeAdminPanel.error ? (
-                    <div className="bg-[#151518] border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
-                      {activeAdminPanel.error}
-                    </div>
-                  ) : activeAdminRows.length === 0 ? (
-                    <div className="bg-[#151518] border border-[#333] rounded-lg p-4 text-sm text-zinc-400">
-                      {t('noRecords')}
-                    </div>
-                  ) : (
-                    <div className="bg-[#151518] border border-[#333] rounded-lg overflow-hidden">
-                      <div className="overflow-auto custom-scrollbar max-h-[56vh]">
-                        <table className="w-full min-w-[780px] text-xs">
-                          <thead className="bg-[#18181b] sticky top-0 z-10">
-                            <tr>
-                              {adminColumns.map((column) => (
-                                <th
-                                  key={column}
-                                  className="text-left px-3 py-2 text-zinc-300 border-b border-[#2e2e32] whitespace-nowrap"
+                <div className="bg-[#151518] border border-[#333] rounded-lg overflow-hidden">
+                  <div className="overflow-auto custom-scrollbar max-h-[64vh]">
+                    <table className="w-full min-w-[780px] text-xs">
+                      <thead className="bg-[#18181b] sticky top-0 z-10">
+                        <tr>
+                          {adminColumns.map((column) => (
+                            <th
+                              key={column}
+                              className="text-left px-3 py-2 text-zinc-300 border-b border-[#2e2e32] whitespace-nowrap"
+                            >
+                              {column}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminRows.map((row, rowIndex) => (
+                          <tr key={rowIndex} className="border-b border-[#242428]">
+                            {adminColumns.map((column) => {
+                              const value = row?.[column];
+                              const rendered =
+                                value == null
+                                  ? 'NULL'
+                                  : typeof value === 'object'
+                                    ? JSON.stringify(value, null, 2)
+                                    : String(value);
+                              return (
+                                <td
+                                  key={`${rowIndex}-${column}`}
+                                  className="px-3 py-2 align-top text-zinc-200"
                                 >
-                                  {column}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {activeAdminRows.map((row, rowIndex) => (
-                              <tr key={rowIndex} className="border-b border-[#242428]">
-                                {adminColumns.map((column) => {
-                                  const value = row?.[column];
-                                  const rendered =
-                                    value == null
-                                      ? 'NULL'
-                                      : typeof value === 'object'
-                                        ? JSON.stringify(value, null, 2)
-                                        : String(value);
-                                  return (
-                                    <td
-                                      key={`${rowIndex}-${column}`}
-                                      className="px-3 py-2 align-top text-zinc-200"
-                                    >
-                                      <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[11px]">
-                                        {rendered}
-                                      </pre>
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
+                                  <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[11px]">
+                                    {rendered}
+                                  </pre>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

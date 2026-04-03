@@ -159,6 +159,7 @@ export const tr = {
   dbNamePlaceholder: 'Veritabanı Adı',
   tableNamePlaceholder: 'Tablo Adı',
   createDatabaseTab: 'Veritabanı oluştur',
+  databaseTools: 'Veritabanı araçları',
   privilegesTab: 'Yetkiler',
   processListTab: 'Süreç listesi',
   variablesTab: 'Değişkenler',

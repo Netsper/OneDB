@@ -82,6 +82,9 @@ export default function useWorkspaceLayoutViewModel(params) {
         setInputVal('');
         setModalConfig({ isOpen: true, type: 'create_db' });
       },
+      openDatabaseAdminModal: (type) => {
+        setModalConfig({ isOpen: true, type });
+      },
       pinnedDatabases: filteredPinnedDatabases,
       sidebarDatabases,
       activeDb,
