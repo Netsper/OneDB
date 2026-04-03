@@ -7,6 +7,14 @@
   --onedb-scrollbar-thumb-hover-bottom: rgba(5, 150, 105, 0.84);
 }
 
+html[data-onedb-density='comfortable'] {
+  font-size: 16px;
+}
+
+html[data-onedb-density='compact'] {
+  font-size: 14px;
+}
+
 [data-theme='emerald'] {
   --onedb-scrollbar-thumb-top: rgba(16, 185, 129, 0.58);
   --onedb-scrollbar-thumb-bottom: rgba(5, 150, 105, 0.58);

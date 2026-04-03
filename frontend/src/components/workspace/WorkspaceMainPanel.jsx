@@ -232,6 +232,7 @@ export default function WorkspaceMainPanel({
               getCellTextValue={getCellTextValue}
               getTimestampTooltip={getTimestampTooltip}
               showCellTooltipOnHover={showCellTooltipOnHover}
+              uiDensity={settings?.uiDensity || 'comfortable'}
               isJsonColumn={isJsonColumn}
               formatJsonCellValue={formatJsonCellValue}
               copyToClipboard={copyToClipboard}

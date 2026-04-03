@@ -3,11 +3,12 @@ import WorkspaceLayout from './WorkspaceLayout.jsx';
 import WorkspaceOverlays from './WorkspaceOverlays.jsx';
 
 export default function ConnectedWorkspace({ viewModel }) {
-  const { tc, theme, layout, overlays } = viewModel;
+  const { tc, theme, density, layout, overlays } = viewModel;
 
   return (
     <div
       data-theme={theme || 'emerald'}
+      data-density={density === 'compact' ? 'compact' : 'comfortable'}
       className={`h-screen flex flex-col bg-[#18181b] text-zinc-300 font-sans overflow-hidden ${tc.selection}`}
     >
       <WorkspaceLayout
