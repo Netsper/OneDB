@@ -409,7 +409,10 @@ export default function AppSidebar({
 
                 {expandedDbs[dbName] && (
                   <div className="ml-6 mt-0.5 space-y-1 relative before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-[#333]">
-                    <div className="px-1 py-1">
+                    <div className="sticky top-0 z-20 px-1 py-1 mb-1 bg-[#1c1c1c]/95 backdrop-blur-sm border-b border-[#2a2a2e]">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1">
+                        {dbName}
+                      </div>
                       <div className="relative">
                         <Search className="w-3 h-3 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
