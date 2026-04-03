@@ -75,8 +75,8 @@ export default function DatabaseOverview({
           </div>
         </div>
         <div className="bg-[#1c1c1c] border border-[#2e2e32] p-4 rounded-lg flex items-center gap-4">
-          <div className="p-3 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-            <BarChart2 className="w-6 h-6 text-emerald-500" />
+          <div className={`p-3 rounded-full border ${tc.lightBg} ${tc.borderLight}`}>
+            <BarChart2 className={`w-6 h-6 ${tc.text}`} />
           </div>
           <div>
             <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wide">
@@ -106,9 +106,9 @@ export default function DatabaseOverview({
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-zinc-200 font-medium flex items-center gap-2">
                   {tableEntry.type === 'view' ? (
-                    <Eye className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
+                    <Eye className={`w-4 h-4 text-zinc-500 ${tc.textLight} transition-colors`} />
                   ) : (
-                    <Table2 className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
+                    <Table2 className={`w-4 h-4 text-zinc-500 ${tc.textLight} transition-colors`} />
                   )}
                   {tableName}
                 </h3>

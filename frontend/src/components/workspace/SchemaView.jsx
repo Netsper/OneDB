@@ -96,7 +96,7 @@ const TOKEN_CLASS_MAP = {
   plain: 'text-zinc-200',
   keyword: 'text-fuchsia-300 font-semibold',
   string: 'text-amber-300',
-  number: 'text-emerald-300',
+  number: 'text-zinc-300',
   identifier: 'text-sky-300',
   comment: 'text-zinc-500 italic',
   punctuation: 'text-zinc-400',
@@ -275,7 +275,11 @@ export default function SchemaView({
                         <div className="flex items-center justify-between gap-2">
                           <div className="font-mono text-xs text-zinc-200">{index.name}</div>
                           <span
-                            className={`text-[10px] px-2 py-0.5 rounded border ${index.unique ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' : 'text-zinc-400 border-zinc-600/40 bg-zinc-700/20'}`}
+                            className={`text-[10px] px-2 py-0.5 rounded border ${
+                              index.unique
+                                ? `${tc.badgeText} ${tc.badgeBg} ${tc.borderLight}`
+                                : 'text-zinc-400 border-zinc-600/40 bg-zinc-700/20'
+                            }`}
                           >
                             {index.unique ? t('uniqueIndex') : t('nonUniqueIndex')}
                           </span>

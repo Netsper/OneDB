@@ -150,6 +150,7 @@ export default function useWorkspaceLayoutViewModel(params) {
     },
     statusBar: {
       t,
+      tc,
       connForm,
       activeDb,
       ping,

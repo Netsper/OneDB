@@ -14,6 +14,7 @@ import MenuSurface from '../shared/MenuSurface.jsx';
 
 export default function WorkspaceContextMenus({
   t,
+  tc,
   contextMenu,
   cellContextMenu,
   selectDbAndTable,
@@ -56,7 +57,7 @@ export default function WorkspaceContextMenus({
           <div className="my-1 border-t border-[#2e2e32]"></div>
           <button
             onClick={() => togglePinTable(contextMenu.dbName, contextMenu.tableName)}
-            className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-400/10 flex items-center gap-2"
+            className={`w-full text-left px-3 py-1.5 text-xs ${tc.textLight} ${tc.lightBg} flex items-center gap-2`}
           >
             <Star className="w-3.5 h-3.5" />{' '}
             {isTablePinned(contextMenu.dbName, contextMenu.tableName)
@@ -107,7 +108,7 @@ export default function WorkspaceContextMenus({
           {cellContextMenu.canShowJson && (
             <button
               onClick={openCellJsonViewerFromMenu}
-              className="w-full text-left px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-400/10 flex items-center gap-2"
+              className={`w-full text-left px-3 py-1.5 text-xs ${tc.textLight} ${tc.lightBg} flex items-center gap-2`}
             >
               <Code className="w-3.5 h-3.5" /> {t('viewJson')}
             </button>
@@ -116,7 +117,7 @@ export default function WorkspaceContextMenus({
           <button
             onClick={setCellNullFromMenu}
             disabled={currentTableData?.type === 'view'}
-            className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-400/10 flex items-center gap-2 disabled:opacity-40 disabled:hover:bg-transparent"
+            className={`w-full text-left px-3 py-1.5 text-xs ${tc.textLight} ${tc.lightBg} flex items-center gap-2 disabled:opacity-40 disabled:hover:bg-transparent`}
           >
             <ToggleLeft className="w-3.5 h-3.5" /> {t('setNull')}
           </button>

@@ -205,11 +205,11 @@ export default function SqlEditorView({
 
   const renderPlanSteps = (steps) =>
     (Array.isArray(steps) ? steps : []).map((planItem, i) => (
-      <div key={i} className="flex items-start gap-4 mb-3 relative pl-6">
+        <div key={i} className="flex items-start gap-4 mb-3 relative pl-6">
         <div className="absolute left-1.5 top-1.5 bottom-[-1rem] w-[1px] bg-[#333]" />
         <GitCommit className="w-3 h-3 text-zinc-500 absolute left-0 top-1 bg-[#1c1c1c]" />
         <div className="flex-1">
-          <div className="text-emerald-400 font-bold mb-1">
+          <div className={`font-bold mb-1 ${tc.textLight}`}>
             {planItem.node}{' '}
             {planItem.entity !== '-' && (
               <>

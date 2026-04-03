@@ -1,11 +1,11 @@
 import React from 'react';
 import { Command, Database, Globe, Server, Zap } from 'lucide-react';
 
-export default function WorkspaceStatusBar({ t, connForm, activeDb, ping, lang, onOpenShortcuts }) {
+export default function WorkspaceStatusBar({ t, tc, connForm, activeDb, ping, lang, onOpenShortcuts }) {
   return (
     <footer className="h-7 bg-[#1c1c1c] border-t border-[#2e2e32] flex items-center justify-between px-4 text-[10px] text-zinc-500 z-50 shrink-0 font-mono tracking-wide">
       <div className="flex items-center gap-5">
-        <span className="flex items-center gap-1.5 text-emerald-400">
+        <span className={`flex items-center gap-1.5 ${tc.textLight}`}>
           <Server className="w-3 h-3" /> {connForm.host}:{connForm.port}
         </span>
         <span>

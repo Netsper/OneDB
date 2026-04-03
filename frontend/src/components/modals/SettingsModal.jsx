@@ -16,7 +16,7 @@ function Section({ icon: Icon, title, description, children }) {
   );
 }
 
-function ToggleRow({ label, description, checked, onChange }) {
+function ToggleRow({ label, description, checked, onChange, tc }) {
   return (
     <label className="flex items-center justify-between gap-4 rounded-lg border border-[#2d2d31] bg-[#111113] px-3 py-2.5 transition-colors hover:border-[#3b3b42]">
       <div className="space-y-0.5">
@@ -26,16 +26,16 @@ function ToggleRow({ label, description, checked, onChange }) {
       <button
         type="button"
         onClick={onChange}
-        className={`relative inline-flex h-7 w-12 items-center rounded-full p-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 ${
+        className={`relative inline-flex h-7 w-12 items-center rounded-full p-0.5 transition-all focus:outline-none ${
           checked
-            ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_0_1px_rgba(16,185,129,0.45)]'
+            ? `${tc.bg} ${tc.border}`
             : 'border border-[#3b3b42] bg-[#25252a]'
         }`}
         aria-pressed={checked}
       >
         <span
           className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow transition-transform ${
-            checked ? 'translate-x-5 text-emerald-600' : 'translate-x-0 text-zinc-400'
+            checked ? `translate-x-5 ${tc.text}` : 'translate-x-0 text-zinc-400'
           }`}
         >
           {checked ? <Check className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />}
@@ -227,6 +227,7 @@ export default function SettingsModal({
                       showCellTooltipOnHover: !prev.showCellTooltipOnHover,
                     }))
                   }
+                  tc={tc}
                 />
               </Section>
 
@@ -237,21 +238,25 @@ export default function SettingsModal({
                   onChange={() =>
                     updateSqlEditor('syntaxHighlight', !settings.sqlEditor.syntaxHighlight)
                   }
+                  tc={tc}
                 />
                 <ToggleRow
                   label={t('settingsSqlAutocomplete')}
                   checked={settings.sqlEditor.autocomplete}
                   onChange={() => updateSqlEditor('autocomplete', !settings.sqlEditor.autocomplete)}
+                  tc={tc}
                 />
                 <ToggleRow
                   label={t('settingsSqlWordWrap')}
                   checked={settings.sqlEditor.wordWrap}
                   onChange={() => updateSqlEditor('wordWrap', !settings.sqlEditor.wordWrap)}
+                  tc={tc}
                 />
                 <ToggleRow
                   label={t('settingsSqlLineNumbers')}
                   checked={settings.sqlEditor.lineNumbers}
                   onChange={() => updateSqlEditor('lineNumbers', !settings.sqlEditor.lineNumbers)}
+                  tc={tc}
                 />
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -264,7 +269,7 @@ export default function SettingsModal({
                     max={20}
                     value={settings.sqlEditor.fontSize}
                     onChange={(event) => updateSqlEditor('fontSize', Number(event.target.value))}
-                    className="w-full accent-emerald-500"
+                    className={`w-full ${tc.accent}`}
                   />
                 </div>
               </Section>

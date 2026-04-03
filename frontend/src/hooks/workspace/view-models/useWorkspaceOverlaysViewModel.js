@@ -91,6 +91,7 @@ export default function useWorkspaceOverlaysViewModel(params) {
   return {
     contextMenus: {
       t,
+      tc,
       contextMenu,
       cellContextMenu,
       selectDbAndTable,

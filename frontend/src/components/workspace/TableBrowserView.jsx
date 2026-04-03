@@ -645,7 +645,7 @@ export default function TableBrowserView({
                                 data: { columnName: col.name, value: rawValue },
                               });
                             }}
-                            className="text-[10px] font-semibold text-cyan-300 px-1.5 py-1 rounded hover:bg-[#333] transition-colors"
+                            className={`text-[10px] font-semibold ${tc.textLight} px-1.5 py-1 rounded hover:bg-[#333] transition-colors`}
                             title={t('viewJson')}
                           >
                             JSON
@@ -699,7 +699,7 @@ export default function TableBrowserView({
                       <>
                         <button
                           onClick={() => handleCloneRow(row._origIndex)}
-                          className="text-zinc-500 hover:text-emerald-400"
+                          className={`text-zinc-500 hover:opacity-80 ${tc.textLight}`}
                           title={t('duplicateTable')}
                         >
                           <CopyPlus className="w-3.5 h-3.5" />

@@ -49,10 +49,10 @@ function PrimitiveValue({ value }) {
     return <span className="text-red-300">null</span>;
   }
   if (typeof value === 'string') {
-    return <span className="text-emerald-300">"{value}"</span>;
+    return <span className="text-zinc-100">"{value}"</span>;
   }
   if (typeof value === 'number') {
-    return <span className="text-cyan-300">{String(value)}</span>;
+    return <span className="text-zinc-300">{String(value)}</span>;
   }
   if (typeof value === 'boolean') {
     return <span className="text-amber-300">{String(value)}</span>;
