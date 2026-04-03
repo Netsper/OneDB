@@ -1,47 +1,98 @@
-import React, { useEffect, useState } from 'react';
-import { Check, Code2, Eye, Languages, Palette, Settings2, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Check,
+  ChevronDown,
+  Code2,
+  Eye,
+  Languages,
+  Palette,
+  Settings2,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
 
-function Section({ icon: Icon, title, description, children }) {
+function AccordionSection({ icon: Icon, title, description, isOpen, onToggle, children }) {
   return (
-    <section className="rounded-xl border border-[#2f2f33] bg-[#151518] p-4 space-y-3">
-      <header className="space-y-1 pb-1 border-b border-[#2a2a2e]">
-        <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-          <Icon className="w-4 h-4 text-zinc-300" />
-          {title}
-        </h4>
-        {description && <p className="text-xs text-zinc-500">{description}</p>}
-      </header>
-      <div className="space-y-3">{children}</div>
+    <section className="rounded-xl border border-[#2f2f33] bg-[#151518] overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#1b1b1f] transition-colors"
+      >
+        <div className="min-w-0">
+          <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+            <Icon className="w-4 h-4 text-zinc-300 shrink-0" />
+            <span className="truncate">{title}</span>
+          </h4>
+          {description ? <p className="text-xs text-zinc-500 mt-1">{description}</p> : null}
+        </div>
+        <ChevronDown
+          className={`w-4 h-4 text-zinc-500 transition-transform shrink-0 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {isOpen ? <div className="px-4 pb-4 border-t border-[#2a2a2e] space-y-3 pt-3">{children}</div> : null}
     </section>
+  );
+}
+
+function SettingRow({ title, description, children }) {
+  return (
+    <div className="rounded-lg border border-[#2d2d31] bg-[#111113] px-3 py-2.5 space-y-1.5">
+      <p className="text-sm text-zinc-100">{title}</p>
+      {description ? <p className="text-xs text-zinc-400">{description}</p> : null}
+      <div className="pt-1">{children}</div>
+    </div>
   );
 }
 
 function ToggleRow({ label, description, checked, onChange, tc }) {
   return (
     <label className="flex items-center justify-between gap-4 rounded-lg border border-[#2d2d31] bg-[#111113] px-3 py-2.5 transition-colors hover:border-[#3b3b42]">
-      <div className="space-y-0.5">
+      <div className="space-y-0.5 min-w-0">
         <p className="text-sm text-zinc-100">{label}</p>
-        {description && <p className="text-xs text-zinc-400">{description}</p>}
+        {description ? <p className="text-xs text-zinc-400">{description}</p> : null}
       </div>
       <button
         type="button"
         onClick={onChange}
-        className={`relative inline-flex h-7 w-12 items-center rounded-full p-0.5 transition-all focus:outline-none ${
-          checked
-            ? `${tc.bg} ${tc.border}`
-            : 'border border-[#3b3b42] bg-[#25252a]'
+        className={`relative inline-flex h-7 w-12 items-center rounded-full p-0.5 border transition-all focus:outline-none ${
+          checked ? `${tc.border} ${tc.bg}` : 'border-[#3b3b42] bg-[#25252a]'
         }`}
         aria-pressed={checked}
       >
         <span
           className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow transition-transform ${
-            checked ? `translate-x-5 ${tc.text}` : 'translate-x-0 text-zinc-400'
+            checked ? 'translate-x-5' : 'translate-x-0'
           }`}
         >
-          {checked ? <Check className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />}
+          {checked ? (
+            <Check className={`h-3.5 w-3.5 ${tc.text}`} />
+          ) : (
+            <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
+          )}
         </span>
       </button>
     </label>
+  );
+}
+
+function ChoiceButton({ active, onClick, title, subtitle, tc }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+        active
+          ? `${tc.border} ${tc.lightBg} ${tc.textLight}`
+          : 'border-[#333] text-zinc-300 hover:bg-[#232323]'
+      }`}
+    >
+      <span className="block text-sm">{title}</span>
+      {subtitle ? <span className="block text-xs text-zinc-500 mt-0.5">{subtitle}</span> : null}
+    </button>
   );
 }
 
@@ -72,6 +123,49 @@ export default function SettingsModal({
   themes,
 }) {
   const [isEntering, setIsEntering] = useState(false);
+  const [openSections, setOpenSections] = useState({
+    general: true,
+    appearance: true,
+    table: true,
+    sql: true,
+    json: true,
+  });
+
+  const sections = useMemo(
+    () => [
+      {
+        key: 'general',
+        icon: Languages,
+        title: t('settingsGeneral'),
+        description: t('settingsGeneralDesc'),
+      },
+      {
+        key: 'appearance',
+        icon: Palette,
+        title: t('settingsAppearance'),
+        description: t('settingsAppearanceDesc'),
+      },
+      {
+        key: 'table',
+        icon: Eye,
+        title: t('settingsTable'),
+        description: t('settingsTableDesc'),
+      },
+      {
+        key: 'sql',
+        icon: Code2,
+        title: t('settingsSqlEditor'),
+        description: t('settingsSqlDesc'),
+      },
+      {
+        key: 'json',
+        icon: SlidersHorizontal,
+        title: t('settingsJsonViewer'),
+        description: t('settingsJsonDesc'),
+      },
+    ],
+    [t],
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -109,7 +203,7 @@ export default function SettingsModal({
         aria-label={t('close')}
       />
       <div
-        className={`absolute inset-y-0 right-0 w-full max-w-3xl bg-gradient-to-b from-[#1d1d21] to-[#17171a] border-l border-[#333] rounded-l-2xl flex flex-col shadow-2xl transition-all duration-300 ease-out ${
+        className={`absolute inset-y-0 right-0 w-full max-w-xl bg-gradient-to-b from-[#1d1d21] to-[#17171a] border-l border-[#333] rounded-l-2xl flex flex-col shadow-2xl transition-all duration-300 ease-out ${
           isEntering ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
         }`}
       >
@@ -127,96 +221,98 @@ export default function SettingsModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto flex-1">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <Section
-                icon={Languages}
-                title={t('settingsGeneral')}
-                description={t('settingsGeneralDesc')}
-              >
-                <p className="text-sm text-zinc-400">{t('languageSelect')}</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setLang('en')}
-                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${lang === 'en' ? `${tc.bg} ${tc.border} text-white` : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'}`}
-                  >
-                    English
-                  </button>
-                  <button
-                    onClick={() => setLang('tr')}
-                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${lang === 'tr' ? `${tc.bg} ${tc.border} text-white` : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'}`}
-                  >
-                    Türkçe
-                  </button>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-zinc-400">{t('settingsDensity')}</p>
-                  <p className="text-xs text-zinc-500">{t('settingsDensityDesc')}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      updateSetting((prev) => ({
-                        ...prev,
-                        uiDensity: 'comfortable',
-                      }))
-                    }
-                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
-                      settings.uiDensity === 'comfortable'
-                        ? `${tc.bg} ${tc.border} text-white`
-                        : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
-                    }`}
-                  >
-                    <span className="block">{t('settingsDensityComfortable')}</span>
-                    <span className="block text-[11px] opacity-80">
-                      {t('settingsDensityComfortableDesc')}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() =>
-                      updateSetting((prev) => ({
-                        ...prev,
-                        uiDensity: 'compact',
-                      }))
-                    }
-                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
-                      settings.uiDensity === 'compact'
-                        ? `${tc.bg} ${tc.border} text-white`
-                        : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
-                    }`}
-                  >
-                    <span className="block">{t('settingsDensityCompact')}</span>
-                    <span className="block text-[11px] opacity-80">
-                      {t('settingsDensityCompactDesc')}
-                    </span>
-                  </button>
-                </div>
-              </Section>
 
-              <Section
-                icon={Palette}
-                title={t('settingsAppearance')}
-                description={t('settingsAppearanceDesc')}
-              >
-                <p className="text-sm text-zinc-400">{t('accentColor')}</p>
-                <div className="flex gap-3 flex-wrap">
-                  {Object.entries(themes).map(([key, themeObj]) => (
-                    <button
-                      key={key}
-                      onClick={() => setTheme(key)}
-                      className={`w-8 h-8 rounded-full ${themeObj.previewClass} border-2 transition-all flex items-center justify-center ${theme === key ? 'border-white scale-110 shadow-lg' : 'border-transparent hover:scale-110 opacity-70 hover:opacity-100'}`}
-                      title={themeObj.nameKey}
-                    >
-                      {theme === key && <Check className="w-4 h-4 text-white" />}
-                    </button>
-                  ))}
-                </div>
-              </Section>
-            </div>
+        <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-3">
+          {sections.map((section) => (
+            <AccordionSection
+              key={section.key}
+              icon={section.icon}
+              title={section.title}
+              description={section.description}
+              isOpen={Boolean(openSections[section.key])}
+              onToggle={() =>
+                setOpenSections((prev) => ({
+                  ...prev,
+                  [section.key]: !prev[section.key],
+                }))
+              }
+            >
+              {section.key === 'general' ? (
+                <>
+                  <SettingRow title={t('languageSelect')}>
+                    <div className="space-y-2">
+                      <ChoiceButton
+                        active={lang === 'en'}
+                        onClick={() => setLang('en')}
+                        title="English"
+                        tc={tc}
+                      />
+                      <ChoiceButton
+                        active={lang === 'tr'}
+                        onClick={() => setLang('tr')}
+                        title="Türkçe"
+                        tc={tc}
+                      />
+                    </div>
+                  </SettingRow>
 
-            <div className="space-y-4">
-              <Section icon={Eye} title={t('settingsTable')} description={t('settingsTableDesc')}>
+                  <SettingRow title={t('settingsDensity')} description={t('settingsDensityDesc')}>
+                    <div className="space-y-2">
+                      <ChoiceButton
+                        active={settings.uiDensity === 'comfortable'}
+                        onClick={() =>
+                          updateSetting((prev) => ({
+                            ...prev,
+                            uiDensity: 'comfortable',
+                          }))
+                        }
+                        title={t('settingsDensityComfortable')}
+                        subtitle={t('settingsDensityComfortableDesc')}
+                        tc={tc}
+                      />
+                      <ChoiceButton
+                        active={settings.uiDensity === 'compact'}
+                        onClick={() =>
+                          updateSetting((prev) => ({
+                            ...prev,
+                            uiDensity: 'compact',
+                          }))
+                        }
+                        title={t('settingsDensityCompact')}
+                        subtitle={t('settingsDensityCompactDesc')}
+                        tc={tc}
+                      />
+                    </div>
+                  </SettingRow>
+                </>
+              ) : null}
+
+              {section.key === 'appearance' ? (
+                <SettingRow title={t('accentColor')}>
+                  <div className="space-y-2">
+                    {Object.entries(themes).map(([key, themeObj]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setTheme(key)}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex items-center justify-between gap-3 ${
+                          theme === key
+                            ? `${tc.border} ${tc.lightBg} ${tc.textLight}`
+                            : 'border-[#333] text-zinc-300 hover:bg-[#232323]'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span className={`w-3 h-3 rounded-full ${themeObj.previewClass}`} />
+                          <span className="truncate">{themeObj.nameKey}</span>
+                        </span>
+                        {theme === key ? <Check className={`w-4 h-4 ${tc.textLight}`} /> : null}
+                      </button>
+                    ))}
+                  </div>
+                </SettingRow>
+              ) : null}
+
+              {section.key === 'table' ? (
                 <ToggleRow
                   label={t('settingsTooltipOnHover')}
                   description={t('settingsTooltipOnHoverDesc')}
@@ -229,98 +325,88 @@ export default function SettingsModal({
                   }
                   tc={tc}
                 />
-              </Section>
+              ) : null}
 
-              <Section icon={Code2} title={t('settingsSqlEditor')} description={t('settingsSqlDesc')}>
-                <ToggleRow
-                  label={t('settingsSqlSyntaxHighlight')}
-                  checked={settings.sqlEditor.syntaxHighlight}
-                  onChange={() =>
-                    updateSqlEditor('syntaxHighlight', !settings.sqlEditor.syntaxHighlight)
-                  }
-                  tc={tc}
-                />
-                <ToggleRow
-                  label={t('settingsSqlAutocomplete')}
-                  checked={settings.sqlEditor.autocomplete}
-                  onChange={() => updateSqlEditor('autocomplete', !settings.sqlEditor.autocomplete)}
-                  tc={tc}
-                />
-                <ToggleRow
-                  label={t('settingsSqlWordWrap')}
-                  checked={settings.sqlEditor.wordWrap}
-                  onChange={() => updateSqlEditor('wordWrap', !settings.sqlEditor.wordWrap)}
-                  tc={tc}
-                />
-                <ToggleRow
-                  label={t('settingsSqlLineNumbers')}
-                  checked={settings.sqlEditor.lineNumbers}
-                  onChange={() => updateSqlEditor('lineNumbers', !settings.sqlEditor.lineNumbers)}
-                  tc={tc}
-                />
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-zinc-100">{t('settingsSqlFontSize')}</p>
-                    <span className="text-xs text-zinc-400">{settings.sqlEditor.fontSize}px</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={11}
-                    max={20}
-                    value={settings.sqlEditor.fontSize}
-                    onChange={(event) => updateSqlEditor('fontSize', Number(event.target.value))}
-                    className={`w-full ${tc.accent}`}
+              {section.key === 'sql' ? (
+                <>
+                  <ToggleRow
+                    label={t('settingsSqlSyntaxHighlight')}
+                    checked={settings.sqlEditor.syntaxHighlight}
+                    onChange={() =>
+                      updateSqlEditor('syntaxHighlight', !settings.sqlEditor.syntaxHighlight)
+                    }
+                    tc={tc}
                   />
-                </div>
-              </Section>
+                  <ToggleRow
+                    label={t('settingsSqlAutocomplete')}
+                    checked={settings.sqlEditor.autocomplete}
+                    onChange={() => updateSqlEditor('autocomplete', !settings.sqlEditor.autocomplete)}
+                    tc={tc}
+                  />
+                  <ToggleRow
+                    label={t('settingsSqlWordWrap')}
+                    checked={settings.sqlEditor.wordWrap}
+                    onChange={() => updateSqlEditor('wordWrap', !settings.sqlEditor.wordWrap)}
+                    tc={tc}
+                  />
+                  <ToggleRow
+                    label={t('settingsSqlLineNumbers')}
+                    checked={settings.sqlEditor.lineNumbers}
+                    onChange={() => updateSqlEditor('lineNumbers', !settings.sqlEditor.lineNumbers)}
+                    tc={tc}
+                  />
+                  <SettingRow title={t('settingsSqlFontSize')}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-zinc-500">{settings.sqlEditor.fontSize}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={11}
+                      max={20}
+                      value={settings.sqlEditor.fontSize}
+                      onChange={(event) => updateSqlEditor('fontSize', Number(event.target.value))}
+                      className={`w-full ${tc.accent}`}
+                    />
+                  </SettingRow>
+                </>
+              ) : null}
 
-              <Section
-                icon={Code2}
-                title={t('settingsJsonViewer')}
-                description={t('settingsJsonDesc')}
-              >
-                <p className="text-sm text-zinc-400">{t('settingsJsonDefaultMode')}</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      updateSetting((prev) => ({
-                        ...prev,
-                        jsonViewer: {
-                          ...prev.jsonViewer,
-                          defaultMode: 'tree',
-                        },
-                      }))
-                    }
-                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
-                      settings.jsonViewer.defaultMode === 'tree'
-                        ? `${tc.bg} ${tc.border} text-white`
-                        : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
-                    }`}
-                  >
-                    {t('settingsJsonModeTree')}
-                  </button>
-                  <button
-                    onClick={() =>
-                      updateSetting((prev) => ({
-                        ...prev,
-                        jsonViewer: {
-                          ...prev.jsonViewer,
-                          defaultMode: 'raw',
-                        },
-                      }))
-                    }
-                    className={`flex-1 py-2 rounded-md text-sm transition-colors border ${
-                      settings.jsonViewer.defaultMode === 'raw'
-                        ? `${tc.bg} ${tc.border} text-white`
-                        : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
-                    }`}
-                  >
-                    {t('settingsJsonModeRaw')}
-                  </button>
-                </div>
-              </Section>
-            </div>
-          </div>
+              {section.key === 'json' ? (
+                <SettingRow title={t('settingsJsonDefaultMode')}>
+                  <div className="space-y-2">
+                    <ChoiceButton
+                      active={settings.jsonViewer.defaultMode === 'tree'}
+                      onClick={() =>
+                        updateSetting((prev) => ({
+                          ...prev,
+                          jsonViewer: {
+                            ...prev.jsonViewer,
+                            defaultMode: 'tree',
+                          },
+                        }))
+                      }
+                      title={t('settingsJsonModeTree')}
+                      tc={tc}
+                    />
+                    <ChoiceButton
+                      active={settings.jsonViewer.defaultMode === 'raw'}
+                      onClick={() =>
+                        updateSetting((prev) => ({
+                          ...prev,
+                          jsonViewer: {
+                            ...prev.jsonViewer,
+                            defaultMode: 'raw',
+                          },
+                        }))
+                      }
+                      title={t('settingsJsonModeRaw')}
+                      tc={tc}
+                    />
+                  </div>
+                </SettingRow>
+              ) : null}
+            </AccordionSection>
+          ))}
         </div>
       </div>
     </div>
