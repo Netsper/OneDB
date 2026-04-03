@@ -137,6 +137,8 @@ export default function useWorkspaceOverlaysViewModel(params) {
       onClose: () => setModalConfig({ isOpen: false }),
       columnName: modalConfig.data?.columnName,
       formattedValue: formatJsonCellValue(modalConfig.data?.value),
+      rawValue: modalConfig.data?.value,
+      defaultMode: settings?.jsonViewer?.defaultMode || 'tree',
       copyToClipboard,
     },
     databaseActionModals: {

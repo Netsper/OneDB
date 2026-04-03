@@ -215,6 +215,7 @@ export const tr = {
   settingsJsonDefaultMode: 'Varsayılan mod',
   settingsJsonModeTree: 'Açılır/Kapanır Ağaç',
   settingsJsonModeRaw: 'Biçimli Ham Görünüm',
+  jsonInvalidFallback: 'Geçersiz JSON değeri. Ham görünüm gösteriliyor.',
 
   aiPlaceholder: "Yapay zekaya SQL yazdır... (Örn: 'Son 1 ayda kayıt olan adminleri getir')",
   aiGenerate: 'Oluştur',

@@ -226,6 +226,7 @@ export const en = {
   settingsJsonDefaultMode: 'Default mode',
   settingsJsonModeTree: 'Collapsible Tree',
   settingsJsonModeRaw: 'Formatted Raw',
+  jsonInvalidFallback: 'Invalid JSON value. Showing raw output.',
 
   // AI & AutoGen
   aiPlaceholder: "Ask AI to write SQL... (e.g. 'Get admins registered last month')",
