@@ -14,6 +14,23 @@ function assertFileExists(filePath) {
   }
 }
 
+function assertEmbeddedFrontendDist(distDir) {
+  const assetsDir = path.join(distDir, 'assets');
+  assertFileExists(assetsDir);
+
+  const jsAssets = fs
+    .readdirSync(assetsDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
+    .map((entry) => entry.name);
+
+  if (jsAssets.length !== 1) {
+    throw new Error(
+      `Embedded frontend build required: expected 1 JS asset, found ${jsAssets.length} (${jsAssets.join(', ')}). ` +
+        `Rebuild with "ONEDB_EMBEDDED=1 npm --prefix frontend run build" or run "./build.sh".`,
+    );
+  }
+}
+
 function readAsset(distDir, assetRef) {
   const clean = assetRef.replace(/^\.\//, '').replace(/^\//, '');
   const fullPath = path.join(distDir, clean);
@@ -30,19 +47,15 @@ function minifyInlineCss(css) {
 }
 
 function minifyInlineJs(js) {
-  return js
-    .replace(/\/\*\*[\s\S]*?\*\//g, '')
-    .replace(/\/\*![\s\S]*?\*\//g, '')
-    .replace(/\/\*#\s*sourceMappingURL=[\s\S]*?\*\//g, '')
-    .replace(/\/\/#\s*sourceMappingURL=.*$/gm, '')
-    .trim();
+  // Keep JavaScript payload byte-exact aside from surrounding whitespace.
+  // Regex-based comment stripping can corrupt valid minified bundles.
+  return js.trim();
 }
 
 function minifyInlineHtml(html) {
-  return html
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/>\s+</g, '><')
-    .trim();
+  // Keep HTML intact after script/style inlining.
+  // Regex-based HTML minification can mutate JavaScript literals.
+  return html.trim();
 }
 
 function inlineDistHtml(distDir) {
@@ -118,6 +131,7 @@ function listBackendSourceFiles(sourceDir) {
 function run() {
   assertFileExists(backendSrcDir);
   assertFileExists(path.join(frontendDistDir, 'index.html'));
+  assertEmbeddedFrontendDist(frontendDistDir);
 
   const backendSourceFiles = listBackendSourceFiles(backendSrcDir);
   if (backendSourceFiles.length === 0) {

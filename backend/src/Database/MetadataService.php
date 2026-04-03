@@ -303,8 +303,12 @@ final class MetadataService
             foreach ($bindings as $key => $value) {
                 $countStmt->bindValue($key, $value);
             }
-            $countStmt->execute();
-            $rowCount = (int)($countStmt->fetchColumn() ?: 0);
+            try {
+                $countStmt->execute();
+                $rowCount = (int)($countStmt->fetchColumn() ?: 0);
+            } finally {
+                $countStmt->closeCursor();
+            }
         }
 
         $offset = ($page - 1) * $perPage;
@@ -316,8 +320,12 @@ final class MetadataService
         }
 
         $startedAt = microtime(true);
-        $dataStmt->execute();
-        $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $dataStmt->execute();
+            $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+        } finally {
+            $dataStmt->closeCursor();
+        }
         $durationMs = (microtime(true) - $startedAt) * 1000;
 
         $insights = null;
@@ -533,14 +541,46 @@ final class MetadataService
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
 
         return [
-            'indexes' => self::listTableIndexes($pdo, $driver, $table),
-            'foreignKeys' => self::listForeignKeys($pdo, $driver, $table),
-            'referencedBy' => self::listReferencedBy($pdo, $driver, $table),
+            'indexes' => self::safeInsight(
+                static fn (): array => self::listTableIndexes($pdo, $driver, $table),
+                []
+            ),
+            'foreignKeys' => self::safeInsight(
+                static fn (): array => self::listForeignKeys($pdo, $driver, $table),
+                []
+            ),
+            'referencedBy' => self::safeInsight(
+                static fn (): array => self::listReferencedBy($pdo, $driver, $table),
+                []
+            ),
             'viewDefinition' => $tableType === 'view'
-                ? self::loadViewDefinition($pdo, $driver, $table)
+                ? self::safeInsight(
+                    static fn (): ?string => self::loadViewDefinition($pdo, $driver, $table),
+                    null
+                )
                 : null,
-            'relatedRoutines' => self::listRelatedRoutines($pdo, $driver, $table),
+            'relatedRoutines' => self::safeInsight(
+                static fn (): array => self::listRelatedRoutines($pdo, $driver, $table),
+                []
+            ),
         ];
+    }
+
+    /**
+     * Executes an optional insight query and returns fallback on database/permission errors.
+     *
+     * @template T
+     * @param callable():T $resolver
+     * @param T $fallback
+     * @return T
+     */
+    private static function safeInsight(callable $resolver, $fallback)
+    {
+        try {
+            return $resolver();
+        } catch (\Throwable $_) {
+            return $fallback;
+        }
     }
 
     /**
@@ -885,9 +925,13 @@ final class MetadataService
                 LIMIT 1;
             ");
             $stmt->bindValue(':view_name', $viewName);
-            $stmt->execute();
-            $value = $stmt->fetchColumn();
-            return is_string($value) && trim($value) !== '' ? trim($value) : null;
+            try {
+                $stmt->execute();
+                $value = $stmt->fetchColumn();
+                return is_string($value) && trim($value) !== '' ? trim($value) : null;
+            } finally {
+                $stmt->closeCursor();
+            }
         }
 
         if ($driver === 'pgsql') {
@@ -899,9 +943,13 @@ final class MetadataService
                 LIMIT 1;
             ");
             $stmt->bindValue(':view_name', $viewName);
-            $stmt->execute();
-            $value = $stmt->fetchColumn();
-            return is_string($value) && trim($value) !== '' ? trim($value) : null;
+            try {
+                $stmt->execute();
+                $value = $stmt->fetchColumn();
+                return is_string($value) && trim($value) !== '' ? trim($value) : null;
+            } finally {
+                $stmt->closeCursor();
+            }
         }
 
         $stmt = $pdo->prepare("
@@ -912,9 +960,13 @@ final class MetadataService
             LIMIT 1;
         ");
         $stmt->bindValue(':view_name', $viewName);
-        $stmt->execute();
-        $value = $stmt->fetchColumn();
-        return is_string($value) && trim($value) !== '' ? trim($value) : null;
+        try {
+            $stmt->execute();
+            $value = $stmt->fetchColumn();
+            return is_string($value) && trim($value) !== '' ? trim($value) : null;
+        } finally {
+            $stmt->closeCursor();
+        }
     }
 
     /**

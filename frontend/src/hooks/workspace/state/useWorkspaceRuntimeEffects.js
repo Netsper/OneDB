@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export default function useWorkspaceRuntimeEffects({
   autoRefreshInt,
@@ -33,6 +33,12 @@ export default function useWorkspaceRuntimeEffects({
   isVisibilityMenuOpen,
   databases,
 }) {
+  const loadTableDetailsRef = useRef(loadTableDetails);
+
+  useEffect(() => {
+    loadTableDetailsRef.current = loadTableDetails;
+  }, [loadTableDetails]);
+
   useEffect(() => {
     let intervalId;
     if (autoRefreshInt > 0 && isConnected && activeDb && activeTable) {
@@ -136,7 +142,7 @@ export default function useWorkspaceRuntimeEffects({
     let isDisposed = false;
 
     setIsRefreshing(true);
-    loadTableDetails(activeDb, activeTable)
+    loadTableDetailsRef.current(activeDb, activeTable)
       .catch((error) => {
         if (!isDisposed) {
           showToast(error.message || 'Failed to load table data.', 'error');
@@ -155,7 +161,6 @@ export default function useWorkspaceRuntimeEffects({
     activeDb,
     activeTable,
     filterRules,
-    loadTableDetails,
     page,
     rowsPerPage,
     serverColumnFilters,

@@ -56,7 +56,10 @@ final class Runtime
             DebugTelemetry::setAction($action);
             if ($action === '') {
                 $statusCode = 400;
-                JsonResponse::send(['ok' => false, 'error' => 'Missing action parameter.'], $statusCode);
+                JsonResponse::send(
+                    ErrorResponder::fromMessage('Missing action parameter.', $statusCode, 'missing_action'),
+                    $statusCode
+                );
                 return true;
             }
 
@@ -66,13 +69,13 @@ final class Runtime
                 $statusCode = is_int($status) && $status > 0 ? $status : 200;
             } catch (HttpException $e) {
                 $statusCode = $e->statusCode();
-                JsonResponse::send(['ok' => false, 'error' => $e->getMessage()], $statusCode);
+                JsonResponse::send(ErrorResponder::fromThrowable($e, $statusCode, $action), $statusCode);
             } catch (PDOException $e) {
                 $statusCode = 500;
-                JsonResponse::send(['ok' => false, 'error' => ErrorResponder::safeMessage($e)], $statusCode);
+                JsonResponse::send(ErrorResponder::fromThrowable($e, $statusCode, $action), $statusCode);
             } catch (Throwable $e) {
                 $statusCode = 500;
-                JsonResponse::send(['ok' => false, 'error' => ErrorResponder::safeMessage($e)], $statusCode);
+                JsonResponse::send(ErrorResponder::fromThrowable($e, $statusCode, $action), $statusCode);
             }
 
             return true;
@@ -156,7 +159,10 @@ final class Runtime
                 return;
 
             default:
-                JsonResponse::send(['ok' => false, 'error' => 'Unsupported action.'], 404);
+                JsonResponse::send(
+                    ErrorResponder::fromMessage('Unsupported action.', 404, 'unsupported_action', $action),
+                    404
+                );
                 return;
         }
     }
@@ -170,12 +176,23 @@ final class Runtime
     {
         $sql = trim((string)($payload['sql'] ?? ''));
         if ($sql === '') {
-            JsonResponse::send(['ok' => false, 'error' => 'SQL is required.'], 400);
+            JsonResponse::send(
+                ErrorResponder::fromMessage('SQL is required.', 400, 'missing_sql', 'query'),
+                400
+            );
             return;
         }
 
         if (Environment::readonlyMode() && !ReadOnlySqlGuard::isReadOnly($sql)) {
-            JsonResponse::send(['ok' => false, 'error' => 'Readonly mode allows only read queries.'], 403);
+            JsonResponse::send(
+                ErrorResponder::fromMessage(
+                    'Readonly mode allows only read queries.',
+                    403,
+                    'readonly_violation',
+                    'query'
+                ),
+                403
+            );
             return;
         }
 

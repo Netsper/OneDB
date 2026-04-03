@@ -39,15 +39,20 @@ export default function useOneDbApi({
   escapeLiteral,
 }) {
   const buildConnectionPayload = useCallback(
-    (database = '') => ({
-      driver: currentDriver,
-      host: connForm.host.trim(),
-      port: connForm.port.trim(),
-      username: connForm.user.trim(),
-      password: connForm.pass,
-      database: currentDriver === 'pgsql' ? database || 'postgres' : database,
-      charset: 'utf8mb4',
-    }),
+    (database = '') => {
+      const host = connForm.host.trim();
+      const port = connForm.port.trim();
+
+      return {
+        driver: currentDriver,
+        ...(host !== '' ? { host } : {}),
+        ...(port !== '' ? { port } : {}),
+        username: connForm.user.trim(),
+        password: connForm.pass,
+        database: currentDriver === 'pgsql' ? database || 'postgres' : database,
+        charset: 'utf8mb4',
+      };
+    },
     [connForm.host, connForm.pass, connForm.port, connForm.user, currentDriver],
   );
 

@@ -37,8 +37,17 @@ final class ConnectionFactory
             $user = null;
             $pass = null;
         } else {
-            $host = (string)($connection['host'] ?? '127.0.0.1');
-            $port = (string)($connection['port'] ?? ($driver === 'pgsql' ? '5432' : '3306'));
+            $host = trim((string)($connection['host'] ?? ''));
+            if ($host === '') {
+                $host = '127.0.0.1';
+            }
+
+            $defaultPort = $driver === 'pgsql' ? '5432' : '3306';
+            $port = trim((string)($connection['port'] ?? ''));
+            if ($port === '') {
+                $port = $defaultPort;
+            }
+
             $db = (string)($connection['database'] ?? '');
             $charset = (string)($connection['charset'] ?? 'utf8mb4');
             $user = (string)($connection['username'] ?? '');
@@ -53,22 +62,56 @@ final class ConnectionFactory
                     $db !== '' ? ';dbname=' . $db : ''
                 );
             } else {
+                $mysqlSocket = trim((string)($connection['unix_socket'] ?? $connection['socket'] ?? ''));
+
                 // Server-level connections are allowed even when no database is selected.
-                if ($db !== '') {
-                    $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s', $host, $port, $db, $charset);
+                if ($mysqlSocket !== '') {
+                    if ($db !== '') {
+                        $dsn = sprintf('mysql:unix_socket=%s;dbname=%s;charset=%s', $mysqlSocket, $db, $charset);
+                    } else {
+                        $dsn = sprintf('mysql:unix_socket=%s;charset=%s', $mysqlSocket, $charset);
+                    }
                 } else {
-                    $dsn = sprintf('mysql:host=%s;port=%s;charset=%s', $host, $port, $charset);
+                    $dsn = self::buildMysqlHostDsn($host, $port, $db, $charset);
                 }
             }
         }
 
-        $pdo = new PDO($dsn, $user, $pass, $options);
+        try {
+            $pdo = new PDO($dsn, $user, $pass, $options);
+        } catch (\PDOException $firstError) {
+            // Some PDO MySQL setups treat "localhost" as Unix socket only and can fail
+            // even when TCP is available. Retry with 127.0.0.1 for better compatibility.
+            if (
+                $driver === 'mysql'
+                && isset($host, $port, $db, $charset)
+                && strcasecmp($host, 'localhost') === 0
+                && trim((string)($connection['unix_socket'] ?? $connection['socket'] ?? '')) === ''
+            ) {
+                $fallbackDsn = self::buildMysqlHostDsn('127.0.0.1', $port, $db, $charset);
+                $pdo = new PDO($fallbackDsn, $user, $pass, $options);
+            } else {
+                throw $firstError;
+            }
+        }
 
         if (Environment::readonlyMode()) {
             self::configureReadonlySession($pdo, $driver);
         }
 
         return $pdo;
+    }
+
+    /**
+     * Builds a MySQL DSN using host/port transport.
+     */
+    private static function buildMysqlHostDsn(string $host, string $port, string $db, string $charset): string
+    {
+        if ($db !== '') {
+            return sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s', $host, $port, $db, $charset);
+        }
+
+        return sprintf('mysql:host=%s;port=%s;charset=%s', $host, $port, $charset);
     }
 
     /**
