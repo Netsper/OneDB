@@ -1,0 +1,48 @@
+:root {
+  --onedb-scrollbar-size: 10px;
+  --onedb-scrollbar-track: rgba(24, 24, 27, 0.72);
+  --onedb-scrollbar-thumb-top: rgba(99, 102, 241, 0.58);
+  --onedb-scrollbar-thumb-bottom: rgba(16, 185, 129, 0.58);
+  --onedb-scrollbar-thumb-hover-top: rgba(99, 102, 241, 0.82);
+  --onedb-scrollbar-thumb-hover-bottom: rgba(16, 185, 129, 0.82);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--onedb-scrollbar-thumb-bottom) var(--onedb-scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--onedb-scrollbar-size);
+  height: var(--onedb-scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--onedb-scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    var(--onedb-scrollbar-thumb-top),
+    var(--onedb-scrollbar-thumb-bottom)
+  );
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  min-height: 32px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    var(--onedb-scrollbar-thumb-hover-top),
+    var(--onedb-scrollbar-thumb-hover-bottom)
+  );
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}

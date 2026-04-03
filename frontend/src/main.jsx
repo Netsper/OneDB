@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
+import './styles/global.css';
 const { StrictMode, Suspense, lazy } = React;
 const DatabaseManager = lazy(() => import('./DatabaseManager.jsx'));
 
