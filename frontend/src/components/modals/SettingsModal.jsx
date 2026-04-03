@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Check, Code2, Eye, Languages, Palette, Settings2, X } from 'lucide-react';
 
 function Section({ icon: Icon, title, description, children }) {
@@ -71,6 +71,17 @@ export default function SettingsModal({
   setSettings = () => {},
   themes,
 }) {
+  const [isEntering, setIsEntering] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsEntering(false);
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => setIsEntering(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const updateSetting = (updater) => {
@@ -92,14 +103,23 @@ export default function SettingsModal({
       <button
         type="button"
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+        className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 ${
+          isEntering ? 'opacity-100' : 'opacity-0'
+        }`}
         aria-label={t('close')}
       />
-      <div className="absolute inset-y-0 right-0 w-full max-w-2xl bg-[#1c1c1c] border-l border-[#333] flex flex-col shadow-2xl animate-in slide-in-from-right">
-        <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b]">
-          <h3 className="text-base font-medium text-zinc-100 flex items-center gap-2">
-            <Settings2 className="w-4 h-4" /> {t('themeSettings')}
-          </h3>
+      <div
+        className={`absolute inset-y-0 right-0 w-full max-w-3xl bg-gradient-to-b from-[#1d1d21] to-[#17171a] border-l border-[#333] rounded-l-2xl flex flex-col shadow-2xl transition-all duration-300 ease-out ${
+          isEntering ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
+        }`}
+      >
+        <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b]/90 backdrop-blur-md rounded-tl-2xl">
+          <div>
+            <h3 className="text-base font-medium text-zinc-100 flex items-center gap-2">
+              <Settings2 className="w-4 h-4" /> {t('themeSettings')}
+            </h3>
+            <p className="text-xs text-zinc-500 mt-0.5">{t('settingsGeneralDesc')}</p>
+          </div>
           <button
             onClick={onClose}
             className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"
