@@ -8,6 +8,7 @@ export default function useDatabaseManagerScreenModel() {
 
   const workspaceViewModel = useWorkspaceViewModel({
     tc: foundationModel.tc,
+    theme: foundationModel.workspace.theme,
     layoutInputs: workspaceInputs,
     mainPanelInputs: workspaceInputs,
     overlaysInputs: workspaceInputs,

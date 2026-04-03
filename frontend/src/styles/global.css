@@ -1,10 +1,45 @@
 :root {
   --onedb-scrollbar-size: 10px;
   --onedb-scrollbar-track: rgba(24, 24, 27, 0.72);
-  --onedb-scrollbar-thumb-top: rgba(99, 102, 241, 0.58);
-  --onedb-scrollbar-thumb-bottom: rgba(16, 185, 129, 0.58);
-  --onedb-scrollbar-thumb-hover-top: rgba(99, 102, 241, 0.82);
-  --onedb-scrollbar-thumb-hover-bottom: rgba(16, 185, 129, 0.82);
+  --onedb-scrollbar-thumb-top: rgba(16, 185, 129, 0.58);
+  --onedb-scrollbar-thumb-bottom: rgba(5, 150, 105, 0.58);
+  --onedb-scrollbar-thumb-hover-top: rgba(16, 185, 129, 0.84);
+  --onedb-scrollbar-thumb-hover-bottom: rgba(5, 150, 105, 0.84);
+}
+
+[data-theme='emerald'] {
+  --onedb-scrollbar-thumb-top: rgba(16, 185, 129, 0.58);
+  --onedb-scrollbar-thumb-bottom: rgba(5, 150, 105, 0.58);
+  --onedb-scrollbar-thumb-hover-top: rgba(16, 185, 129, 0.84);
+  --onedb-scrollbar-thumb-hover-bottom: rgba(5, 150, 105, 0.84);
+}
+
+[data-theme='blue'] {
+  --onedb-scrollbar-thumb-top: rgba(59, 130, 246, 0.58);
+  --onedb-scrollbar-thumb-bottom: rgba(37, 99, 235, 0.58);
+  --onedb-scrollbar-thumb-hover-top: rgba(59, 130, 246, 0.84);
+  --onedb-scrollbar-thumb-hover-bottom: rgba(37, 99, 235, 0.84);
+}
+
+[data-theme='violet'] {
+  --onedb-scrollbar-thumb-top: rgba(139, 92, 246, 0.58);
+  --onedb-scrollbar-thumb-bottom: rgba(124, 58, 237, 0.58);
+  --onedb-scrollbar-thumb-hover-top: rgba(139, 92, 246, 0.84);
+  --onedb-scrollbar-thumb-hover-bottom: rgba(124, 58, 237, 0.84);
+}
+
+[data-theme='amber'] {
+  --onedb-scrollbar-thumb-top: rgba(245, 158, 11, 0.58);
+  --onedb-scrollbar-thumb-bottom: rgba(217, 119, 6, 0.58);
+  --onedb-scrollbar-thumb-hover-top: rgba(245, 158, 11, 0.84);
+  --onedb-scrollbar-thumb-hover-bottom: rgba(217, 119, 6, 0.84);
+}
+
+[data-theme='rose'] {
+  --onedb-scrollbar-thumb-top: rgba(244, 63, 94, 0.58);
+  --onedb-scrollbar-thumb-bottom: rgba(225, 29, 72, 0.58);
+  --onedb-scrollbar-thumb-hover-top: rgba(244, 63, 94, 0.84);
+  --onedb-scrollbar-thumb-hover-bottom: rgba(225, 29, 72, 0.84);
 }
 
 * {
