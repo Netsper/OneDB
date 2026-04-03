@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import SelectField from '../shared/SelectField.jsx';
+import SearchableSelectField from '../shared/SearchableSelectField.jsx';
 
 export default function DatabaseActionModals({
   modalConfig,
@@ -65,8 +66,6 @@ export default function DatabaseActionModals({
 
   const [isCharsetLoading, setIsCharsetLoading] = useState(false);
   const [isCollationLoading, setIsCollationLoading] = useState(false);
-  const [charsetSearch, setCharsetSearch] = useState('');
-  const [collationSearch, setCollationSearch] = useState('');
   const [charsetOptions, setCharsetOptions] = useState([
     { value: 'utf8mb4', label: 'utf8mb4' },
     { value: 'utf8', label: 'utf8' },
@@ -186,18 +185,6 @@ export default function DatabaseActionModals({
     return [];
   };
 
-  const filteredCharsetOptions = useMemo(() => {
-    const query = charsetSearch.trim().toLowerCase();
-    if (!query) return charsetOptions;
-    return charsetOptions.filter((entry) => entry.label.toLowerCase().includes(query));
-  }, [charsetOptions, charsetSearch]);
-
-  const filteredCollationOptions = useMemo(() => {
-    const query = collationSearch.trim().toLowerCase();
-    if (!query) return collationOptions;
-    return collationOptions.filter((entry) => entry.label.toLowerCase().includes(query));
-  }, [collationOptions, collationSearch]);
-
   const adminRows = Array.isArray(dbAdminData.rows) ? dbAdminData.rows : [];
   const adminColumns = useMemo(
     () => (adminRows[0] && typeof adminRows[0] === 'object' ? Object.keys(adminRows[0]) : []),
@@ -295,8 +282,6 @@ export default function DatabaseActionModals({
 
   useEffect(() => {
     if (!isCreateDbModalOpen) return;
-    setCharsetSearch('');
-    setCollationSearch('');
     if (isMysql) {
       loadAvailableCharsets();
     }
@@ -356,28 +341,15 @@ export default function DatabaseActionModals({
                     <label className="block text-xs font-medium text-zinc-400 mb-2">
                       {t('charset') || 'Charset'}
                     </label>
-                    <input
-                      type="text"
-                      value={charsetSearch}
-                      onChange={(event) => setCharsetSearch(event.target.value)}
-                      placeholder={t('search')}
-                      className={`w-full mb-2 bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`}
-                    />
-                    <SelectField
+                    <SearchableSelectField
                       value={dbCharset}
-                      onChange={(event) => setDbCharset(event.target.value)}
-                      className={baseSelectClass}
-                    >
-                      {filteredCharsetOptions.length > 0 ? (
-                        filteredCharsetOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))
-                      ) : (
-                        <option value={dbCharset}>{dbCharset}</option>
-                      )}
-                    </SelectField>
+                      onChange={setDbCharset}
+                      options={charsetOptions}
+                      placeholder={t('charset') || 'Charset'}
+                      searchPlaceholder={t('search')}
+                      emptyLabel={t('noFilterResults')}
+                      tc={tc}
+                    />
                     {isCharsetLoading ? (
                       <p className="text-[11px] text-zinc-500 mt-2">
                         {t('loadingCharsets') || 'Loading charsets...'}
@@ -389,28 +361,15 @@ export default function DatabaseActionModals({
                     <label className="block text-xs font-medium text-zinc-400 mb-2">
                       {t('collation')}
                     </label>
-                    <input
-                      type="text"
-                      value={collationSearch}
-                      onChange={(event) => setCollationSearch(event.target.value)}
-                      placeholder={t('search')}
-                      className={`w-full mb-2 bg-[#18181b] border border-[#333] rounded-md py-2 px-3 text-sm text-zinc-200 ${tc.focusRing}`}
-                    />
-                    <SelectField
+                    <SearchableSelectField
                       value={dbCollation}
-                      onChange={(event) => setDbCollation(event.target.value)}
-                      className={baseSelectClass}
-                    >
-                      {filteredCollationOptions.length > 0 ? (
-                        filteredCollationOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))
-                      ) : (
-                        <option value={dbCollation}>{dbCollation}</option>
-                      )}
-                    </SelectField>
+                      onChange={setDbCollation}
+                      options={collationOptions}
+                      placeholder={t('collation')}
+                      searchPlaceholder={t('search')}
+                      emptyLabel={t('noFilterResults')}
+                      tc={tc}
+                    />
                     {isCollationLoading ? (
                       <p className="text-[11px] text-zinc-500 mt-2">
                         {t('loadingCollations') || 'Loading collations...'}
