@@ -158,9 +158,7 @@ export default function useWorkspaceState() {
   const [lang, setLang] = useState(() => localStorage.getItem('dbm_lang') || 'en');
 
   const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(() =>
-    Boolean(localStorage.getItem('dbm_last_connection')),
-  );
+  const [isConnecting, setIsConnecting] = useState(false);
   const [ping, setPing] = useState(12);
   const [connForm, setConnForm] = useState(loadPersistedConnectionForm);
   const [savedConnections, setSavedConnections] = useState(() => {
