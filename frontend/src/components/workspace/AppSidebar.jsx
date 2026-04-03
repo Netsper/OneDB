@@ -83,6 +83,7 @@ export default function AppSidebar({
   const [isDbToolsMenuOpen, setIsDbToolsMenuOpen] = useState(false);
   const dbToolsMenuRef = useRef(null);
   const dbToolsButtonRef = useRef(null);
+  const sidebarEntryRefs = useRef({});
 
   useEffect(() => {
     if (!isDbToolsMenuOpen) return;
@@ -100,6 +101,14 @@ export default function AppSidebar({
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [isDbToolsMenuOpen]);
+
+  useEffect(() => {
+    const activeKey = activeTable ? `${activeDb}::${activeTable}` : activeDb ? `db:${activeDb}` : '';
+    if (!activeKey) return;
+    const targetNode = sidebarEntryRefs.current[activeKey];
+    if (!targetNode || typeof targetNode.scrollIntoView !== 'function') return;
+    targetNode.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [activeDb, activeTable]);
 
   return (
     <div
@@ -338,6 +347,9 @@ export default function AppSidebar({
             return (
               <div key={dbName} className="mb-1">
                 <div
+                  ref={(node) => {
+                    sidebarEntryRefs.current[`db:${dbName}`] = node;
+                  }}
                   className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-[#232323] transition-colors group cursor-pointer ${activeDb === dbName && !activeTable ? `${tc.lightBg} ${tc.textLight}` : ''}`}
                   onClick={() => openDatabase(dbName)}
                 >
@@ -432,33 +444,39 @@ export default function AppSidebar({
                           </span>
                         </div>
                         {filteredPinnedEntries.map((entry) => (
-                          <SidebarEntry
+                          <div
                             key={`${dbName}.${entry.name}`}
-                            icon={
-                              entry.type === 'view' ? (
-                                <Eye className="w-3.5 h-3.5 shrink-0" />
-                              ) : (
-                                <Table2 className="w-3.5 h-3.5 shrink-0" />
-                              )
-                            }
-                            label={entry.name}
-                            active={activeDb === dbName && activeTable === entry.name}
-                            accentBg={tc.accentBg}
-                            lightBg={tc.lightBg}
-                            textLight={tc.textLight}
-                            onClick={() => selectDbAndTable(dbName, entry.name)}
-                            trailing={
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  togglePinTable(dbName, entry.name);
-                                }}
-                                className="p-1 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            }
-                          />
+                            ref={(node) => {
+                              sidebarEntryRefs.current[`${dbName}::${entry.name}`] = node;
+                            }}
+                          >
+                            <SidebarEntry
+                              icon={
+                                entry.type === 'view' ? (
+                                  <Eye className="w-3.5 h-3.5 shrink-0" />
+                                ) : (
+                                  <Table2 className="w-3.5 h-3.5 shrink-0" />
+                                )
+                              }
+                              label={entry.name}
+                              active={activeDb === dbName && activeTable === entry.name}
+                              accentBg={tc.accentBg}
+                              lightBg={tc.lightBg}
+                              textLight={tc.textLight}
+                              onClick={() => selectDbAndTable(dbName, entry.name)}
+                              trailing={
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    togglePinTable(dbName, entry.name);
+                                  }}
+                                  className="p-1 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              }
+                            />
+                          </div>
                         ))}
                       </div>
                     )}
@@ -490,6 +508,9 @@ export default function AppSidebar({
                         filteredTables.map((tableEntry) => (
                           <div
                             key={tableEntry.name}
+                            ref={(node) => {
+                              sidebarEntryRefs.current[`${dbName}::${tableEntry.name}`] = node;
+                            }}
                             onContextMenu={(e) => handleContextMenu(e, dbName, tableEntry.name)}
                           >
                             <SidebarEntry
@@ -537,32 +558,38 @@ export default function AppSidebar({
                       </div>
                       {expandedGroups[`${dbName}_views`] &&
                         filteredViews.map((viewEntry) => (
-                          <SidebarEntry
+                          <div
                             key={viewEntry.name}
-                            icon={<Eye className="w-3.5 h-3.5 shrink-0" />}
-                            label={viewEntry.name}
-                            active={activeDb === dbName && activeTable === viewEntry.name}
-                            accentBg={tc.accentBg}
-                            lightBg={tc.lightBg}
-                            textLight={tc.textLight}
-                            onClick={() => selectDbAndTable(dbName, viewEntry.name)}
-                            trailing={
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  togglePinTable(dbName, viewEntry.name);
-                                }}
-                                className={`p-1 transition-opacity shrink-0 ${isTablePinned(dbName, viewEntry.name) ? 'text-amber-500 opacity-100' : 'text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-amber-400'}`}
-                                title={
-                                  isTablePinned(dbName, viewEntry.name)
-                                    ? t('removeFromFav')
-                                    : t('addToFav')
-                                }
-                              >
-                                <Star className="w-3.5 h-3.5" />
-                              </button>
-                            }
-                          />
+                            ref={(node) => {
+                              sidebarEntryRefs.current[`${dbName}::${viewEntry.name}`] = node;
+                            }}
+                          >
+                            <SidebarEntry
+                              icon={<Eye className="w-3.5 h-3.5 shrink-0" />}
+                              label={viewEntry.name}
+                              active={activeDb === dbName && activeTable === viewEntry.name}
+                              accentBg={tc.accentBg}
+                              lightBg={tc.lightBg}
+                              textLight={tc.textLight}
+                              onClick={() => selectDbAndTable(dbName, viewEntry.name)}
+                              trailing={
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    togglePinTable(dbName, viewEntry.name);
+                                  }}
+                                  className={`p-1 transition-opacity shrink-0 ${isTablePinned(dbName, viewEntry.name) ? 'text-amber-500 opacity-100' : 'text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-amber-400'}`}
+                                  title={
+                                    isTablePinned(dbName, viewEntry.name)
+                                      ? t('removeFromFav')
+                                      : t('addToFav')
+                                  }
+                                >
+                                  <Star className="w-3.5 h-3.5" />
+                                </button>
+                              }
+                            />
+                          </div>
                         ))}
                     </div>
 
