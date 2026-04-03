@@ -24,6 +24,8 @@ export default function LoginScreen({
   setLang,
   theme,
   setTheme,
+  settings,
+  setSettings,
   themes,
   clearLoginError,
 }) {
@@ -284,6 +286,8 @@ export default function LoginScreen({
         setLang={setLang}
         theme={theme}
         setTheme={setTheme}
+        settings={settings}
+        setSettings={setSettings}
         themes={themes}
       />
     </div>

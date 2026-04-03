@@ -50,8 +50,21 @@ export default function SettingsModal({
   setLang,
   theme,
   setTheme,
-  settings,
-  setSettings,
+  settings = {
+    uiDensity: 'comfortable',
+    showCellTooltipOnHover: true,
+    sqlEditor: {
+      syntaxHighlight: true,
+      autocomplete: true,
+      wordWrap: true,
+      lineNumbers: true,
+      fontSize: 13,
+    },
+    jsonViewer: {
+      defaultMode: 'tree',
+    },
+  },
+  setSettings = () => {},
   themes,
 }) {
   if (!isOpen) return null;

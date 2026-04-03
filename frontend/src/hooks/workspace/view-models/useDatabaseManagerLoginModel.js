@@ -55,6 +55,8 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
     setLang: workspace.setLang,
     theme: workspace.theme,
     setTheme: workspace.setTheme,
+    settings: workspace.settings,
+    setSettings: workspace.setSettings,
     themes,
     clearLoginError: () => workspace.setLoginError(''),
   };
