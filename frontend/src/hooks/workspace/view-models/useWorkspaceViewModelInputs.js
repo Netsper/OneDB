@@ -327,6 +327,7 @@ export default function useWorkspaceViewModelInputs({
     renderCellContent,
     getCellTextValue,
     getTimestampTooltip,
+    showCellTooltipOnHover: settings.showCellTooltipOnHover,
     isJsonColumn,
     formatJsonCellValue,
     copyToClipboard,

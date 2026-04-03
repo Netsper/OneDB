@@ -64,6 +64,7 @@ export default function TableBrowserView({
   renderCellContent,
   getCellTextValue,
   getTimestampTooltip,
+  showCellTooltipOnHover = true,
   isJsonColumn,
   formatJsonCellValue,
   copyToClipboard,
@@ -170,7 +171,9 @@ export default function TableBrowserView({
         const rawValue = row[col.name];
         const cellTextValue = getCellTextValue(rawValue);
         const timestampTooltip = getTimestampTooltip(rawValue, col);
-        const hoverTooltip = timestampTooltip || (cellTextValue.length > 35 ? cellTextValue : '');
+        const hoverTooltip = showCellTooltipOnHover
+          ? timestampTooltip || (cellTextValue.length > 35 ? cellTextValue : '')
+          : '';
 
         columnMeta[col.name] = {
           rawValue,
@@ -190,6 +193,7 @@ export default function TableBrowserView({
     formatJsonCellValue,
     getCellTextValue,
     getTimestampTooltip,
+    showCellTooltipOnHover,
     isJsonColumn,
     renderCellContent,
     tableRows,
@@ -599,7 +603,7 @@ export default function TableBrowserView({
                         })
                       }
                       className="px-4 py-1 border-r border-[#2e2e32] last:border-r-0 max-w-[250px] relative group/cell cursor-text"
-                      title={timestampTooltip || undefined}
+                      title={showCellTooltipOnHover ? timestampTooltip || undefined : undefined}
                     >
                       <div
                         onContextMenu={(event) =>

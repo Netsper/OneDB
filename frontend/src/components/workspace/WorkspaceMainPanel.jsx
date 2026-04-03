@@ -68,6 +68,7 @@ export default function WorkspaceMainPanel({
   renderCellContent,
   getCellTextValue,
   getTimestampTooltip,
+  showCellTooltipOnHover,
   isJsonColumn,
   formatJsonCellValue,
   copyToClipboard,
@@ -203,6 +204,7 @@ export default function WorkspaceMainPanel({
               renderCellContent={renderCellContent}
               getCellTextValue={getCellTextValue}
               getTimestampTooltip={getTimestampTooltip}
+              showCellTooltipOnHover={showCellTooltipOnHover}
               isJsonColumn={isJsonColumn}
               formatJsonCellValue={formatJsonCellValue}
               copyToClipboard={copyToClipboard}
