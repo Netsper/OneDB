@@ -93,34 +93,36 @@ export default function DatabaseOverview({
             <Loader2 className="w-4 h-4 animate-spin" /> {t('loadingTables')}
           </div>
         )}
-        {Object.keys(databases[activeDb] || {}).map((tableName) => (
-          <div
-            key={tableName}
-            onClick={() => selectDbAndTable(activeDb, tableName)}
-            className="bg-[#1c1c1c] border border-[#2e2e32] p-4 rounded-lg hover:border-[#444] cursor-pointer transition-colors group shadow-sm hover:shadow-md"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-zinc-200 font-medium flex items-center gap-2">
-                {databases[activeDb][tableName].type === 'view' ? (
-                  <Eye className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
-                ) : (
-                  <Table2 className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
-                )}
-                {tableName}
-              </h3>
-              <span className="text-xs text-zinc-400 bg-[#232323] border border-[#333] px-2 py-0.5 rounded-full">
-                {databases[activeDb][tableName].rowCount ??
-                  databases[activeDb][tableName].data.length}{' '}
-                {t('records')}
-              </span>
+        {Object.keys(databases[activeDb] || {}).map((tableName) => {
+          const tableEntry = databases[activeDb][tableName];
+          const hasRowCount = Number.isFinite(Number(tableEntry?.rowCount));
+          const rowCountLabel = hasRowCount ? Number(tableEntry.rowCount) : '...';
+          return (
+            <div
+              key={tableName}
+              onClick={() => selectDbAndTable(activeDb, tableName)}
+              className="bg-[#1c1c1c] border border-[#2e2e32] p-4 rounded-lg hover:border-[#444] cursor-pointer transition-colors group shadow-sm hover:shadow-md"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-zinc-200 font-medium flex items-center gap-2">
+                  {tableEntry.type === 'view' ? (
+                    <Eye className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
+                  ) : (
+                    <Table2 className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
+                  )}
+                  {tableName}
+                </h3>
+                <span className="text-xs text-zinc-400 bg-[#232323] border border-[#333] px-2 py-0.5 rounded-full">
+                  {rowCountLabel} {t('records')}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500">
+                {tableEntry.columnCount ?? tableEntry.columns.length} {t('colsFound')}{' '}
+                {tableEntry.type === 'view' && `(${t('views')})`}
+              </p>
             </div>
-            <p className="text-xs text-zinc-500">
-              {databases[activeDb][tableName].columnCount ??
-                databases[activeDb][tableName].columns.length}{' '}
-              {t('colsFound')} {databases[activeDb][tableName].type === 'view' && `(${t('views')})`}
-            </p>
-          </div>
-        ))}
+          );
+        })}
         <div
           onClick={openCreateTable}
           className={`border-2 border-dashed border-[#333] hover:${tc.border} p-4 rounded-lg cursor-pointer transition-colors flex flex-col items-center justify-center text-zinc-500 hover:${tc.text} min-h-[100px]`}

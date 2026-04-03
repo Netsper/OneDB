@@ -58,6 +58,17 @@ export default function useOneDbApi({
 
   const apiActionUrl = useCallback((action) => `?api=${encodeURIComponent(action)}`, []);
 
+  const quoteIdentifier = useCallback(
+    (name) => {
+      const value = String(name || '');
+      if (currentDriver === 'pgsql') {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return `\`${value.replace(/`/g, '``')}\``;
+    },
+    [currentDriver],
+  );
+
   const getCsrfToken = useCallback(async () => {
     if (csrfTokenRef.current) return csrfTokenRef.current;
     const res = await fetch(apiActionUrl('csrf'), {
@@ -147,6 +158,57 @@ export default function useOneDbApi({
     [listDatabases, setDatabases, setLoadedTableDbs],
   );
 
+  const preloadTableRowCounts = useCallback(
+    async (dbName, tableEntries = []) => {
+      const targets = tableEntries.filter(
+        (entry) => entry && typeof entry.name === 'string' && entry.name.trim() !== '',
+      );
+      if (!dbName || targets.length === 0) return;
+
+      const CHUNK_SIZE = 4;
+      for (let start = 0; start < targets.length; start += CHUNK_SIZE) {
+        const chunk = targets.slice(start, start + CHUNK_SIZE);
+        await Promise.all(
+          chunk.map(async (entry) => {
+            try {
+              const result = await callApi('query', {
+                connection: buildConnectionPayload(dbName),
+                sql: `SELECT COUNT(*) AS __onedb_count FROM ${quoteIdentifier(entry.name)};`,
+              });
+              const row = Array.isArray(result?.rows) ? result.rows[0] : null;
+              const rawValue =
+                row && typeof row === 'object'
+                  ? row.__onedb_count ?? Object.values(row)[0]
+                  : result?.rowCount;
+              const parsedCount = Number(rawValue);
+              if (!Number.isFinite(parsedCount) || parsedCount < 0) return;
+
+              setDatabases((prev) => {
+                const dbRecord = prev[dbName];
+                const tableRecord = dbRecord?.[entry.name];
+                if (!dbRecord || !tableRecord) return prev;
+                return {
+                  ...prev,
+                  [dbName]: {
+                    ...dbRecord,
+                    [entry.name]: {
+                      ...tableRecord,
+                      rowCount: parsedCount,
+                      rowCountLoaded: true,
+                    },
+                  },
+                };
+              });
+            } catch {
+              // Keep previous value when row count cannot be fetched.
+            }
+          }),
+        );
+      }
+    },
+    [buildConnectionPayload, callApi, quoteIdentifier, setDatabases],
+  );
+
   const ensureDatabaseTablesLoaded = useCallback(
     async (dbName, options = {}) => {
       if (!dbName) return [];
@@ -170,6 +232,12 @@ export default function useOneDbApi({
           }))
           .filter((entry) => entry.name !== '');
 
+        const previousDbEntry = databases[dbName] || {};
+        const rowCountTargets = entries.filter((entry) => {
+          if (options.force) return true;
+          return !previousDbEntry[entry.name]?.rowCountLoaded;
+        });
+
         setDatabases((prev) => {
           const prevDb = prev[dbName] || {};
           const nextDb = {};
@@ -182,7 +250,8 @@ export default function useOneDbApi({
                   type: entry.type,
                   columns: [],
                   data: [],
-                  rowCount: 0,
+                  rowCount: null,
+                  rowCountLoaded: false,
                   columnCount: entry.columnCount,
                   loaded: false,
                   page: 1,
@@ -196,6 +265,7 @@ export default function useOneDbApi({
           };
         });
         setLoadedTableDbs((prev) => ({ ...prev, [dbName]: true }));
+        void preloadTableRowCounts(dbName, rowCountTargets);
 
         return entries;
       } finally {
@@ -208,6 +278,7 @@ export default function useOneDbApi({
       databases,
       loadedTableDbs,
       loadingTableDbs,
+      preloadTableRowCounts,
       rowsPerPage,
       setDatabases,
       setLoadedTableDbs,
@@ -294,6 +365,7 @@ export default function useOneDbApi({
               columns,
               data: rows,
               rowCount,
+              rowCountLoaded: includeRowCount || Boolean(currentEntry.rowCountLoaded),
               columnCount: columns.length,
               insights: includeInsights ? result.insights || null : currentEntry.insights || null,
               insightsLoaded:
