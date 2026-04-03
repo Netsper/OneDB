@@ -161,13 +161,18 @@ export default function useOneDbApi({
   const preloadTableRowCounts = useCallback(
     async (dbName, tableEntries = []) => {
       const targets = tableEntries.filter(
-        (entry) => entry && typeof entry.name === 'string' && entry.name.trim() !== '',
+        (entry) =>
+          entry &&
+          typeof entry.name === 'string' &&
+          entry.name.trim() !== '' &&
+          String(entry.type || 'table').toLowerCase() !== 'view',
       );
       if (!dbName || targets.length === 0) return;
 
       const CHUNK_SIZE = 4;
       for (let start = 0; start < targets.length; start += CHUNK_SIZE) {
         const chunk = targets.slice(start, start + CHUNK_SIZE);
+        const chunkCounts = new Map();
         await Promise.all(
           chunk.map(async (entry) => {
             try {
@@ -182,28 +187,39 @@ export default function useOneDbApi({
                   : result?.rowCount;
               const parsedCount = Number(rawValue);
               if (!Number.isFinite(parsedCount) || parsedCount < 0) return;
-
-              setDatabases((prev) => {
-                const dbRecord = prev[dbName];
-                const tableRecord = dbRecord?.[entry.name];
-                if (!dbRecord || !tableRecord) return prev;
-                return {
-                  ...prev,
-                  [dbName]: {
-                    ...dbRecord,
-                    [entry.name]: {
-                      ...tableRecord,
-                      rowCount: parsedCount,
-                      rowCountLoaded: true,
-                    },
-                  },
-                };
-              });
+              chunkCounts.set(entry.name, parsedCount);
             } catch {
               // Keep previous value when row count cannot be fetched.
             }
           }),
         );
+
+        if (chunkCounts.size === 0) continue;
+
+        setDatabases((prev) => {
+          const dbRecord = prev[dbName];
+          if (!dbRecord) return prev;
+          let changed = false;
+          const nextDbRecord = { ...dbRecord };
+
+          chunkCounts.forEach((parsedCount, tableName) => {
+            const tableRecord = dbRecord[tableName];
+            if (!tableRecord) return;
+            if (tableRecord.rowCount === parsedCount && tableRecord.rowCountLoaded) return;
+            changed = true;
+            nextDbRecord[tableName] = {
+              ...tableRecord,
+              rowCount: parsedCount,
+              rowCountLoaded: true,
+            };
+          });
+
+          if (!changed) return prev;
+          return {
+            ...prev,
+            [dbName]: nextDbRecord,
+          };
+        });
       }
     },
     [buildConnectionPayload, callApi, quoteIdentifier, setDatabases],

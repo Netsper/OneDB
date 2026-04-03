@@ -113,11 +113,26 @@ function loadPersistedConnectionForm() {
       return { ...DEFAULT_CONNECTION_FORM };
     }
 
+    if (typeof parsed.pass === 'string' && parsed.pass !== '') {
+      try {
+        const sanitized = {
+          name: String(parsed.name || '').trim(),
+          host: String(parsed.host || DEFAULT_CONNECTION_FORM.host),
+          user: String(parsed.user || DEFAULT_CONNECTION_FORM.user),
+          port: String(parsed.port || DEFAULT_CONNECTION_FORM.port),
+          driver: parsed.driver === 'pgsql' ? 'pgsql' : 'mysql',
+        };
+        localStorage.setItem('dbm_last_connection', JSON.stringify(sanitized));
+      } catch {
+        // Ignore storage migration failures.
+      }
+    }
+
     return {
       name: String(parsed.name || '').trim(),
       host: String(parsed.host || DEFAULT_CONNECTION_FORM.host),
       user: String(parsed.user || DEFAULT_CONNECTION_FORM.user),
-      pass: String(parsed.pass || ''),
+      pass: '',
       port: String(parsed.port || DEFAULT_CONNECTION_FORM.port),
       driver: parsed.driver === 'pgsql' ? 'pgsql' : 'mysql',
     };

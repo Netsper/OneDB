@@ -56,7 +56,7 @@ final class ErrorResponder
             $payload['details']['action'] = $action;
         }
 
-        if ($e instanceof PDOException) {
+        if ($e instanceof PDOException && Environment::debugMode()) {
             $payload['details']['database'] = self::pdoContext($e);
         }
 

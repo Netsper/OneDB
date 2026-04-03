@@ -10,6 +10,22 @@ namespace OneDB\Database;
 final class ReadOnlySqlGuard
 {
     /**
+     * Returns true when SQL appears to contain one statement only.
+     *
+     * This blocks stacked statements like `SELECT 1; DROP TABLE x`.
+     */
+    public static function hasSingleStatement(string $sql): bool
+    {
+        $inspected = self::normalizeSqlForInspection($sql);
+        if ($inspected === '') {
+            return false;
+        }
+
+        // Allow an optional trailing semicolon; reject any second tokenized statement.
+        return preg_match('/;\s*\S/s', $inspected) !== 1;
+    }
+
+    /**
      * Returns true when the SQL text is considered read-only.
      *
      * The check is intentionally strict and can reject uncommon but safe queries.

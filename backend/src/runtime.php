@@ -183,6 +183,19 @@ final class Runtime
             return;
         }
 
+        if (!ReadOnlySqlGuard::hasSingleStatement($sql)) {
+            JsonResponse::send(
+                ErrorResponder::fromMessage(
+                    'Only a single SQL statement is allowed per request.',
+                    400,
+                    'multiple_statements_not_allowed',
+                    'query'
+                ),
+                400
+            );
+            return;
+        }
+
         if (Environment::readonlyMode() && !ReadOnlySqlGuard::isReadOnly($sql)) {
             JsonResponse::send(
                 ErrorResponder::fromMessage(

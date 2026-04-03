@@ -1,5 +1,37 @@
 import { useEffect } from 'react';
 
+function getLocalStorage() {
+  if (typeof localStorage === 'undefined' || localStorage == null) {
+    return null;
+  }
+  return localStorage;
+}
+
+function safeSetItem(key, value) {
+  const storage = getLocalStorage();
+  if (!storage || typeof storage.setItem !== 'function') return;
+  try {
+    storage.setItem(key, value);
+  } catch {
+    // Ignore quota/private mode failures.
+  }
+}
+
+function safeRemoveItem(key) {
+  const storage = getLocalStorage();
+  if (!storage || typeof storage.removeItem !== 'function') return;
+  try {
+    storage.removeItem(key);
+  } catch {
+    // Ignore quota/private mode failures.
+  }
+}
+
+function scheduleSetItem(key, value, delay = 120) {
+  const timerId = setTimeout(() => safeSetItem(key, value), delay);
+  return () => clearTimeout(timerId);
+}
+
 export default function useWorkspacePersistenceEffects({
   lang,
   theme,
@@ -15,54 +47,53 @@ export default function useWorkspacePersistenceEffects({
   pinnedColumnsByTable,
 }) {
   useEffect(() => {
-    localStorage.setItem('dbm_lang', lang);
+    safeSetItem('dbm_lang', lang);
   }, [lang]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_theme', theme);
+    safeSetItem('dbm_theme', theme);
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_settings', JSON.stringify(settings));
+    return scheduleSetItem('dbm_settings', JSON.stringify(settings), 150);
   }, [settings]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_sql_history', JSON.stringify(sqlHistory));
+    return scheduleSetItem('dbm_sql_history', JSON.stringify(sqlHistory), 180);
   }, [sqlHistory]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_sql_snippets', JSON.stringify(sqlSnippets));
+    return scheduleSetItem('dbm_sql_snippets', JSON.stringify(sqlSnippets), 180);
   }, [sqlSnippets]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_sidebar_w', sidebarWidth);
+    return scheduleSetItem('dbm_sidebar_w', String(sidebarWidth), 120);
   }, [sidebarWidth]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_pinned', JSON.stringify(pinnedItems));
+    return scheduleSetItem('dbm_pinned', JSON.stringify(pinnedItems), 150);
   }, [pinnedItems]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_connections', JSON.stringify(savedConnections));
+    return scheduleSetItem('dbm_connections', JSON.stringify(savedConnections), 150);
   }, [savedConnections]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_database_visibility', JSON.stringify(databaseVisibility));
+    return scheduleSetItem('dbm_database_visibility', JSON.stringify(databaseVisibility), 150);
   }, [databaseVisibility]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_open_table_tabs', JSON.stringify(openTableTabs));
+    return scheduleSetItem('dbm_open_table_tabs', JSON.stringify(openTableTabs), 150);
   }, [openTableTabs]);
 
   useEffect(() => {
     if (activeTableTabId) {
-      localStorage.setItem('dbm_active_table_tab', activeTableTabId);
-      return;
+      return scheduleSetItem('dbm_active_table_tab', activeTableTabId, 100);
     }
-    localStorage.removeItem('dbm_active_table_tab');
+    safeRemoveItem('dbm_active_table_tab');
   }, [activeTableTabId]);
 
   useEffect(() => {
-    localStorage.setItem('dbm_pinned_columns', JSON.stringify(pinnedColumnsByTable || {}));
+    return scheduleSetItem('dbm_pinned_columns', JSON.stringify(pinnedColumnsByTable || {}), 150);
   }, [pinnedColumnsByTable]);
 }
