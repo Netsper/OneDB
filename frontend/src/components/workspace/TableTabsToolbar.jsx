@@ -22,6 +22,12 @@ export default function TableTabsToolbar({
   currentTableData,
   activeTab,
   onChangeTab,
+  openTableTabs,
+  activeTableTabId,
+  onActivateTableTab,
+  onCloseTableTab,
+  activeDb,
+  activeTable,
   selectedRows,
   onOpenAddRowModal,
   onBulkDelete,
@@ -57,8 +63,57 @@ export default function TableTabsToolbar({
   setIsAutoRefreshMenuOpen,
   setAutoRefreshInt,
 }) {
+  const tableTabs =
+    openTableTabs && openTableTabs.length > 0
+      ? openTableTabs
+      : activeDb && activeTable
+        ? [{ id: `${activeDb}::${activeTable}`, dbName: activeDb, tableName: activeTable }]
+        : [];
+
   return (
     <div className="px-6 border-b border-[#2e2e32] bg-[#1c1c1c] shrink-0">
+      {tableTabs.length > 0 && (
+        <div className="flex items-center gap-2 py-2 border-b border-[#252529] overflow-x-auto scrollbar-none">
+          {tableTabs.map((tab) => {
+            const isActive = tab.id === activeTableTabId;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => onActivateTableTab(tab.id)}
+                className={`group inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs transition-colors whitespace-nowrap ${
+                  isActive
+                    ? `${tc.border} ${tc.textLight} ${tc.lightBg}`
+                    : 'border-[#333] text-zinc-300 hover:bg-[#232323]'
+                }`}
+                title={`${tab.dbName}.${tab.tableName}`}
+              >
+                <span className="max-w-[12rem] truncate">{tab.tableName}</span>
+                <span className="text-[10px] text-zinc-500">{tab.dbName}</span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onCloseTableTab(tab.id);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onCloseTableTab(tab.id);
+                    }
+                  }}
+                  className="text-zinc-500 hover:text-zinc-200 transition-colors"
+                  aria-label={t('close')}
+                >
+                  <X className="w-3 h-3" />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
           <div className="flex gap-6 min-w-max">

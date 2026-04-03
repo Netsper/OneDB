@@ -12,6 +12,10 @@ export default function WorkspaceMainPanel({
   currentTableData,
   activeTab,
   setActiveTab,
+  openTableTabs,
+  activeTableTabId,
+  activateTableTab,
+  closeTableTab,
   selectedRows,
   setFormData,
   setRowDetailsTab,
@@ -124,6 +128,12 @@ export default function WorkspaceMainPanel({
           currentTableData={currentTableData}
           activeTab={activeTab}
           onChangeTab={setActiveTab}
+          openTableTabs={openTableTabs}
+          activeTableTabId={activeTableTabId}
+          onActivateTableTab={activateTableTab}
+          onCloseTableTab={closeTableTab}
+          activeDb={activeDb}
+          activeTable={activeTable}
           selectedRows={selectedRows}
           onOpenAddRowModal={() => {
             setFormData({});

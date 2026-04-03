@@ -30,6 +30,7 @@ export default function useWorkspaceLayoutViewModel(params) {
     expandedGroups,
     setActiveDb,
     setActiveTable,
+    setActiveTableTabId,
     setExpandedDbs,
     setExpandedGroups,
     ensureDatabaseTablesLoaded,
@@ -90,6 +91,7 @@ export default function useWorkspaceLayoutViewModel(params) {
       openDatabase: async (dbName) => {
         setActiveDb(dbName);
         setActiveTable(null);
+        setActiveTableTabId(null);
         setExpandedDbs((prev) => ({ ...prev, [dbName]: true }));
         setExpandedGroups((prev) => ({ ...prev, [`${dbName}_tables`]: true }));
         await ensureDatabaseTablesLoaded(dbName);
@@ -128,8 +130,12 @@ export default function useWorkspaceLayoutViewModel(params) {
       onClearSelection: () => {
         setActiveDb(null);
         setActiveTable(null);
+        setActiveTableTabId(null);
       },
-      onSelectDatabase: () => setActiveTable(null),
+      onSelectDatabase: () => {
+        setActiveTable(null);
+        setActiveTableTabId(null);
+      },
       onOpenCommandPalette: () => setIsCommandOpen(true),
       onRefresh: handleRefresh,
       isRefreshing,

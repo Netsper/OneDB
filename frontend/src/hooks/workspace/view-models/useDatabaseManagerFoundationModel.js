@@ -43,6 +43,8 @@ export default function useDatabaseManagerFoundationModel() {
     pinnedItems: workspace.pinnedItems,
     savedConnections: workspace.savedConnections,
     databaseVisibility: workspace.databaseVisibility,
+    openTableTabs: workspace.openTableTabs,
+    activeTableTabId: workspace.activeTableTabId,
   });
 
   const { currentDriver, quoteIdentifier, escapeLiteral } = useWorkspaceSqlDialectHelpers(

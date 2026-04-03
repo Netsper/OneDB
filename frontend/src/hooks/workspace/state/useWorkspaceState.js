@@ -128,6 +128,32 @@ function loadPersistedConnectionForm() {
   }
 }
 
+function sanitizeOpenTableTabs(rawValue) {
+  if (!Array.isArray(rawValue)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const tabs = [];
+
+  rawValue.forEach((item) => {
+    if (!item || typeof item !== 'object') return;
+    const dbName = String(item.dbName || '').trim();
+    const tableName = String(item.tableName || '').trim();
+    if (!dbName || !tableName) return;
+    const id = `${dbName}::${tableName}`;
+    if (seen.has(id)) return;
+    seen.add(id);
+    tabs.push({
+      id,
+      dbName,
+      tableName,
+    });
+  });
+
+  return tabs;
+}
+
 export default function useWorkspaceState() {
   const [lang, setLang] = useState(() => localStorage.getItem('dbm_lang') || 'en');
 
@@ -150,6 +176,18 @@ export default function useWorkspaceState() {
   const [databases, setDatabases] = useState({});
   const [activeDb, setActiveDb] = useState(null);
   const [activeTable, setActiveTable] = useState(null);
+  const [openTableTabs, setOpenTableTabs] = useState(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('dbm_open_table_tabs') || '[]');
+      return sanitizeOpenTableTabs(parsed);
+    } catch {
+      return [];
+    }
+  });
+  const [activeTableTabId, setActiveTableTabId] = useState(() => {
+    const value = String(localStorage.getItem('dbm_active_table_tab') || '').trim();
+    return value || null;
+  });
   const [expandedDbs, setExpandedDbs] = useState({});
   const [expandedGroups, setExpandedGroups] = useState({});
   const [activeTab, setActiveTab] = useState('browse');
@@ -297,6 +335,10 @@ export default function useWorkspaceState() {
     setActiveDb,
     activeTable,
     setActiveTable,
+    openTableTabs,
+    setOpenTableTabs,
+    activeTableTabId,
+    setActiveTableTabId,
     expandedDbs,
     setExpandedDbs,
     expandedGroups,

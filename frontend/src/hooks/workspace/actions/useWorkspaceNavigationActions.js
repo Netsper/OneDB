@@ -21,6 +21,10 @@ export default function useWorkspaceNavigationActions({
   setIsRefreshing,
   setActiveDb,
   setActiveTable,
+  openTableTabs,
+  setOpenTableTabs,
+  activeTableTabId,
+  setActiveTableTabId,
   setActiveTab,
   setSearchTerm,
   setFilterRuleDrafts,
@@ -41,6 +45,19 @@ export default function useWorkspaceNavigationActions({
   setModalConfig,
   setPinnedItems,
 }) {
+  const buildTableTabId = (dbName, tableName) => `${dbName}::${tableName}`;
+
+  const registerTableTab = (dbName, tableName) => {
+    const tabId = buildTableTabId(dbName, tableName);
+    setOpenTableTabs((prev) => {
+      if (prev.some((tab) => tab.id === tabId)) {
+        return prev;
+      }
+      return [...prev, { id: tabId, dbName, tableName }];
+    });
+    setActiveTableTabId(tabId);
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -88,6 +105,41 @@ export default function useWorkspaceNavigationActions({
     setSchemaViewMode('table');
     setIsCommandOpen(false);
     setSqlQuery(`SELECT * FROM ${quoteIdentifier(tableName)} LIMIT 50;`);
+    setSqlResult(null);
+    registerTableTab(dbName, tableName);
+  };
+
+  const activateTableTab = async (tabId) => {
+    const targetTab = openTableTabs.find((tab) => tab.id === tabId);
+    if (!targetTab) return;
+    await selectDbAndTable(targetTab.dbName, targetTab.tableName, activeTab);
+  };
+
+  const closeTableTab = (tabId) => {
+    if (!tabId) return;
+    const currentTabs = [...openTableTabs];
+    const closingIndex = currentTabs.findIndex((tab) => tab.id === tabId);
+    if (closingIndex < 0) return;
+
+    const nextTabs = currentTabs.filter((tab) => tab.id !== tabId);
+    setOpenTableTabs(nextTabs);
+
+    if (activeTableTabId !== tabId) {
+      return;
+    }
+
+    const fallbackTab = nextTabs[Math.max(0, closingIndex - 1)] || nextTabs[closingIndex] || null;
+    if (!fallbackTab) {
+      setActiveTableTabId(null);
+      setActiveTable(null);
+      return;
+    }
+
+    setActiveTableTabId(fallbackTab.id);
+    setActiveDb(fallbackTab.dbName);
+    setActiveTable(fallbackTab.tableName);
+    setActiveTab('browse');
+    setSqlQuery(`SELECT * FROM ${quoteIdentifier(fallbackTab.tableName)} LIMIT 50;`);
     setSqlResult(null);
   };
 
@@ -194,5 +246,7 @@ export default function useWorkspaceNavigationActions({
     setCellNullFromMenu,
     togglePinDatabase,
     togglePinTable,
+    activateTableTab,
+    closeTableTab,
   };
 }

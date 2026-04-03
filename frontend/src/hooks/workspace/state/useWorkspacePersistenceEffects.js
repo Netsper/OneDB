@@ -10,6 +10,8 @@ export default function useWorkspacePersistenceEffects({
   pinnedItems,
   savedConnections,
   databaseVisibility,
+  openTableTabs,
+  activeTableTabId,
 }) {
   useEffect(() => {
     localStorage.setItem('dbm_lang', lang);
@@ -46,4 +48,16 @@ export default function useWorkspacePersistenceEffects({
   useEffect(() => {
     localStorage.setItem('dbm_database_visibility', JSON.stringify(databaseVisibility));
   }, [databaseVisibility]);
+
+  useEffect(() => {
+    localStorage.setItem('dbm_open_table_tabs', JSON.stringify(openTableTabs));
+  }, [openTableTabs]);
+
+  useEffect(() => {
+    if (activeTableTabId) {
+      localStorage.setItem('dbm_active_table_tab', activeTableTabId);
+      return;
+    }
+    localStorage.removeItem('dbm_active_table_tab');
+  }, [activeTableTabId]);
 }
