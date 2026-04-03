@@ -69,10 +69,11 @@ export default function TableTabsToolbar({
       : activeDb && activeTable
         ? [{ id: `${activeDb}::${activeTable}`, dbName: activeDb, tableName: activeTable }]
         : [];
+  const shouldShowTableTabs = tableTabs.length > 1;
 
   return (
     <div className="px-6 border-b border-[#2e2e32] bg-[#1c1c1c] shrink-0">
-      {tableTabs.length > 0 && (
+      {shouldShowTableTabs && (
         <div className="flex items-center gap-2 py-2 border-b border-[#252529] overflow-x-auto scrollbar-none">
           {tableTabs.map((tab) => {
             const isActive = tab.id === activeTableTabId;
