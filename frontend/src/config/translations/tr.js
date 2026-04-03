@@ -48,6 +48,12 @@ export const tr = {
   results: 'Sonuçlar',
   schema: 'Şema',
   sqlEditor: 'SQL Düzenleyici',
+  tabClose: 'Sekmeyi Kapat',
+  tabCloseOthers: 'Diğer Sekmeleri Kapat',
+  tabCloseRight: 'Sağdaki Sekmeleri Kapat',
+  tabCloseAll: 'Tüm Sekmeleri Kapat',
+  tabPin: 'Sekme Tablosunu Pinle',
+  tabUnpin: 'Sekme Tablosu Pinini Kaldır',
 
   addRow: 'Satır Ekle',
   mockDataBtn: 'Sahte Veri Üret',

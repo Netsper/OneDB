@@ -282,6 +282,8 @@ export default function useWorkspaceViewModelInputs({
     activeTableTabId,
     activateTableTab,
     closeTableTab,
+    togglePinTable,
+    isTablePinned,
     selectedRows,
     setFormData,
     setRowDetailsTab,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Code,
   Columns,
@@ -11,6 +11,7 @@ import {
   X,
   Trash2,
   Rows,
+  Star,
 } from 'lucide-react';
 import MenuSurface from '../shared/MenuSurface.jsx';
 import SelectField from '../shared/SelectField.jsx';
@@ -26,6 +27,8 @@ export default function TableTabsToolbar({
   activeTableTabId,
   onActivateTableTab,
   onCloseTableTab,
+  onTogglePinTable,
+  isTablePinned,
   activeDb,
   activeTable,
   selectedRows,
@@ -63,13 +66,74 @@ export default function TableTabsToolbar({
   setIsAutoRefreshMenuOpen,
   setAutoRefreshInt,
 }) {
-  const tableTabs =
-    openTableTabs && openTableTabs.length > 0
-      ? openTableTabs
-      : activeDb && activeTable
-        ? [{ id: `${activeDb}::${activeTable}`, dbName: activeDb, tableName: activeTable }]
-        : [];
+  const tableTabs = useMemo(
+    () =>
+      openTableTabs && openTableTabs.length > 0
+        ? openTableTabs
+        : activeDb && activeTable
+          ? [{ id: `${activeDb}::${activeTable}`, dbName: activeDb, tableName: activeTable }]
+          : [],
+    [openTableTabs, activeDb, activeTable],
+  );
   const shouldShowTableTabs = tableTabs.length > 1;
+  const [tabContextMenu, setTabContextMenu] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    tabId: null,
+  });
+  const contextTab = useMemo(
+    () => tableTabs.find((tab) => tab.id === tabContextMenu.tabId) || null,
+    [tableTabs, tabContextMenu.tabId],
+  );
+
+  useEffect(() => {
+    if (!tabContextMenu.visible) {
+      return undefined;
+    }
+
+    const close = () => setTabContextMenu((prev) => ({ ...prev, visible: false }));
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        close();
+      }
+    };
+    window.addEventListener('click', close);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [tabContextMenu.visible]);
+
+  const openTabContextMenu = (event, tabId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setTabContextMenu({
+      visible: true,
+      x: event.clientX,
+      y: event.clientY,
+      tabId,
+    });
+  };
+
+  const closeTabContextMenu = () => {
+    setTabContextMenu((prev) => ({ ...prev, visible: false }));
+  };
+
+  const closeOtherTabs = (tabId) => {
+    tableTabs.filter((tab) => tab.id !== tabId).forEach((tab) => onCloseTableTab(tab.id));
+  };
+
+  const closeTabsToRight = (tabId) => {
+    const activeIndex = tableTabs.findIndex((tab) => tab.id === tabId);
+    if (activeIndex < 0) return;
+    tableTabs.slice(activeIndex + 1).forEach((tab) => onCloseTableTab(tab.id));
+  };
+
+  const closeAllTabs = () => {
+    tableTabs.forEach((tab) => onCloseTableTab(tab.id));
+  };
 
   return (
     <div className="px-6 border-b border-[#2e2e32] bg-[#1c1c1c] shrink-0">
@@ -82,6 +146,7 @@ export default function TableTabsToolbar({
                 key={tab.id}
                 type="button"
                 onClick={() => onActivateTableTab(tab.id)}
+                onContextMenu={(event) => openTabContextMenu(event, tab.id)}
                 className={`group inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs transition-colors whitespace-nowrap ${
                   isActive
                     ? `${tc.border} ${tc.textLight} ${tc.lightBg}`
@@ -113,6 +178,72 @@ export default function TableTabsToolbar({
               </button>
             );
           })}
+          {tabContextMenu.visible && contextTab && (
+            <MenuSurface
+              open={tabContextMenu.visible}
+              point={{ x: tabContextMenu.x, y: tabContextMenu.y, width: 220, height: 250 }}
+              className="py-1 z-[140] min-w-[190px]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="px-3 py-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider border-b border-[#2e2e32] mb-1">
+                {contextTab.tableName}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onCloseTableTab(contextTab.id);
+                  closeTabContextMenu();
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white flex items-center gap-2"
+              >
+                <X className="w-3.5 h-3.5" /> {t('tabClose')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  closeOtherTabs(contextTab.id);
+                  closeTabContextMenu();
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white"
+              >
+                {t('tabCloseOthers')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  closeTabsToRight(contextTab.id);
+                  closeTabContextMenu();
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white"
+              >
+                {t('tabCloseRight')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  closeAllTabs();
+                  closeTabContextMenu();
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-400/10"
+              >
+                {t('tabCloseAll')}
+              </button>
+              <div className="my-1 border-t border-[#2e2e32]" />
+              <button
+                type="button"
+                onClick={() => {
+                  onTogglePinTable?.(contextTab.dbName, contextTab.tableName);
+                  closeTabContextMenu();
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-400/10 flex items-center gap-2"
+              >
+                <Star className="w-3.5 h-3.5" />
+                {isTablePinned?.(contextTab.dbName, contextTab.tableName)
+                  ? t('tabUnpin')
+                  : t('tabPin')}
+              </button>
+            </MenuSurface>
+          )}
         </div>
       )}
       <div className="flex items-center justify-between gap-4">

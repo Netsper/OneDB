@@ -52,6 +52,12 @@ export const en = {
   results: 'Results',
   schema: 'Schema',
   sqlEditor: 'SQL Editor',
+  tabClose: 'Close Tab',
+  tabCloseOthers: 'Close Other Tabs',
+  tabCloseRight: 'Close Tabs to the Right',
+  tabCloseAll: 'Close All Tabs',
+  tabPin: 'Pin Tab Table',
+  tabUnpin: 'Unpin Tab Table',
 
   // Data Toolbar
   addRow: 'Add Row',
