@@ -28,7 +28,7 @@ export default function HoverTooltip({
         anchor={anchorRef}
         placement={placement}
         offset={6}
-        className="pointer-events-none bg-[#2e2e32] border border-[#444] p-2.5 rounded-lg shadow-2xl z-[160] text-xs text-zinc-200 whitespace-pre-wrap break-words w-[min(400px,calc(100vw-32px))]"
+        className="pointer-events-auto bg-[#2e2e32] border border-[#444] p-2.5 rounded-lg shadow-2xl z-[160] text-xs text-zinc-200 whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-auto w-fit max-w-[min(680px,calc(100vw-32px))] leading-relaxed"
       >
         {text}
       </FloatingPanel>
