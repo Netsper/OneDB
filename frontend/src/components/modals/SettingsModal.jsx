@@ -130,7 +130,10 @@ export default function SettingsModal({
                     Türkçe
                   </button>
                 </div>
-                <p className="text-sm text-zinc-400">{t('settingsDensity')}</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-zinc-400">{t('settingsDensity')}</p>
+                  <p className="text-xs text-zinc-500">{t('settingsDensityDesc')}</p>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() =>
@@ -145,7 +148,10 @@ export default function SettingsModal({
                         : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
                     }`}
                   >
-                    {t('settingsDensityComfortable')}
+                    <span className="block">{t('settingsDensityComfortable')}</span>
+                    <span className="block text-[11px] opacity-80">
+                      {t('settingsDensityComfortableDesc')}
+                    </span>
                   </button>
                   <button
                     onClick={() =>
@@ -160,7 +166,10 @@ export default function SettingsModal({
                         : 'border-[#333] text-zinc-400 hover:bg-[#2e2e32]'
                     }`}
                   >
-                    {t('settingsDensityCompact')}
+                    <span className="block">{t('settingsDensityCompact')}</span>
+                    <span className="block text-[11px] opacity-80">
+                      {t('settingsDensityCompactDesc')}
+                    </span>
                   </button>
                 </div>
               </Section>
