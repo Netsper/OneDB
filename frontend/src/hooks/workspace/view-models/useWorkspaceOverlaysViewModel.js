@@ -78,6 +78,8 @@ export default function useWorkspaceOverlaysViewModel(params) {
     setLang,
     theme,
     setTheme,
+    settings,
+    setSettings,
     themes,
     toasts,
   } = params;
@@ -186,6 +188,8 @@ export default function useWorkspaceOverlaysViewModel(params) {
       setLang,
       theme,
       setTheme,
+      settings,
+      setSettings,
       themes,
     },
     shortcutsModal: {

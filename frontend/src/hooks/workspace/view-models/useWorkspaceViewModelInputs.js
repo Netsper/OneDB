@@ -202,6 +202,8 @@ export default function useWorkspaceViewModelInputs({
   exportToSQL,
   theme,
   setTheme,
+  settings,
+  setSettings,
   themes,
   setLang,
   isSettingsOpen,
@@ -450,6 +452,8 @@ export default function useWorkspaceViewModelInputs({
     setLang,
     theme,
     setTheme,
+    settings,
+    setSettings,
     themes,
     toasts,
   };

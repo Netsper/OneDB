@@ -36,6 +36,7 @@ export default function useDatabaseManagerFoundationModel() {
   useWorkspacePersistenceEffects({
     lang: workspace.lang,
     theme: workspace.theme,
+    settings: workspace.settings,
     sqlHistory: workspace.sqlHistory,
     sqlSnippets: workspace.sqlSnippets,
     sidebarWidth: workspace.sidebarWidth,

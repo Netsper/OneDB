@@ -1,6 +1,21 @@
 import { useRef, useState } from 'react';
 import { normalizePinnedItems } from '../../../utils/pins.js';
 
+const DEFAULT_WORKSPACE_SETTINGS = Object.freeze({
+  uiDensity: 'comfortable',
+  showCellTooltipOnHover: true,
+  sqlEditor: {
+    syntaxHighlight: true,
+    autocomplete: true,
+    wordWrap: true,
+    lineNumbers: true,
+    fontSize: 13,
+  },
+  jsonViewer: {
+    defaultMode: 'tree',
+  },
+});
+
 function sanitizeSavedConnectionProfiles(rawValue) {
   if (!Array.isArray(rawValue)) {
     return [];
@@ -17,6 +32,71 @@ function sanitizeSavedConnectionProfiles(rawValue) {
       driver: item.driver === 'pgsql' ? 'pgsql' : 'mysql',
     }))
     .filter((item) => item.name !== '' || item.host !== '' || item.user !== '');
+}
+
+function parseBooleanSetting(value, fallback) {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function parseEnumSetting(value, allowedValues, fallback) {
+  return typeof value === 'string' && allowedValues.includes(value) ? value : fallback;
+}
+
+function parseNumberSetting(value, fallback, min, max) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return fallback;
+  }
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function loadWorkspaceSettings() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('dbm_settings') || 'null');
+    if (!parsed || typeof parsed !== 'object') {
+      return DEFAULT_WORKSPACE_SETTINGS;
+    }
+
+    return {
+      uiDensity: parseEnumSetting(parsed.uiDensity, ['comfortable', 'compact'], 'comfortable'),
+      showCellTooltipOnHover: parseBooleanSetting(
+        parsed.showCellTooltipOnHover,
+        DEFAULT_WORKSPACE_SETTINGS.showCellTooltipOnHover,
+      ),
+      sqlEditor: {
+        syntaxHighlight: parseBooleanSetting(
+          parsed.sqlEditor?.syntaxHighlight,
+          DEFAULT_WORKSPACE_SETTINGS.sqlEditor.syntaxHighlight,
+        ),
+        autocomplete: parseBooleanSetting(
+          parsed.sqlEditor?.autocomplete,
+          DEFAULT_WORKSPACE_SETTINGS.sqlEditor.autocomplete,
+        ),
+        wordWrap: parseBooleanSetting(
+          parsed.sqlEditor?.wordWrap,
+          DEFAULT_WORKSPACE_SETTINGS.sqlEditor.wordWrap,
+        ),
+        lineNumbers: parseBooleanSetting(
+          parsed.sqlEditor?.lineNumbers,
+          DEFAULT_WORKSPACE_SETTINGS.sqlEditor.lineNumbers,
+        ),
+        fontSize: parseNumberSetting(
+          parsed.sqlEditor?.fontSize,
+          DEFAULT_WORKSPACE_SETTINGS.sqlEditor.fontSize,
+          11,
+          20,
+        ),
+      },
+      jsonViewer: {
+        defaultMode: parseEnumSetting(
+          parsed.jsonViewer?.defaultMode,
+          ['tree', 'raw'],
+          DEFAULT_WORKSPACE_SETTINGS.jsonViewer.defaultMode,
+        ),
+      },
+    };
+  } catch {
+    return DEFAULT_WORKSPACE_SETTINGS;
+  }
 }
 
 export default function useWorkspaceState() {
@@ -83,6 +163,7 @@ export default function useWorkspaceState() {
   const [isAiLoading, setIsAiLoading] = useState(false);
 
   const [theme, setTheme] = useState(() => localStorage.getItem('dbm_theme') || 'emerald');
+  const [settings, setSettings] = useState(loadWorkspaceSettings);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(
     () => Number(localStorage.getItem('dbm_sidebar_w')) || 256,
@@ -222,6 +303,8 @@ export default function useWorkspaceState() {
     setIsAiLoading,
     theme,
     setTheme,
+    settings,
+    setSettings,
     isSidebarOpen,
     setIsSidebarOpen,
     sidebarWidth,

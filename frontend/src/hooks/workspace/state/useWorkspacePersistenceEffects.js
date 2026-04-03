@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 export default function useWorkspacePersistenceEffects({
   lang,
   theme,
+  settings,
   sqlHistory,
   sqlSnippets,
   sidebarWidth,
@@ -17,6 +18,10 @@ export default function useWorkspacePersistenceEffects({
   useEffect(() => {
     localStorage.setItem('dbm_theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('dbm_settings', JSON.stringify(settings));
+  }, [settings]);
 
   useEffect(() => {
     localStorage.setItem('dbm_sql_history', JSON.stringify(sqlHistory));
