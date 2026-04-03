@@ -11,7 +11,7 @@ import {
   X,
   Trash2,
   Rows,
-  Star,
+  Pin,
 } from 'lucide-react';
 import MenuSurface from '../shared/MenuSurface.jsx';
 import SelectField from '../shared/SelectField.jsx';
@@ -144,7 +144,7 @@ export default function TableTabsToolbar({
                 }`}
                 title={`${tab.dbName}.${tab.tableName}`}
               >
-                {isPinned && <Star className="w-3 h-3 text-amber-400" />}
+                {isPinned && <Pin className="w-3 h-3 text-amber-400" />}
                 <span className="max-w-[12rem] truncate">{tab.tableName}</span>
                 <span className="text-[10px] text-zinc-500">{tab.dbName}</span>
                 <span
@@ -228,7 +228,7 @@ export default function TableTabsToolbar({
                 }}
                 className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-400/10 flex items-center gap-2"
               >
-                <Star className="w-3.5 h-3.5" />
+                <Pin className="w-3.5 h-3.5" />
                 {isTableTabPinned?.(contextTab.id)
                   ? t('tabUnpin')
                   : t('tabPin')}
