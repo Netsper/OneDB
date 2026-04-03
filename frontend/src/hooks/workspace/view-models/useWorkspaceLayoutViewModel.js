@@ -134,7 +134,10 @@ export default function useWorkspaceLayoutViewModel(params) {
       onRefresh: handleRefresh,
       isRefreshing,
       onOpenSettings: () => setIsSettingsOpen(true),
-      onLogout: () => setIsConnected(false),
+      onLogout: () => {
+        localStorage.removeItem('dbm_last_connection');
+        setIsConnected(false);
+      },
     },
     statusBar: {
       t,

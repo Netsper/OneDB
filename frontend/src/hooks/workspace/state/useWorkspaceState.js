@@ -16,6 +16,15 @@ const DEFAULT_WORKSPACE_SETTINGS = Object.freeze({
   },
 });
 
+const DEFAULT_CONNECTION_FORM = Object.freeze({
+  name: '',
+  host: 'localhost',
+  user: 'root',
+  pass: '',
+  port: '3306',
+  driver: 'mysql',
+});
+
 function sanitizeSavedConnectionProfiles(rawValue) {
   if (!Array.isArray(rawValue)) {
     return [];
@@ -99,20 +108,35 @@ function loadWorkspaceSettings() {
   }
 }
 
+function loadPersistedConnectionForm() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('dbm_last_connection') || 'null');
+    if (!parsed || typeof parsed !== 'object') {
+      return { ...DEFAULT_CONNECTION_FORM };
+    }
+
+    return {
+      name: String(parsed.name || '').trim(),
+      host: String(parsed.host || DEFAULT_CONNECTION_FORM.host),
+      user: String(parsed.user || DEFAULT_CONNECTION_FORM.user),
+      pass: String(parsed.pass || ''),
+      port: String(parsed.port || DEFAULT_CONNECTION_FORM.port),
+      driver: parsed.driver === 'pgsql' ? 'pgsql' : 'mysql',
+    };
+  } catch {
+    return { ...DEFAULT_CONNECTION_FORM };
+  }
+}
+
 export default function useWorkspaceState() {
   const [lang, setLang] = useState(() => localStorage.getItem('dbm_lang') || 'en');
 
   const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(() =>
+    Boolean(localStorage.getItem('dbm_last_connection')),
+  );
   const [ping, setPing] = useState(12);
-  const [connForm, setConnForm] = useState({
-    name: '',
-    host: 'localhost',
-    user: 'root',
-    pass: '',
-    port: '3306',
-    driver: 'mysql',
-  });
+  const [connForm, setConnForm] = useState(loadPersistedConnectionForm);
   const [savedConnections, setSavedConnections] = useState(() => {
     try {
       const parsed = JSON.parse(localStorage.getItem('dbm_connections')) || [];

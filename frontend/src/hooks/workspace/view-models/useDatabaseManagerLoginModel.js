@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import useWorkspaceConnectionActions from '../actions/useWorkspaceConnectionActions.js';
 
 export default function useDatabaseManagerLoginModel(model, apiModel) {
@@ -20,6 +21,18 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
     refreshSchemas,
     showToast,
   });
+
+  const didAttemptRestoreRef = useRef(false);
+
+  useEffect(() => {
+    if (workspace.isConnected) return;
+    if (workspace.isConnecting) return;
+    if (didAttemptRestoreRef.current) return;
+    if (!localStorage.getItem('dbm_last_connection')) return;
+
+    didAttemptRestoreRef.current = true;
+    handleConnect();
+  }, [handleConnect, workspace.isConnected, workspace.isConnecting]);
 
   const loginScreenProps = {
     t,

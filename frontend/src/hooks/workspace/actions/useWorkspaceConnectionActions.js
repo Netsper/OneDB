@@ -32,6 +32,18 @@ export default function useWorkspaceConnectionActions({
       setIsConnected(true);
       setQps(0);
 
+      localStorage.setItem(
+        'dbm_last_connection',
+        JSON.stringify({
+          name: String(connForm.name || '').trim(),
+          host: String(connForm.host || '').trim(),
+          user: String(connForm.user || '').trim(),
+          pass: String(connForm.pass || ''),
+          port: String(connForm.port || '').trim(),
+          driver: connForm.driver === 'pgsql' ? 'pgsql' : 'mysql',
+        }),
+      );
+
       const firstDb = dbNames[0] || null;
       if (firstDb) {
         setActiveDb(firstDb);
