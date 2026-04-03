@@ -1,4 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { autocompletion, completeFromList } from '@codemirror/autocomplete';
+import { sql } from '@codemirror/lang-sql';
+import { EditorView, lineNumbers } from '@codemirror/view';
+import CodeMirror from '@uiw/react-codemirror';
 import {
   Activity,
   AlignCenter,
@@ -12,12 +16,62 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+const DEFAULT_SQL_EDITOR_SETTINGS = {
+  syntaxHighlight: true,
+  autocomplete: true,
+  wordWrap: true,
+  lineNumbers: true,
+  fontSize: 13,
+};
+
+const SQL_COMPLETION_KEYWORDS = [
+  'SELECT',
+  'FROM',
+  'WHERE',
+  'GROUP BY',
+  'ORDER BY',
+  'LIMIT',
+  'INSERT',
+  'UPDATE',
+  'DELETE',
+  'VALUES',
+  'INTO',
+  'SET',
+  'JOIN',
+  'LEFT JOIN',
+  'RIGHT JOIN',
+  'INNER JOIN',
+  'OUTER JOIN',
+  'ON',
+  'AS',
+  'DISTINCT',
+  'COUNT',
+  'SUM',
+  'AVG',
+  'MIN',
+  'MAX',
+  'HAVING',
+  'UNION',
+  'CREATE',
+  'ALTER',
+  'DROP',
+  'TABLE',
+  'DATABASE',
+  'INDEX',
+  'VIEW',
+  'EXPLAIN',
+  'SHOW',
+  'DESC',
+];
+
 export default function SqlEditorView({
   t,
   tc,
   sqlContainerRef,
   sqlResult,
   sqlEditorHeight,
+  currentTableData,
+  settings,
   handleAiGenerate,
   aiPrompt,
   setAiPrompt,
@@ -38,6 +92,117 @@ export default function SqlEditorView({
   exportToCSV,
   copyToClipboard,
 }) {
+  const sqlEditorSettings = {
+    ...DEFAULT_SQL_EDITOR_SETTINGS,
+    ...(settings?.sqlEditor || {}),
+  };
+
+  const editorSchema = useMemo(() => {
+    const tableName = currentTableData?.name || activeTable;
+    if (!tableName || !Array.isArray(currentTableData?.columns)) {
+      return undefined;
+    }
+
+    return {
+      [tableName]: currentTableData.columns.map((column) => column.name),
+    };
+  }, [activeTable, currentTableData]);
+
+  const editorCompletions = useMemo(() => {
+    const completionItems = SQL_COMPLETION_KEYWORDS.map((label) => ({ label, type: 'keyword' }));
+    const tableName = currentTableData?.name || activeTable;
+
+    if (tableName) {
+      completionItems.push({ label: tableName, type: 'class', boost: 99 });
+    }
+
+    if (Array.isArray(currentTableData?.columns)) {
+      currentTableData.columns.forEach((column) => {
+        completionItems.push({ label: column.name, type: 'property' });
+      });
+    }
+
+    return completionItems;
+  }, [activeTable, currentTableData]);
+
+  const editorExtensions = useMemo(() => {
+    const extensions = [
+      EditorView.theme(
+        {
+          '&': {
+            height: '100%',
+            fontSize: `${sqlEditorSettings.fontSize}px`,
+            backgroundColor: '#18181b',
+          },
+          '.cm-content': {
+            fontFamily:
+              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace',
+            padding: '12px 16px',
+          },
+          '.cm-scroller': {
+            overflow: 'auto',
+          },
+          '.cm-gutters': {
+            backgroundColor: '#18181b',
+            borderRight: '1px solid #2e2e32',
+            color: '#71717a',
+          },
+          '.cm-activeLineGutter, .cm-activeLine': {
+            backgroundColor: 'transparent',
+          },
+          '.cm-tooltip': {
+            backgroundColor: '#232326',
+            borderColor: '#3f3f46',
+          },
+          '.cm-tooltip-autocomplete ul li[aria-selected]': {
+            backgroundColor: '#0f766e',
+            color: '#ecfeff',
+          },
+        },
+        { dark: true },
+      ),
+      EditorView.domEventHandlers({
+        keydown: (event) => {
+          handleSqlKeyDown(event);
+          return false;
+        },
+      }),
+    ];
+
+    if (sqlEditorSettings.lineNumbers) {
+      extensions.push(lineNumbers());
+    }
+
+    if (sqlEditorSettings.wordWrap) {
+      extensions.push(EditorView.lineWrapping);
+    }
+
+    if (sqlEditorSettings.syntaxHighlight) {
+      extensions.push(sql({ schema: editorSchema }));
+    }
+
+    if (sqlEditorSettings.autocomplete) {
+      extensions.push(
+        autocompletion({
+          activateOnTyping: true,
+          override: [completeFromList(editorCompletions)],
+          maxRenderedOptions: 20,
+        }),
+      );
+    }
+
+    return extensions;
+  }, [
+    editorCompletions,
+    editorSchema,
+    handleSqlKeyDown,
+    sqlEditorSettings.autocomplete,
+    sqlEditorSettings.fontSize,
+    sqlEditorSettings.lineNumbers,
+    sqlEditorSettings.syntaxHighlight,
+    sqlEditorSettings.wordWrap,
+  ]);
+
   const renderPlanSteps = (steps) =>
     (Array.isArray(steps) ? steps : []).map((planItem, i) => (
       <div key={i} className="flex items-start gap-4 mb-3 relative pl-6">
@@ -149,19 +314,21 @@ export default function SqlEditorView({
           </button>
         </div>
 
-        <div className="flex-1 relative">
-          <div className="absolute top-0 left-0 bottom-0 w-12 bg-[#18181b] border-r border-[#2e2e32] text-right pr-2 py-4 text-xs text-zinc-600 font-mono select-none">
-            {sqlQuery.split('\n').map((_, i) => (
-              <div key={i}>{i + 1}</div>
-            ))}
-          </div>
-          <textarea
+        <div className="flex-1 bg-[#18181b]">
+          <CodeMirror
             value={sqlQuery}
-            onChange={(e) => setSqlQuery(e.target.value)}
-            onKeyDown={handleSqlKeyDown}
-            className="w-full h-full bg-transparent text-zinc-200 p-4 pl-16 font-mono text-sm focus:outline-none resize-none bg-transparent"
-            style={{ caretColor: 'white' }}
-            spellCheck="false"
+            height="100%"
+            theme="dark"
+            extensions={editorExtensions}
+            onChange={(value) => setSqlQuery(value)}
+            basicSetup={{
+              lineNumbers: false,
+              foldGutter: false,
+              highlightActiveLineGutter: false,
+              highlightActiveLine: false,
+              searchKeymap: true,
+              autocompletion: false,
+            }}
           />
         </div>
       </div>

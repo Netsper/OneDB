@@ -345,6 +345,7 @@ export default function useWorkspaceViewModelInputs({
     sqlContainerRef,
     sqlResult,
     sqlEditorHeight,
+    settings,
     handleAiGenerate,
     aiPrompt,
     setAiPrompt,

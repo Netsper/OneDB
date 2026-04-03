@@ -87,6 +87,7 @@ export default function WorkspaceMainPanel({
   sqlContainerRef,
   sqlResult,
   sqlEditorHeight,
+  settings,
   handleAiGenerate,
   aiPrompt,
   setAiPrompt,
@@ -247,6 +248,8 @@ export default function WorkspaceMainPanel({
               sqlContainerRef={sqlContainerRef}
               sqlResult={sqlResult}
               sqlEditorHeight={sqlEditorHeight}
+              currentTableData={currentTableData}
+              settings={settings}
               handleAiGenerate={handleAiGenerate}
               aiPrompt={aiPrompt}
               setAiPrompt={setAiPrompt}
