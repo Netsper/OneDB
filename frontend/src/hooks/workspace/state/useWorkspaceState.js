@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { normalizePinnedItems } from '../../../utils/pins.js';
 
 const DEFAULT_WORKSPACE_SETTINGS = Object.freeze({
-  uiDensity: 'comfortable',
   showCellTooltipOnHover: true,
   sqlEditor: {
     syntaxHighlight: true,
@@ -66,7 +65,6 @@ function loadWorkspaceSettings() {
     }
 
     return {
-      uiDensity: parseEnumSetting(parsed.uiDensity, ['comfortable', 'compact'], 'comfortable'),
       showCellTooltipOnHover: parseBooleanSetting(
         parsed.showCellTooltipOnHover,
         DEFAULT_WORKSPACE_SETTINGS.showCellTooltipOnHover,

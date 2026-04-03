@@ -33,7 +33,6 @@ export default function LoginScreen({
 
   return (
     <div
-      data-density={settings?.uiDensity === 'compact' ? 'compact' : 'comfortable'}
       className={`min-h-screen bg-[#1c1c1c] flex items-center justify-center p-4 font-sans text-zinc-300 ${tc.selection}`}
     >
       <div className="bg-[#232323] p-8 rounded-xl w-full max-w-4xl border border-[#333] shadow-2xl relative overflow-hidden flex flex-col md:flex-row gap-8">

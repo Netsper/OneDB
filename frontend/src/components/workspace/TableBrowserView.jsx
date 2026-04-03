@@ -69,7 +69,6 @@ export default function TableBrowserView({
   getCellTextValue,
   getTimestampTooltip,
   showCellTooltipOnHover = true,
-  uiDensity = 'comfortable',
   isJsonColumn,
   formatJsonCellValue,
   copyToClipboard,
@@ -97,7 +96,7 @@ export default function TableBrowserView({
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [pinnedLeftOffsets, setPinnedLeftOffsets] = useState({});
-  const ROW_HEIGHT = uiDensity === 'compact' ? 32 : 36;
+  const ROW_HEIGHT = 36;
   const OVERSCAN_ROWS = 10;
   const rowOffset = (page - 1) * rowsPerPage;
   const allRowsSelected = paginatedData.length > 0 && selectedRows.size === paginatedData.length;
@@ -134,7 +133,7 @@ export default function TableBrowserView({
       bottomPadding: Math.max(0, (paginatedData.length - endIndex) * ROW_HEIGHT),
       rows: paginatedData.slice(startIndex, endIndex),
     };
-  }, [paginatedData, scrollTop, shouldVirtualizeRows, viewportHeight, ROW_HEIGHT]);
+  }, [paginatedData, scrollTop, shouldVirtualizeRows, viewportHeight]);
   const tableRows = virtualWindow.rows;
   const dataColumnSpan = visibleColumns.length + 2;
 

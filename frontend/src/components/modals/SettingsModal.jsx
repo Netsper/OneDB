@@ -109,7 +109,6 @@ export default function SettingsModal({
   theme,
   setTheme,
   settings = {
-    uiDensity: 'comfortable',
     showCellTooltipOnHover: true,
     sqlEditor: {
       syntaxHighlight: true,
@@ -254,35 +253,6 @@ export default function SettingsModal({
                         active={lang === 'tr'}
                         onClick={() => setLang('tr')}
                         title="Türkçe"
-                        tc={tc}
-                      />
-                    </div>
-                  </SettingRow>
-
-                  <SettingRow title={t('settingsDensity')} description={t('settingsDensityDesc')}>
-                    <div className="space-y-2">
-                      <ChoiceButton
-                        active={settings.uiDensity === 'comfortable'}
-                        onClick={() =>
-                          updateSetting((prev) => ({
-                            ...prev,
-                            uiDensity: 'comfortable',
-                          }))
-                        }
-                        title={t('settingsDensityComfortable')}
-                        subtitle={t('settingsDensityComfortableDesc')}
-                        tc={tc}
-                      />
-                      <ChoiceButton
-                        active={settings.uiDensity === 'compact'}
-                        onClick={() =>
-                          updateSetting((prev) => ({
-                            ...prev,
-                            uiDensity: 'compact',
-                          }))
-                        }
-                        title={t('settingsDensityCompact')}
-                        subtitle={t('settingsDensityCompactDesc')}
                         tc={tc}
                       />
                     </div>
