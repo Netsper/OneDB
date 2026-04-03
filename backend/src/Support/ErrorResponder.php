@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OneDB\Support;
 
+use OneDB\Http\HttpException;
 use PDOException;
 use Throwable;
 
@@ -18,7 +19,13 @@ final class ErrorResponder
     public static function safeMessage(Throwable $e): string
     {
         $message = trim($e->getMessage());
-        if ($message !== '') {
+        if ($message === '') {
+            return $e instanceof PDOException
+                ? 'Database operation failed.'
+                : 'Unexpected server error.';
+        }
+
+        if (Environment::debugMode() || $e instanceof HttpException) {
             return $message;
         }
 

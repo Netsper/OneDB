@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Bookmark,
   Database,
@@ -168,7 +168,7 @@ export default function DatabaseActionModals({
     [],
   );
 
-  const getFirstPresentValue = (row, keys) => {
+  const getFirstPresentValue = useCallback((row, keys) => {
     if (!row || typeof row !== 'object') return '';
     for (const key of keys) {
       if (row[key] != null && String(row[key]).trim() !== '') {
@@ -176,22 +176,25 @@ export default function DatabaseActionModals({
       }
     }
     return '';
-  };
+  }, []);
 
-  const normalizeResultRows = (result) => {
+  const normalizeResultRows = useCallback((result) => {
     if (!result) return [];
     if (Array.isArray(result.rows)) return result.rows;
     if (Array.isArray(result.data)) return result.data;
     return [];
-  };
+  }, []);
 
-  const adminRows = Array.isArray(dbAdminData.rows) ? dbAdminData.rows : [];
+  const adminRows = useMemo(
+    () => (Array.isArray(dbAdminData.rows) ? dbAdminData.rows : []),
+    [dbAdminData.rows],
+  );
   const adminColumns = useMemo(
     () => (adminRows[0] && typeof adminRows[0] === 'object' ? Object.keys(adminRows[0]) : []),
     [adminRows],
   );
 
-  const loadAvailableCharsets = async () => {
+  const loadAvailableCharsets = useCallback(async () => {
     if (!isMysql) return;
     setIsCharsetLoading(true);
     try {
@@ -220,9 +223,18 @@ export default function DatabaseActionModals({
     } finally {
       setIsCharsetLoading(false);
     }
-  };
+  }, [
+    activeDb,
+    dbCharset,
+    executeSql,
+    fallbackCharsetList,
+    getFirstPresentValue,
+    isMysql,
+    normalizeResultRows,
+    setDbCharset,
+  ]);
 
-  const loadCollationsForCharset = async (charset) => {
+  const loadCollationsForCharset = useCallback(async (charset) => {
     if (!isMysql || !charset) return;
     setIsCollationLoading(true);
     try {
@@ -262,9 +274,18 @@ export default function DatabaseActionModals({
     } finally {
       setIsCollationLoading(false);
     }
-  };
+  }, [
+    activeDb,
+    dbCollation,
+    executeSql,
+    fallbackCollationByCharset,
+    getFirstPresentValue,
+    isMysql,
+    normalizeResultRows,
+    setDbCollation,
+  ]);
 
-  const loadDbAdminData = async () => {
+  const loadDbAdminData = useCallback(async () => {
     if (!isMysql || !activeDbAdminConfig?.sql) return;
     setDbAdminData({ loading: true, error: '', rows: [] });
     try {
@@ -278,19 +299,19 @@ export default function DatabaseActionModals({
         rows: [],
       });
     }
-  };
+  }, [activeDb, activeDbAdminConfig, executeSql, isMysql, normalizeResultRows, t]);
 
   useEffect(() => {
     if (!isCreateDbModalOpen) return;
     if (isMysql) {
       loadAvailableCharsets();
     }
-  }, [isCreateDbModalOpen, isMysql]);
+  }, [isCreateDbModalOpen, isMysql, loadAvailableCharsets]);
 
   useEffect(() => {
     if (!isCreateDbModalOpen || !isMysql) return;
     loadCollationsForCharset(dbCharset);
-  }, [isCreateDbModalOpen, isMysql, dbCharset]);
+  }, [isCreateDbModalOpen, isMysql, dbCharset, loadCollationsForCharset]);
 
   useEffect(() => {
     if (!isDbAdminModalOpen) return;
@@ -305,7 +326,7 @@ export default function DatabaseActionModals({
       return;
     }
     loadDbAdminData();
-  }, [isDbAdminModalOpen, isMysql, activeDbAdminConfig, activeDb, t]);
+  }, [activeDb, activeDbAdminConfig, isDbAdminModalOpen, isMysql, loadDbAdminData, t]);
 
   return (
     <>

@@ -20,6 +20,27 @@ export default function useWorkspaceConnectionActions({
   refreshSchemas,
   showToast,
 }) {
+  const persistLastConnection = () => {
+    try {
+      if (typeof localStorage === 'undefined' || typeof localStorage.setItem !== 'function') {
+        return;
+      }
+      localStorage.setItem(
+        'dbm_last_connection',
+        JSON.stringify({
+          name: String(connForm.name || '').trim(),
+          host: String(connForm.host || '').trim(),
+          user: String(connForm.user || '').trim(),
+          pass: String(connForm.pass || ''),
+          port: String(connForm.port || '').trim(),
+          driver: connForm.driver === 'pgsql' ? 'pgsql' : 'mysql',
+        }),
+      );
+    } catch {
+      // Ignore storage failures in restricted/private runtime contexts.
+    }
+  };
+
   const handleConnect = async (e) => {
     if (e) e.preventDefault();
     setIsConnecting(true);
@@ -32,17 +53,7 @@ export default function useWorkspaceConnectionActions({
       setIsConnected(true);
       setQps(0);
 
-      localStorage.setItem(
-        'dbm_last_connection',
-        JSON.stringify({
-          name: String(connForm.name || '').trim(),
-          host: String(connForm.host || '').trim(),
-          user: String(connForm.user || '').trim(),
-          pass: String(connForm.pass || ''),
-          port: String(connForm.port || '').trim(),
-          driver: connForm.driver === 'pgsql' ? 'pgsql' : 'mysql',
-        }),
-      );
+      persistLastConnection();
 
       const firstDb = dbNames[0] || null;
       if (firstDb) {
