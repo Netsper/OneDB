@@ -6,7 +6,7 @@ import {
   Database,
   Eye,
   Loader2,
-  MoreHorizontal,
+  MoreVertical,
   Plus,
   PlusCircle,
   Search,
@@ -215,7 +215,7 @@ export default function AppSidebar({
                   className={`transition-colors p-1 rounded hover:bg-[#2e2e32] ${isDbToolsMenuOpen ? `${tc.textLight} ${tc.lightBg}` : 'text-zinc-500 hover:text-zinc-200'}`}
                   title={t('databaseTools') || 'Database tools'}
                 >
-                  <MoreHorizontal className="w-3.5 h-3.5" />
+                  <MoreVertical className="w-3.5 h-3.5" />
                 </button>
                 <MenuSurface
                   open={isDbToolsMenuOpen}
