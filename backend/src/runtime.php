@@ -158,6 +158,12 @@ final class Runtime
                 self::handleQueryAction(ApiRequest::readJson());
                 return;
 
+            case 'query_transaction':
+                self::requireMethod(['POST']);
+                SessionCsrf::requireValidToken();
+                self::handleTransactionAction(ApiRequest::readJson());
+                return;
+
             default:
                 JsonResponse::send(
                     ErrorResponder::fromMessage('Unsupported action.', 404, 'unsupported_action', $action),
@@ -210,6 +216,73 @@ final class Runtime
         }
 
         $result = QueryService::execute(self::connectionPayload($payload), $sql);
+        JsonResponse::send($result);
+    }
+
+    /**
+     * Executes a staged mutation list in a single DB transaction.
+     *
+     * @param array<string,mixed> $payload
+     */
+    private static function handleTransactionAction(array $payload): void
+    {
+        $rawStatements = is_array($payload['statements'] ?? null) ? $payload['statements'] : [];
+        $statements = [];
+
+        foreach ($rawStatements as $statement) {
+            if (!is_string($statement)) {
+                continue;
+            }
+            $sql = trim($statement);
+            if ($sql === '') {
+                continue;
+            }
+            if (!ReadOnlySqlGuard::hasSingleStatement($sql)) {
+                JsonResponse::send(
+                    ErrorResponder::fromMessage(
+                        'Only a single SQL statement is allowed in each transaction step.',
+                        400,
+                        'multiple_statements_not_allowed',
+                        'query_transaction'
+                    ),
+                    400
+                );
+                return;
+            }
+            $statements[] = $sql;
+        }
+
+        if ($statements === []) {
+            JsonResponse::send(
+                ErrorResponder::fromMessage(
+                    'At least one SQL statement is required.',
+                    400,
+                    'missing_transaction_statements',
+                    'query_transaction'
+                ),
+                400
+            );
+            return;
+        }
+
+        if (Environment::readonlyMode()) {
+            foreach ($statements as $statement) {
+                if (!ReadOnlySqlGuard::isReadOnly($statement)) {
+                    JsonResponse::send(
+                        ErrorResponder::fromMessage(
+                            'Readonly mode allows only read queries.',
+                            403,
+                            'readonly_violation',
+                            'query_transaction'
+                        ),
+                        403
+                    );
+                    return;
+                }
+            }
+        }
+
+        $result = QueryService::executeTransactionBatch(self::connectionPayload($payload), $statements);
         JsonResponse::send($result);
     }
 

@@ -76,4 +76,47 @@ final class QueryService
             'maxRows' => $maxRows,
         ];
     }
+
+    /**
+     * Executes SQL statements within a single transaction.
+     *
+     * @param array<string,mixed> $connection
+     * @param array<int,string> $statements
+     * @return array<string,mixed>
+     */
+    public static function executeTransactionBatch(array $connection, array $statements): array
+    {
+        $pdo = ConnectionFactory::makePdo($connection);
+        $startedAt = microtime(true);
+        $executedStatements = 0;
+        $affectedRows = 0;
+
+        $pdo->beginTransaction();
+        try {
+            foreach ($statements as $statement) {
+                $stmt = $pdo->prepare($statement);
+                $stmt->execute();
+                $executedStatements++;
+                if ($stmt->columnCount() === 0) {
+                    $affectedRows += max(0, (int)$stmt->rowCount());
+                }
+            }
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        $durationMs = (microtime(true) - $startedAt) * 1000;
+
+        return [
+            'ok' => true,
+            'kind' => 'transaction',
+            'executedStatements' => $executedStatements,
+            'affectedRows' => $affectedRows,
+            'durationMs' => round($durationMs, 2),
+        ];
+    }
 }

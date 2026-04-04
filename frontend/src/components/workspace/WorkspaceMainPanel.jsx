@@ -111,7 +111,12 @@ export default function WorkspaceMainPanel({
   setHistoryTab,
   runSql,
   cancelRunningSql,
+  beginTransactionDraft,
+  commitTransactionDraft,
+  rollbackTransactionDraft,
   isQueryRunning,
+  transactionDraftActive,
+  transactionDraftStatements,
   sqlQuery,
   handleSqlKeyDown,
   handleSplitterMouseDown,
@@ -292,7 +297,12 @@ export default function WorkspaceMainPanel({
               }}
               runSql={runSql}
               cancelRunningSql={cancelRunningSql}
+              beginTransactionDraft={beginTransactionDraft}
+              commitTransactionDraft={commitTransactionDraft}
+              rollbackTransactionDraft={rollbackTransactionDraft}
               isQueryRunning={isQueryRunning}
+              transactionDraftActive={transactionDraftActive}
+              transactionDraftStatements={transactionDraftStatements}
               sqlQuery={sqlQuery}
               handleSqlKeyDown={handleSqlKeyDown}
               handleSplitterMouseDown={handleSplitterMouseDown}

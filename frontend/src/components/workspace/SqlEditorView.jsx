@@ -7,6 +7,8 @@ import {
   Activity,
   AlignCenter,
   BookmarkPlus,
+  Check,
+  CircleDot,
   Download,
   GitCommit,
   GripHorizontal,
@@ -15,6 +17,7 @@ import {
   Play,
   Square,
   Sparkles,
+  Undo2,
 } from 'lucide-react';
 
 const DEFAULT_SQL_EDITOR_SETTINGS = {
@@ -85,7 +88,12 @@ export default function SqlEditorView({
   openSqlHistory,
   runSql,
   cancelRunningSql,
+  beginTransactionDraft,
+  commitTransactionDraft,
+  rollbackTransactionDraft,
   isQueryRunning,
+  transactionDraftActive,
+  transactionDraftStatements,
   sqlQuery,
   handleSqlKeyDown,
   handleSplitterMouseDown,
@@ -322,6 +330,41 @@ export default function SqlEditorView({
               <Square className="w-3.5 h-3.5 fill-current" />
               {t('cancelQuery')}
             </button>
+          )}
+          <div className="w-[1px] h-6 bg-[#333] shrink-0" />
+          {!transactionDraftActive ? (
+            <button
+              onClick={beginTransactionDraft}
+              className="px-3 py-1.5 rounded text-xs font-medium bg-[#1f2529] hover:bg-[#25313a] text-cyan-200 border border-cyan-900/60 transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <CircleDot className="w-3.5 h-3.5" />
+              {t('transactionBegin')}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={commitTransactionDraft}
+                disabled={isQueryRunning}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-[#1f2a22] hover:bg-[#253b2b] text-emerald-200 border border-emerald-900/60 transition-colors flex items-center gap-1.5 shrink-0 disabled:opacity-60"
+              >
+                <Check className="w-3.5 h-3.5" />
+                {t('transactionCommit')}
+              </button>
+              <button
+                onClick={rollbackTransactionDraft}
+                disabled={isQueryRunning}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-[#2a1f22] hover:bg-[#3a2529] text-rose-200 border border-rose-900/60 transition-colors flex items-center gap-1.5 shrink-0 disabled:opacity-60"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                {t('transactionRollback')}
+              </button>
+              <span className="px-2 py-1 rounded border border-[#333] text-[10px] text-zinc-300 shrink-0">
+                {t('transactionQueued').replace(
+                  '{count}',
+                  String(transactionDraftStatements.length || 0),
+                )}
+              </span>
+            </>
           )}
         </div>
 

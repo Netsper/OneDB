@@ -98,12 +98,17 @@ const mapExplainRowsToPlanItems = (rows, getFirstValue) => {
   return safeRows.map((row) => mapExplainRowToPlanItem(row, getFirstValue));
 };
 
+const READ_ONLY_SQL_PATTERN = /^(select|show|describe|desc|explain|with|pragma)\b/i;
+
+const isReadOnlyLikeSql = (sql) => READ_ONLY_SQL_PATTERN.test(String(sql || '').trim());
+
 export default function useWorkspaceSqlActions({
   sqlQuery,
   setIsQueryRunning,
   sqlHistory,
   setSqlHistory,
   executeSql,
+  executeSqlTransactionBatch,
   activeDb,
   getFirstValue,
   setSqlResult,
@@ -118,6 +123,10 @@ export default function useWorkspaceSqlActions({
   setSqlQuery,
   setSqlSnippets,
   currentDriver,
+  transactionDraftActive,
+  setTransactionDraftActive,
+  transactionDraftStatements,
+  setTransactionDraftStatements,
   sqlAbortControllerRef,
 }) {
   const abortControllerRef = sqlAbortControllerRef || { current: null };
@@ -131,6 +140,13 @@ export default function useWorkspaceSqlActions({
   const runSql = async () => {
     const sql = sqlQuery.trim();
     if (!sql) return;
+
+    if (transactionDraftActive && !isReadOnlyLikeSql(sql)) {
+      const nextCount = transactionDraftStatements.length + 1;
+      setTransactionDraftStatements((prev) => [...prev, sql]);
+      showToast(t('transactionStatementQueued').replace('{count}', String(nextCount)), 'success');
+      return;
+    }
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -261,6 +277,72 @@ export default function useWorkspaceSqlActions({
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runSql();
   };
 
+  const beginTransactionDraft = () => {
+    if (transactionDraftActive) return;
+    setTransactionDraftStatements([]);
+    setTransactionDraftActive(true);
+    showToast(t('transactionStarted'), 'success');
+  };
+
+  const rollbackTransactionDraft = () => {
+    if (!transactionDraftActive) return;
+    const rolledBackCount = transactionDraftStatements.length;
+    setTransactionDraftStatements([]);
+    setTransactionDraftActive(false);
+    showToast(t('transactionRolledBack').replace('{count}', String(rolledBackCount)), 'success');
+  };
+
+  const commitTransactionDraft = async () => {
+    if (!transactionDraftActive) return;
+    if (transactionDraftStatements.length === 0) {
+      showToast(t('transactionEmpty'), 'error');
+      return;
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const queryAbortController = new AbortController();
+    abortControllerRef.current = queryAbortController;
+    setIsQueryRunning(true);
+
+    try {
+      const result = await executeSqlTransactionBatch(transactionDraftStatements, activeDb || '', {
+        signal: queryAbortController.signal,
+      });
+      setQps((prev) => prev + 1);
+      setSqlResult(null);
+
+      await refreshSchemas();
+      if (activeDb) {
+        await ensureDatabaseTablesLoaded(activeDb, { force: true });
+      }
+      if (activeDb && activeTable) {
+        try {
+          await refreshActiveTable();
+        } catch {
+          setActiveTable(null);
+        }
+      }
+
+      const committedCount = Number(result?.executedStatements || transactionDraftStatements.length);
+      setTransactionDraftStatements([]);
+      setTransactionDraftActive(false);
+      showToast(t('transactionCommitted').replace('{count}', String(committedCount)), 'success');
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        showToast(t('sqlCanceled'), 'error');
+        return;
+      }
+      showToast(error.message || t('transactionCommitFailed'), 'error');
+    } finally {
+      if (abortControllerRef.current === queryAbortController) {
+        abortControllerRef.current = null;
+      }
+      setIsQueryRunning(false);
+    }
+  };
+
   const formatSql = () => {
     if (!sqlQuery.trim()) return;
     const formatted = sqlQuery
@@ -288,6 +370,9 @@ export default function useWorkspaceSqlActions({
   return {
     runSql,
     cancelRunningSql,
+    beginTransactionDraft,
+    commitTransactionDraft,
+    rollbackTransactionDraft,
     handleSqlKeyDown,
     formatSql,
     saveSnippet,

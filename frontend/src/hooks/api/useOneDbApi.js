@@ -123,6 +123,19 @@ export default function useOneDbApi({
     [activeDb, buildConnectionPayload, callApi],
   );
 
+  const executeSqlTransactionBatch = useCallback(
+    async (statements, database = activeDb, options = {}) =>
+      callApi(
+        'query_transaction',
+        {
+          connection: buildConnectionPayload(database || ''),
+          statements: Array.isArray(statements) ? statements : [],
+        },
+        options,
+      ),
+    [activeDb, buildConnectionPayload, callApi],
+  );
+
   const getFirstValue = useCallback((row) => {
     if (!row || typeof row !== 'object') return null;
     const values = Object.values(row);
@@ -456,6 +469,7 @@ export default function useOneDbApi({
     getCsrfToken,
     callApi,
     executeSql,
+    executeSqlTransactionBatch,
     getFirstValue,
     listDatabases,
     refreshSchemas,

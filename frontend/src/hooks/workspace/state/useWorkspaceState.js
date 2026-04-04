@@ -276,6 +276,8 @@ export default function useWorkspaceState() {
   const [sqlResult, setSqlResult] = useState(null);
   const [sqlResultTab, setSqlResultTab] = useState('data');
   const [isQueryRunning, setIsQueryRunning] = useState(false);
+  const [transactionDraftActive, setTransactionDraftActive] = useState(false);
+  const [transactionDraftStatements, setTransactionDraftStatements] = useState([]);
   const [sqlEditorHeight, setSqlEditorHeight] = useState(50);
   const [aiPrompt, setAiPrompt] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -427,6 +429,10 @@ export default function useWorkspaceState() {
     setSqlResultTab,
     isQueryRunning,
     setIsQueryRunning,
+    transactionDraftActive,
+    setTransactionDraftActive,
+    transactionDraftStatements,
+    setTransactionDraftStatements,
     sqlEditorHeight,
     setSqlEditorHeight,
     aiPrompt,

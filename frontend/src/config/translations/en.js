@@ -129,6 +129,10 @@ export const en = {
   historySaved: 'History & Saved',
   run: 'Run',
   cancelQuery: 'Cancel Query',
+  transactionBegin: 'BEGIN',
+  transactionCommit: 'COMMIT',
+  transactionRollback: 'ROLLBACK',
+  transactionQueued: 'Queued: {count}',
   queryResults: 'Query Results',
   dataTab: 'Data',
   explainTab: 'Execution Plan (EXPLAIN)',
@@ -145,6 +149,12 @@ export const en = {
   sqlFormatted: 'SQL query formatted.',
   sqlExecuted: 'Query executed successfully.',
   sqlCanceled: 'Query canceled.',
+  transactionStarted: 'Transaction draft started.',
+  transactionStatementQueued: 'Statement queued. Total: {count}',
+  transactionCommitted: 'Transaction committed. Statements: {count}',
+  transactionRolledBack: 'Transaction rolled back. Removed: {count}',
+  transactionEmpty: 'No queued statements to commit.',
+  transactionCommitFailed: 'Transaction commit failed.',
 
   // Dashboard
   dbOverview: 'Database overview and management',

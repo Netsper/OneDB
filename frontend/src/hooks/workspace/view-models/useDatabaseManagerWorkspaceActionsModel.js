@@ -38,6 +38,7 @@ export default function useDatabaseManagerWorkspaceActionsModel(model, apiModel)
     callApi,
     buildConnectionPayload,
     executeSql,
+    executeSqlTransactionBatch,
     getFirstValue,
     refreshSchemas,
     ensureDatabaseTablesLoaded,
@@ -66,6 +67,7 @@ export default function useDatabaseManagerWorkspaceActionsModel(model, apiModel)
   const workspaceSqlActions = useWorkspaceSqlActions({
     ...workspace,
     executeSql,
+    executeSqlTransactionBatch,
     getFirstValue,
     refreshSchemas,
     ensureDatabaseTablesLoaded,
