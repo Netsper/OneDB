@@ -1395,116 +1395,122 @@ export default function DatabaseActionModals({
                 </div>
               ) : isSchemaDiffModalOpen ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-medium text-zinc-400 mb-2">
-                        {t('schemaDiffSourceDb') || 'Source database'}
-                      </label>
-                      <SearchableSelectField
-                        value={schemaDiffSourceDb}
-                        onChange={setSchemaDiffSourceDb}
-                        options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
-                        placeholder={t('schemaDiffSourceDb') || 'Source database'}
-                        searchPlaceholder={t('search')}
-                        emptyLabel={t('noFilterResults')}
-                        tc={tc}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-zinc-400 mb-2">
-                        {t('schemaDiffTargetDb') || 'Target database'}
-                      </label>
-                      <SearchableSelectField
-                        value={schemaDiffTargetDb}
-                        onChange={setSchemaDiffTargetDb}
-                        options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
-                        placeholder={t('schemaDiffTargetDb') || 'Target database'}
-                        searchPlaceholder={t('search')}
-                        emptyLabel={t('noFilterResults')}
-                        tc={tc}
-                      />
-                    </div>
-                  </div>
+                  <div className="rounded-xl border border-[#333] bg-gradient-to-b from-[#191a1f] to-[#151518] p-4 md:p-5">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 items-end">
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-400 mb-2">
+                          {t('schemaDiffSourceDb') || 'Source database'}
+                        </label>
+                        <SearchableSelectField
+                          value={schemaDiffSourceDb}
+                          onChange={setSchemaDiffSourceDb}
+                          options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                          placeholder={t('schemaDiffSourceDb') || 'Source database'}
+                          searchPlaceholder={t('search')}
+                          emptyLabel={t('noFilterResults')}
+                          tc={tc}
+                        />
+                      </div>
 
-                  <div className="bg-[#151518] border border-[#333] rounded-lg p-3.5 text-xs text-zinc-400 space-y-1.5">
-                    <p className="text-zinc-300 font-medium">
-                      {t('schemaDiffDirectionHint') ||
-                        'Comparison direction: source -> target. Changes are reported to make target look like source.'}
-                    </p>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1">
-                      <span>
-                        <span className="text-emerald-300">+</span>{' '}
-                        {t('schemaDiffAddedHint') || 'Present in source, missing in target'}
+                      <div className="hidden md:flex items-center justify-center pb-2">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-[#3a3a41] bg-[#121318] px-3 py-1.5 text-[11px] text-zinc-400">
+                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                          <span>source → target</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-400 mb-2">
+                          {t('schemaDiffTargetDb') || 'Target database'}
+                        </label>
+                        <SearchableSelectField
+                          value={schemaDiffTargetDb}
+                          onChange={setSchemaDiffTargetDb}
+                          options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                          placeholder={t('schemaDiffTargetDb') || 'Target database'}
+                          searchPlaceholder={t('search')}
+                          emptyLabel={t('noFilterResults')}
+                          tc={tc}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="md:hidden mt-3 inline-flex items-center gap-2 rounded-full border border-[#3a3a41] bg-[#121318] px-3 py-1.5 text-[11px] text-zinc-400">
+                      <ArrowLeftRight className="w-3.5 h-3.5" />
+                      <span>source → target</span>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                      <span className="px-2 py-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">
+                        + {t('schemaDiffAddedHint') || 'Present in source, missing in target'}
                       </span>
-                      <span>
-                        <span className="text-red-300">-</span>{' '}
-                        {t('schemaDiffRemovedHint') || 'Present in target, missing in source'}
+                      <span className="px-2 py-1 rounded-md border border-red-500/30 bg-red-500/10 text-red-200">
+                        - {t('schemaDiffRemovedHint') || 'Present in target, missing in source'}
                       </span>
-                      <span>
-                        <span className="text-zinc-200">~</span>{' '}
-                        {t('schemaDiffChangedHint') || 'Exists on both sides but metadata differs'}
+                      <span className="px-2 py-1 rounded-md border border-zinc-500/40 bg-zinc-500/10 text-zinc-300">
+                        ~ {t('schemaDiffChangedHint') || 'Exists on both sides but metadata differs'}
                       </span>
                     </div>
                   </div>
 
                   {schemaDiffData.loading ? (
-                    <div className="bg-[#151518] border border-[#333] rounded-lg p-6 flex items-center justify-center gap-2 text-zinc-400 text-sm">
+                    <div className="bg-[#151518] border border-[#333] rounded-xl p-8 flex items-center justify-center gap-2 text-zinc-400 text-sm">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>{t('loading') || 'Loading...'}</span>
                     </div>
                   ) : schemaDiffData.error ? (
-                    <div className="bg-[#151518] border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
+                    <div className="bg-[#151518] border border-red-500/40 rounded-xl p-4 text-sm text-red-300">
                       {schemaDiffData.error}
                     </div>
                   ) : (
                     <>
                       {schemaDiffData.summary ? (
-                        <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
-                            <div className="text-[10px] uppercase text-zinc-500">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+                            <div className="text-[10px] uppercase text-emerald-200/90">
                               {t('schemaDiffTablesAdded') || 'Tables +'}
                             </div>
-                            <div className="text-sm font-semibold text-emerald-300">
+                            <div className="text-lg font-semibold text-emerald-200 mt-1">
                               {schemaDiffData.summary.tablesAdded}
                             </div>
                           </div>
-                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
-                            <div className="text-[10px] uppercase text-zinc-500">
+                          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                            <div className="text-[10px] uppercase text-red-200/90">
                               {t('schemaDiffTablesRemoved') || 'Tables -'}
                             </div>
-                            <div className="text-sm font-semibold text-red-300">
+                            <div className="text-lg font-semibold text-red-200 mt-1">
                               {schemaDiffData.summary.tablesRemoved}
                             </div>
                           </div>
-                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
-                            <div className="text-[10px] uppercase text-zinc-500">
+                          <div className="rounded-lg border border-zinc-500/40 bg-zinc-500/10 p-3">
+                            <div className="text-[10px] uppercase text-zinc-300/90">
                               {t('schemaDiffTablesChanged') || 'Tables changed'}
                             </div>
-                            <div className="text-sm font-semibold text-zinc-200">
+                            <div className="text-lg font-semibold text-zinc-100 mt-1">
                               {schemaDiffData.summary.tablesChanged}
                             </div>
                           </div>
-                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
-                            <div className="text-[10px] uppercase text-zinc-500">
+                          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+                            <div className="text-[10px] uppercase text-emerald-200/90">
                               {t('schemaDiffColumnsAdded') || 'Columns +'}
                             </div>
-                            <div className="text-sm font-semibold text-emerald-300">
+                            <div className="text-lg font-semibold text-emerald-200 mt-1">
                               {schemaDiffData.summary.columnsAdded}
                             </div>
                           </div>
-                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
-                            <div className="text-[10px] uppercase text-zinc-500">
+                          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                            <div className="text-[10px] uppercase text-red-200/90">
                               {t('schemaDiffColumnsRemoved') || 'Columns -'}
                             </div>
-                            <div className="text-sm font-semibold text-red-300">
+                            <div className="text-lg font-semibold text-red-200 mt-1">
                               {schemaDiffData.summary.columnsRemoved}
                             </div>
                           </div>
-                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
-                            <div className="text-[10px] uppercase text-zinc-500">
+                          <div className="rounded-lg border border-zinc-500/40 bg-zinc-500/10 p-3">
+                            <div className="text-[10px] uppercase text-zinc-300/90">
                               {t('schemaDiffColumnsChanged') || 'Columns changed'}
                             </div>
-                            <div className="text-sm font-semibold text-zinc-200">
+                            <div className="text-lg font-semibold text-zinc-100 mt-1">
                               {schemaDiffData.summary.columnsChanged}
                             </div>
                           </div>
@@ -1514,89 +1520,109 @@ export default function DatabaseActionModals({
                       {schemaDiffData.tablesAdded.length === 0 &&
                       schemaDiffData.tablesRemoved.length === 0 &&
                       schemaDiffData.tablesChanged.length === 0 ? (
-                        <div className="bg-[#151518] border border-[#333] rounded-lg p-4 text-sm text-zinc-400">
-                          {t('schemaDiffNoDiff') || 'No schema differences detected.'}
+                        <div className="bg-[#151518] border border-[#333] rounded-xl p-8 text-center">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-[#3a3a41] bg-[#101114] mb-3">
+                            <ArrowLeftRight className="w-4 h-4 text-zinc-400" />
+                          </div>
+                          <p className="text-sm text-zinc-300">
+                            {t('schemaDiffNoDiff') || 'No schema differences detected.'}
+                          </p>
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {schemaDiffData.tablesAdded.length > 0 ? (
-                            <div className="bg-[#151518] border border-[#333] rounded-lg p-3">
-                              <h4 className="text-xs font-semibold text-emerald-300 mb-2">
-                                {t('schemaDiffTablesAdded') || 'Tables added'}
-                              </h4>
-                              <div className="flex flex-wrap gap-1.5">
-                                {schemaDiffData.tablesAdded.map((tableName) => (
-                                  <span
-                                    key={`added-${tableName}`}
-                                    className="px-2 py-1 rounded border border-emerald-500/40 bg-emerald-500/10 text-[11px] text-emerald-200"
-                                  >
-                                    {tableName}
-                                  </span>
-                                ))}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3.5">
+                              <div className="flex items-center justify-between mb-2.5">
+                                <h4 className="text-xs font-semibold text-emerald-300">
+                                  {t('schemaDiffTablesAdded') || 'Tables added'}
+                                </h4>
+                                <span className="text-[10px] px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-200">
+                                  {schemaDiffData.tablesAdded.length}
+                                </span>
                               </div>
+                              {schemaDiffData.tablesAdded.length > 0 ? (
+                                <div className="max-h-[180px] overflow-auto custom-scrollbar space-y-1">
+                                  {schemaDiffData.tablesAdded.map((tableName) => (
+                                    <div
+                                      key={`added-${tableName}`}
+                                      className="text-[12px] text-emerald-100 border border-emerald-500/20 bg-emerald-500/10 rounded-md px-2.5 py-1.5"
+                                    >
+                                      {tableName}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-[12px] text-zinc-500">0</p>
+                              )}
                             </div>
-                          ) : null}
 
-                          {schemaDiffData.tablesRemoved.length > 0 ? (
-                            <div className="bg-[#151518] border border-[#333] rounded-lg p-3">
-                              <h4 className="text-xs font-semibold text-red-300 mb-2">
-                                {t('schemaDiffTablesRemoved') || 'Tables removed'}
-                              </h4>
-                              <div className="flex flex-wrap gap-1.5">
-                                {schemaDiffData.tablesRemoved.map((tableName) => (
-                                  <span
-                                    key={`removed-${tableName}`}
-                                    className="px-2 py-1 rounded border border-red-500/40 bg-red-500/10 text-[11px] text-red-200"
-                                  >
-                                    {tableName}
-                                  </span>
-                                ))}
+                            <div className="rounded-xl border border-red-500/25 bg-red-500/5 p-3.5">
+                              <div className="flex items-center justify-between mb-2.5">
+                                <h4 className="text-xs font-semibold text-red-300">
+                                  {t('schemaDiffTablesRemoved') || 'Tables removed'}
+                                </h4>
+                                <span className="text-[10px] px-2 py-0.5 rounded border border-red-500/30 text-red-200">
+                                  {schemaDiffData.tablesRemoved.length}
+                                </span>
                               </div>
+                              {schemaDiffData.tablesRemoved.length > 0 ? (
+                                <div className="max-h-[180px] overflow-auto custom-scrollbar space-y-1">
+                                  {schemaDiffData.tablesRemoved.map((tableName) => (
+                                    <div
+                                      key={`removed-${tableName}`}
+                                      className="text-[12px] text-red-100 border border-red-500/20 bg-red-500/10 rounded-md px-2.5 py-1.5"
+                                    >
+                                      {tableName}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-[12px] text-zinc-500">0</p>
+                              )}
                             </div>
-                          ) : null}
+                          </div>
 
                           {schemaDiffData.tablesChanged.length > 0 ? (
-                            <div className="bg-[#151518] border border-[#333] rounded-lg overflow-hidden">
-                              <div className="px-3 py-2 border-b border-[#2e2e32]">
-                                <h4 className="text-xs font-semibold text-zinc-200">
+                            <div className="bg-[#151518] border border-[#333] rounded-xl overflow-hidden">
+                              <div className="px-4 py-3 border-b border-[#2e2e32] flex items-center justify-between">
+                                <h4 className="text-sm font-semibold text-zinc-200">
                                   {t('schemaDiffTablesChanged') || 'Tables changed'}
                                 </h4>
+                                <span className="text-[10px] px-2 py-0.5 rounded border border-[#45454f] text-zinc-300">
+                                  {schemaDiffData.tablesChanged.length}
+                                </span>
                               </div>
-                              <div className="max-h-[46vh] overflow-auto custom-scrollbar">
+
+                              <div className="max-h-[48vh] overflow-auto custom-scrollbar p-3 space-y-3">
                                 {schemaDiffData.tablesChanged.map((item) => (
                                   <div
                                     key={`changed-${item.table}`}
-                                    className="px-3 py-3 border-b border-[#252529] last:border-b-0"
+                                    className="rounded-lg border border-[#34343b] bg-[#111216] p-3"
                                   >
                                     <div className="flex items-center gap-2 mb-2">
                                       <span className="text-sm font-semibold text-zinc-100">{item.table}</span>
                                       {item.tableTypeChanged ? (
-                                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                        <span className="text-[10px] px-2 py-0.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-300">
                                           {item.beforeType} → {item.afterType}
                                         </span>
                                       ) : null}
                                     </div>
 
                                     {item.columnsAdded.length > 0 ? (
-                                      <div className="mb-1.5 text-[11px] text-emerald-300">
-                                        + {item.columnsAdded.join(', ')}{' '}
-                                        <span className="text-zinc-500">
-                                          ({t('schemaDiffAddedHint') || 'present in source, missing in target'})
-                                        </span>
+                                      <div className="mb-1.5 text-[12px] text-emerald-300">
+                                        + {item.columnsAdded.join(', ')}
                                       </div>
                                     ) : null}
                                     {item.columnsRemoved.length > 0 ? (
-                                      <div className="mb-1.5 text-[11px] text-red-300">
-                                        - {item.columnsRemoved.join(', ')}{' '}
-                                        <span className="text-zinc-500">
-                                          ({t('schemaDiffRemovedHint') || 'present in target, missing in source'})
-                                        </span>
+                                      <div className="mb-1.5 text-[12px] text-red-300">
+                                        - {item.columnsRemoved.join(', ')}
                                       </div>
                                     ) : null}
+
                                     {item.changedColumns.map((column) => (
                                       <div
                                         key={`${item.table}-${column.name}`}
-                                        className="mb-1.5 text-[11px] text-zinc-300"
+                                        className="mb-1.5 text-[12px] text-zinc-300"
                                       >
                                         <span className="font-semibold text-zinc-100">{column.name}</span>
                                         <span className="text-zinc-500">: </span>
