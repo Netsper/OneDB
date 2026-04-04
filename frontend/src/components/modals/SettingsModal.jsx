@@ -10,6 +10,7 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
+import ToggleSwitch from '../shared/ToggleSwitch.jsx';
 
 function AccordionSection({ icon: Icon, title, description, isOpen, onToggle, children }) {
   return (
@@ -55,26 +56,7 @@ function ToggleRow({ label, description, checked, onChange, tc }) {
         <p className="text-sm text-zinc-100">{label}</p>
         {description ? <p className="text-xs text-zinc-400">{description}</p> : null}
       </div>
-      <button
-        type="button"
-        onClick={onChange}
-        className={`relative inline-flex h-7 w-12 items-center rounded-full p-0.5 border transition-all focus:outline-none ${
-          checked ? `${tc.border} ${tc.bg}` : 'border-[#3b3b42] bg-[#25252a]'
-        }`}
-        aria-pressed={checked}
-      >
-        <span
-          className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow transition-transform ${
-            checked ? 'translate-x-5' : 'translate-x-0'
-          }`}
-        >
-          {checked ? (
-            <Check className={`h-3.5 w-3.5 ${tc.text}`} />
-          ) : (
-            <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
-          )}
-        </span>
-      </button>
+      <ToggleSwitch checked={checked} onChange={onChange} tc={tc} />
     </label>
   );
 }

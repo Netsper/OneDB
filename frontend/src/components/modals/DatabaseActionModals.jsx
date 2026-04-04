@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeftRight,
   Bookmark,
   Database,
+  Expand,
   FileDown,
   GitBranch,
   History,
   ListChecks,
   ListTree,
   Loader2,
+  Minimize2,
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
@@ -100,6 +102,9 @@ export default function DatabaseActionModals({
     tables: [],
     relationships: [],
   });
+  const [isErdFullscreen, setIsErdFullscreen] = useState(false);
+  const schemaDiffInitializedRef = useRef(false);
+  const erdInitializedRef = useRef(false);
 
   const dbAdminModalMap = useMemo(
     () => ({
@@ -548,8 +553,9 @@ export default function DatabaseActionModals({
     const leftNames = Object.keys(leftTables);
     const rightNames = Object.keys(rightTables);
 
-    const tablesAdded = rightNames.filter((name) => !leftTables[name]).sort((a, b) => a.localeCompare(b));
-    const tablesRemoved = leftNames.filter((name) => !rightTables[name]).sort((a, b) => a.localeCompare(b));
+    // source(left) -> target(right): added means "exists in source, missing in target".
+    const tablesAdded = leftNames.filter((name) => !rightTables[name]).sort((a, b) => a.localeCompare(b));
+    const tablesRemoved = rightNames.filter((name) => !leftTables[name]).sort((a, b) => a.localeCompare(b));
 
     const commonNames = leftNames.filter((name) => rightTables[name]).sort((a, b) => a.localeCompare(b));
     const tablesChanged = [];
@@ -562,11 +568,11 @@ export default function DatabaseActionModals({
       const leftColumns = leftTable?.columns || {};
       const rightColumns = rightTable?.columns || {};
 
-      const columnsAdded = Object.keys(rightColumns)
-        .filter((columnName) => !leftColumns[columnName])
-        .sort((a, b) => a.localeCompare(b));
-      const columnsRemoved = Object.keys(leftColumns)
+      const columnsAdded = Object.keys(leftColumns)
         .filter((columnName) => !rightColumns[columnName])
+        .sort((a, b) => a.localeCompare(b));
+      const columnsRemoved = Object.keys(rightColumns)
+        .filter((columnName) => !leftColumns[columnName])
         .sort((a, b) => a.localeCompare(b));
 
       const changedColumns = [];
@@ -583,8 +589,9 @@ export default function DatabaseActionModals({
               if (leftValue === rightValue) return null;
               return {
                 field,
-                before: leftColumn[field],
-                after: rightColumn[field],
+                // before: target(right), after: source(left)
+                before: rightColumn[field],
+                after: leftColumn[field],
               };
             })
             .filter(Boolean);
@@ -604,8 +611,8 @@ export default function DatabaseActionModals({
       tablesChanged.push({
         table: tableName,
         tableTypeChanged,
-        beforeType: leftTable?.type || 'table',
-        afterType: rightTable?.type || 'table',
+        beforeType: rightTable?.type || 'table',
+        afterType: leftTable?.type || 'table',
         columnsAdded,
         columnsRemoved,
         changedColumns,
@@ -816,12 +823,25 @@ export default function DatabaseActionModals({
   }, [isCreateDbModalOpen, isMysql, dbCharset, loadCollationsForCharset]);
 
   useEffect(() => {
-    if (!isSchemaDiffModalOpen) return;
+    if (!isSchemaDiffModalOpen) {
+      schemaDiffInitializedRef.current = false;
+      return;
+    }
+    if (schemaDiffInitializedRef.current) return;
+
     const names = Array.isArray(databaseNames) ? databaseNames : [];
+    const currentSource = names.includes(schemaDiffSourceDb) ? schemaDiffSourceDb : '';
     const preferredSource = names.includes(activeDb) ? activeDb : names[0] || '';
-    const preferredTarget = names.find((name) => name !== preferredSource) || '';
-    setSchemaDiffSourceDb(preferredSource);
-    setSchemaDiffTargetDb(preferredTarget);
+    const nextSource = currentSource || preferredSource;
+    const currentTarget =
+      names.includes(schemaDiffTargetDb) && schemaDiffTargetDb !== nextSource
+        ? schemaDiffTargetDb
+        : '';
+    const preferredTarget = names.find((name) => name !== nextSource) || '';
+    const nextTarget = currentTarget || preferredTarget;
+
+    setSchemaDiffSourceDb(nextSource);
+    setSchemaDiffTargetDb(nextTarget);
     setSchemaDiffData({
       loading: false,
       error: '',
@@ -830,7 +850,14 @@ export default function DatabaseActionModals({
       tablesRemoved: [],
       tablesChanged: [],
     });
-  }, [activeDb, databaseNames, isSchemaDiffModalOpen]);
+    schemaDiffInitializedRef.current = true;
+  }, [
+    activeDb,
+    databaseNames,
+    isSchemaDiffModalOpen,
+    schemaDiffSourceDb,
+    schemaDiffTargetDb,
+  ]);
 
   useEffect(() => {
     if (!isSchemaDiffModalOpen) return;
@@ -904,17 +931,25 @@ export default function DatabaseActionModals({
   ]);
 
   useEffect(() => {
-    if (!isErdModalOpen) return;
+    if (!isErdModalOpen) {
+      erdInitializedRef.current = false;
+      setIsErdFullscreen(false);
+      return;
+    }
+    if (erdInitializedRef.current) return;
+
     const names = Array.isArray(databaseNames) ? databaseNames : [];
+    const current = names.includes(erdDb) ? erdDb : '';
     const preferred = names.includes(activeDb) ? activeDb : names[0] || '';
-    setErdDb(preferred);
+    setErdDb(current || preferred);
     setErdData({
       loading: false,
       error: '',
       tables: [],
       relationships: [],
     });
-  }, [activeDb, databaseNames, isErdModalOpen]);
+    erdInitializedRef.current = true;
+  }, [activeDb, databaseNames, erdDb, isErdModalOpen]);
 
   useEffect(() => {
     if (!isErdModalOpen) return;
@@ -1127,7 +1162,13 @@ export default function DatabaseActionModals({
 
       {isDbAdminModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1c1c1c] border border-[#333] rounded-xl w-full max-w-5xl flex flex-col shadow-2xl animate-in zoom-in-95 max-h-[88vh]">
+          <div
+            className={`bg-[#1c1c1c] border border-[#333] rounded-xl w-full flex flex-col shadow-2xl animate-in zoom-in-95 ${
+              isErdModalOpen && isErdFullscreen
+                ? 'max-w-[calc(100vw-2rem)] h-[calc(100vh-2rem)]'
+                : 'max-w-5xl max-h-[88vh]'
+            }`}
+          >
             <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl shrink-0">
               <div className="flex items-center gap-2">
                 {activeDbAdminConfig?.icon ? (
@@ -1139,12 +1180,31 @@ export default function DatabaseActionModals({
                   {activeDbAdminConfig?.title || ''}
                 </h3>
               </div>
-              <button
-                onClick={() => setModalConfig({ isOpen: false })}
-                className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                {isErdModalOpen ? (
+                  <button
+                    onClick={() => setIsErdFullscreen((prev) => !prev)}
+                    className="text-zinc-500 hover:text-zinc-200 p-1.5 hover:bg-[#2a2a2f] rounded transition-colors"
+                    title={
+                      isErdFullscreen
+                        ? t('erdExitFullscreen') || 'Exit fullscreen'
+                        : t('erdFullscreen') || 'Fullscreen'
+                    }
+                  >
+                    {isErdFullscreen ? (
+                      <Minimize2 className="w-4 h-4" />
+                    ) : (
+                      <Expand className="w-4 h-4" />
+                    )}
+                  </button>
+                ) : null}
+                <button
+                  onClick={() => setModalConfig({ isOpen: false })}
+                  className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="p-6 overflow-auto custom-scrollbar">
@@ -1165,11 +1225,19 @@ export default function DatabaseActionModals({
                         tc={tc}
                       />
                     </div>
-                    <div className="bg-[#151518] border border-[#333] rounded-md px-3 py-2 flex items-center justify-between">
-                      <span className="text-[11px] text-zinc-500">{t('tables') || 'Tables'}</span>
-                      <span className="text-sm font-semibold text-zinc-100">{erdData.tables.length}</span>
-                      <span className="text-[11px] text-zinc-500">{t('relationships') || 'Relationships'}</span>
-                      <span className="text-sm font-semibold text-zinc-100">{erdData.relationships.length}</span>
+                    <div className="bg-[#151518] border border-[#333] rounded-md px-3 py-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="text-[11px] text-zinc-500">{t('tables') || 'Tables'}</span>
+                          <div className="text-sm font-semibold text-zinc-100">{erdData.tables.length}</div>
+                        </div>
+                        <div>
+                          <span className="text-[11px] text-zinc-500">{t('relationships') || 'Relationships'}</span>
+                          <div className="text-sm font-semibold text-zinc-100">
+                            {erdData.relationships.length}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -1188,15 +1256,19 @@ export default function DatabaseActionModals({
                     </div>
                   ) : (
                     <div className="bg-[#151518] border border-[#333] rounded-lg overflow-hidden">
-                      <div className="overflow-auto custom-scrollbar max-h-[64vh]">
+                      <div
+                        className={`overflow-auto custom-scrollbar ${
+                          isErdFullscreen ? 'max-h-[calc(100vh-11rem)]' : 'max-h-[64vh]'
+                        }`}
+                      >
                         {(() => {
-                          const COLUMN_COUNT = 4;
-                          const CARD_WIDTH = 250;
-                          const CARD_HEIGHT_BASE = 62;
-                          const CARD_HEIGHT_PER_COLUMN = 18;
-                          const GAP_X = 56;
-                          const GAP_Y = 36;
-                          const PADDING = 24;
+                          const COLUMN_COUNT = isErdFullscreen ? 5 : 4;
+                          const CARD_WIDTH = isErdFullscreen ? 290 : 250;
+                          const CARD_HEIGHT_BASE = 70;
+                          const CARD_HEIGHT_PER_COLUMN = 19;
+                          const GAP_X = isErdFullscreen ? 64 : 56;
+                          const GAP_Y = isErdFullscreen ? 48 : 36;
+                          const PADDING = isErdFullscreen ? 36 : 24;
 
                           const positions = new Map();
                           let maxX = 0;
@@ -1209,7 +1281,7 @@ export default function DatabaseActionModals({
                               CARD_HEIGHT_BASE +
                               Math.min(table.columns.length, 10) * CARD_HEIGHT_PER_COLUMN;
                             const x = PADDING + col * (CARD_WIDTH + GAP_X);
-                            const y = PADDING + row * (210 + GAP_Y);
+                            const y = PADDING + row * (230 + GAP_Y);
                             positions.set(table.name, { x, y, width: CARD_WIDTH, height });
                             maxX = Math.max(maxX, x + CARD_WIDTH);
                             maxY = Math.max(maxY, y + height);
@@ -1334,6 +1406,27 @@ export default function DatabaseActionModals({
                         emptyLabel={t('noFilterResults')}
                         tc={tc}
                       />
+                    </div>
+                  </div>
+
+                  <div className="bg-[#151518] border border-[#333] rounded-lg p-3.5 text-xs text-zinc-400 space-y-1.5">
+                    <p className="text-zinc-300 font-medium">
+                      {t('schemaDiffDirectionHint') ||
+                        'Comparison direction: source -> target. Changes are reported to make target look like source.'}
+                    </p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      <span>
+                        <span className="text-emerald-300">+</span>{' '}
+                        {t('schemaDiffAddedHint') || 'Present in source, missing in target'}
+                      </span>
+                      <span>
+                        <span className="text-red-300">-</span>{' '}
+                        {t('schemaDiffRemovedHint') || 'Present in target, missing in source'}
+                      </span>
+                      <span>
+                        <span className="text-zinc-200">~</span>{' '}
+                        {t('schemaDiffChangedHint') || 'Exists on both sides but metadata differs'}
+                      </span>
                     </div>
                   </div>
 
@@ -1469,12 +1562,18 @@ export default function DatabaseActionModals({
 
                                     {item.columnsAdded.length > 0 ? (
                                       <div className="mb-1.5 text-[11px] text-emerald-300">
-                                        + {item.columnsAdded.join(', ')}
+                                        + {item.columnsAdded.join(', ')}{' '}
+                                        <span className="text-zinc-500">
+                                          ({t('schemaDiffAddedHint') || 'present in source, missing in target'})
+                                        </span>
                                       </div>
                                     ) : null}
                                     {item.columnsRemoved.length > 0 ? (
                                       <div className="mb-1.5 text-[11px] text-red-300">
-                                        - {item.columnsRemoved.join(', ')}
+                                        - {item.columnsRemoved.join(', ')}{' '}
+                                        <span className="text-zinc-500">
+                                          ({t('schemaDiffRemovedHint') || 'present in target, missing in source'})
+                                        </span>
                                       </div>
                                     ) : null}
                                     {item.changedColumns.map((column) => (

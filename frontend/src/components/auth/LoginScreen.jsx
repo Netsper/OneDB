@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import SettingsModal from '../modals/SettingsModal.jsx';
 import SelectField from '../shared/SelectField.jsx';
+import ToggleSwitch from '../shared/ToggleSwitch.jsx';
 
 export default function LoginScreen({
   t,
@@ -230,24 +231,14 @@ export default function LoginScreen({
                           'Use secure transport and optional client certificates.'}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
+                    <ToggleSwitch
+                      checked={Boolean(connForm.sslEnabled)}
+                      onChange={() => {
                         clearLoginError();
                         setConnForm({ ...connForm, sslEnabled: !connForm.sslEnabled });
                       }}
-                      className={`h-6 w-11 rounded-full border transition-colors relative ${
-                        connForm.sslEnabled
-                          ? `${tc.bg} border-transparent`
-                          : 'bg-[#232328] border-[#444]'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                          connForm.sslEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                        }`}
-                      />
-                    </button>
+                      tc={tc}
+                    />
                   </div>
 
                   {connForm.sslEnabled ? (
@@ -339,27 +330,17 @@ export default function LoginScreen({
                             'Use an already established local tunnel endpoint.'}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
+                      <ToggleSwitch
+                        checked={Boolean(connForm.sshTunnelEnabled)}
+                        onChange={() => {
                           clearLoginError();
                           setConnForm({
                             ...connForm,
                             sshTunnelEnabled: !connForm.sshTunnelEnabled,
                           });
                         }}
-                        className={`h-6 w-11 rounded-full border transition-colors relative ${
-                          connForm.sshTunnelEnabled
-                            ? `${tc.bg} border-transparent`
-                            : 'bg-[#232328] border-[#444]'
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                            connForm.sshTunnelEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                          }`}
-                        />
-                      </button>
+                        tc={tc}
+                      />
                     </div>
 
                     {connForm.sshTunnelEnabled ? (

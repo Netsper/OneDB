@@ -797,7 +797,7 @@ export default function TableBrowserView({
                       <>
                         <button
                           onClick={() => handleCloneRow(row._origIndex)}
-                          className={`text-zinc-500 hover:opacity-80 ${tc.textLight}`}
+                          className="text-zinc-500 hover:text-zinc-200"
                           title={t('duplicateTable')}
                         >
                           <CopyPlus className="w-3.5 h-3.5" />

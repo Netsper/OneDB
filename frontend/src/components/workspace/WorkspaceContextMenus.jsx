@@ -14,7 +14,6 @@ import MenuSurface from '../shared/MenuSurface.jsx';
 
 export default function WorkspaceContextMenus({
   t,
-  tc,
   contextMenu,
   cellContextMenu,
   selectDbAndTable,
@@ -57,7 +56,9 @@ export default function WorkspaceContextMenus({
           <div className="my-1 border-t border-[#2e2e32]"></div>
           <button
             onClick={() => togglePinTable(contextMenu.dbName, contextMenu.tableName)}
-            className={`w-full text-left px-3 py-1.5 text-xs ${tc.textLight} ${tc.lightBg} flex items-center gap-2`}
+            className={`w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white flex items-center gap-2 ${
+              isTablePinned(contextMenu.dbName, contextMenu.tableName) ? 'bg-[#222227]' : ''
+            }`}
           >
             <Star className="w-3.5 h-3.5" />{' '}
             {isTablePinned(contextMenu.dbName, contextMenu.tableName)
@@ -74,13 +75,13 @@ export default function WorkspaceContextMenus({
           <div className="my-1 border-t border-[#2e2e32]"></div>
           <button
             onClick={() => handleTruncateTable(contextMenu.dbName, contextMenu.tableName)}
-            className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-400/10 flex items-center gap-2"
+            className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-amber-400/10 hover:text-amber-300 flex items-center gap-2"
           >
             <AlertCircle className="w-3.5 h-3.5" /> {t('truncate')}
           </button>
           <button
             onClick={(e) => handleDeleteTable(e, contextMenu.dbName, contextMenu.tableName)}
-            className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-400/10 flex items-center gap-2"
+            className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-red-400/10 hover:text-red-300 flex items-center gap-2"
           >
             <Trash2 className="w-3.5 h-3.5" /> {t('drop')}
           </button>
@@ -108,7 +109,7 @@ export default function WorkspaceContextMenus({
           {cellContextMenu.canShowJson && (
             <button
               onClick={openCellJsonViewerFromMenu}
-              className={`w-full text-left px-3 py-1.5 text-xs ${tc.textLight} ${tc.lightBg} flex items-center gap-2`}
+              className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white flex items-center gap-2"
             >
               <Code className="w-3.5 h-3.5" /> {t('viewJson')}
             </button>
@@ -117,7 +118,7 @@ export default function WorkspaceContextMenus({
           <button
             onClick={setCellNullFromMenu}
             disabled={currentTableData?.type === 'view'}
-            className={`w-full text-left px-3 py-1.5 text-xs ${tc.textLight} ${tc.lightBg} flex items-center gap-2 disabled:opacity-40 disabled:hover:bg-transparent`}
+            className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-[#2e2e32] hover:text-white flex items-center gap-2 disabled:opacity-40 disabled:hover:bg-transparent"
           >
             <ToggleLeft className="w-3.5 h-3.5" /> {t('setNull')}
           </button>
