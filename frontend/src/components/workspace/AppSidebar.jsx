@@ -239,6 +239,7 @@ export default function AppSidebar({
                     { key: 'db_variables', label: t('variablesTab') || 'Variables' },
                     { key: 'db_status', label: t('statusTab') || 'Status' },
                     { key: 'db_schema_diff', label: t('schemaDiffTab') || 'Schema diff' },
+                    { key: 'db_erd', label: t('erdTab') || 'ERD' },
                   ].map((item) => (
                     <button
                       key={item.key}

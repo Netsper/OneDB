@@ -4,6 +4,7 @@ import {
   Bookmark,
   Database,
   FileDown,
+  GitBranch,
   History,
   ListChecks,
   ListTree,
@@ -92,6 +93,13 @@ export default function DatabaseActionModals({
     tablesRemoved: [],
     tablesChanged: [],
   });
+  const [erdDb, setErdDb] = useState('');
+  const [erdData, setErdData] = useState({
+    loading: false,
+    error: '',
+    tables: [],
+    relationships: [],
+  });
 
   const dbAdminModalMap = useMemo(
     () => ({
@@ -120,6 +128,11 @@ export default function DatabaseActionModals({
         icon: ArrowLeftRight,
         sql: '',
       },
+      db_erd: {
+        title: t('erdTab') || 'ERD',
+        icon: GitBranch,
+        sql: '',
+      },
     }),
     [t],
   );
@@ -127,6 +140,7 @@ export default function DatabaseActionModals({
   const activeDbAdminConfig = dbAdminModalMap[modalConfig.type] || null;
   const isDbAdminModalOpen = modalConfig.isOpen && Boolean(activeDbAdminConfig);
   const isSchemaDiffModalOpen = modalConfig.isOpen && modalConfig.type === 'db_schema_diff';
+  const isErdModalOpen = modalConfig.isOpen && modalConfig.type === 'db_erd';
 
   const fallbackCharsetList = useMemo(
     () => [
@@ -615,6 +629,180 @@ export default function DatabaseActionModals({
     };
   }, []);
 
+  const buildErdSnapshot = useCallback(
+    async (databaseName) => {
+      if (!databaseName) {
+        return { tables: [], relationships: [] };
+      }
+
+      if (currentDriver === 'mysql') {
+        const [tablesResult, columnsResult, foreignResult] = await Promise.all([
+          executeSql(
+            `
+            SELECT
+              TABLE_NAME AS table_name,
+              TABLE_TYPE AS table_type
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+            ORDER BY TABLE_NAME;
+            `,
+            databaseName,
+          ),
+          executeSql(
+            `
+            SELECT
+              TABLE_NAME AS table_name,
+              COLUMN_NAME AS column_name,
+              COLUMN_TYPE AS data_type,
+              COLUMN_KEY AS column_key
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+            ORDER BY TABLE_NAME, ORDINAL_POSITION;
+            `,
+            databaseName,
+          ),
+          executeSql(
+            `
+            SELECT
+              CONSTRAINT_NAME AS constraint_name,
+              TABLE_NAME AS table_name,
+              COLUMN_NAME AS column_name,
+              REFERENCED_TABLE_NAME AS referenced_table_name,
+              REFERENCED_COLUMN_NAME AS referenced_column_name
+            FROM information_schema.key_column_usage
+            WHERE table_schema = DATABASE()
+              AND referenced_table_name IS NOT NULL
+            ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION;
+            `,
+            databaseName,
+          ),
+        ]);
+
+        const tables = normalizeResultRows(tablesResult);
+        const columns = normalizeResultRows(columnsResult);
+        const relations = normalizeResultRows(foreignResult);
+        return { tables, columns, relations };
+      }
+
+      if (currentDriver === 'pgsql') {
+        const [tablesResult, columnsResult, foreignResult] = await Promise.all([
+          executeSql(
+            `
+            SELECT
+              table_name,
+              table_type
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_type IN ('BASE TABLE', 'VIEW')
+            ORDER BY table_name;
+            `,
+            databaseName,
+          ),
+          executeSql(
+            `
+            SELECT
+              c.table_name AS table_name,
+              c.column_name AS column_name,
+              c.data_type AS data_type,
+              CASE WHEN pk.column_name IS NOT NULL THEN 'PRI' ELSE '' END AS column_key
+            FROM information_schema.columns c
+            LEFT JOIN (
+              SELECT kcu.table_name, kcu.column_name
+              FROM information_schema.table_constraints tc
+              INNER JOIN information_schema.key_column_usage kcu
+                ON tc.constraint_name = kcu.constraint_name
+               AND tc.table_schema = kcu.table_schema
+              WHERE tc.constraint_type = 'PRIMARY KEY'
+                AND tc.table_schema = 'public'
+            ) pk
+              ON pk.table_name = c.table_name
+             AND pk.column_name = c.column_name
+            WHERE c.table_schema = 'public'
+            ORDER BY c.table_name, c.ordinal_position;
+            `,
+            databaseName,
+          ),
+          executeSql(
+            `
+            SELECT
+              tc.constraint_name AS constraint_name,
+              kcu.table_name AS table_name,
+              kcu.column_name AS column_name,
+              ccu.table_name AS referenced_table_name,
+              ccu.column_name AS referenced_column_name
+            FROM information_schema.table_constraints tc
+            INNER JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name
+             AND tc.table_schema = kcu.table_schema
+            INNER JOIN information_schema.constraint_column_usage ccu
+              ON ccu.constraint_name = tc.constraint_name
+             AND ccu.table_schema = tc.table_schema
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+              AND tc.table_schema = 'public'
+            ORDER BY kcu.table_name, tc.constraint_name, kcu.ordinal_position;
+            `,
+            databaseName,
+          ),
+        ]);
+
+        const tables = normalizeResultRows(tablesResult);
+        const columns = normalizeResultRows(columnsResult);
+        const relations = normalizeResultRows(foreignResult);
+        return { tables, columns, relations };
+      }
+
+      if (currentDriver === 'sqlite') {
+        const tablesResult = await executeSql(
+          `
+          SELECT
+            name AS table_name,
+            type AS table_type
+          FROM sqlite_master
+          WHERE type IN ('table', 'view')
+            AND name NOT LIKE 'sqlite_%'
+          ORDER BY name;
+          `,
+          databaseName,
+        );
+        const tableRows = normalizeResultRows(tablesResult);
+        const columns = [];
+        const relations = [];
+        for (const table of tableRows) {
+          const tableName = String(table.table_name || '').trim();
+          if (!tableName) continue;
+          const escaped = tableName.replace(/"/g, '""');
+          const columnResult = await executeSql(`PRAGMA table_info("${escaped}");`, databaseName);
+          const columnRows = normalizeResultRows(columnResult);
+          columnRows.forEach((row) => {
+            columns.push({
+              table_name: tableName,
+              column_name: row.name,
+              data_type: row.type,
+              column_key: Number(row.pk || 0) === 1 ? 'PRI' : '',
+            });
+          });
+
+          const relationResult = await executeSql(`PRAGMA foreign_key_list("${escaped}");`, databaseName);
+          const relationRows = normalizeResultRows(relationResult);
+          relationRows.forEach((row) => {
+            relations.push({
+              constraint_name: `fk_${tableName}_${row.from || ''}`,
+              table_name: tableName,
+              column_name: row.from,
+              referenced_table_name: row.table,
+              referenced_column_name: row.to,
+            });
+          });
+        }
+
+        return { tables: tableRows, columns, relations };
+      }
+
+      throw new Error(t('erdDriverUnsupported') || 'ERD is not supported for this driver.');
+    },
+    [currentDriver, executeSql, normalizeResultRows, t],
+  );
+
   useEffect(() => {
     if (!isCreateDbModalOpen) return;
     if (isMysql) {
@@ -716,7 +904,115 @@ export default function DatabaseActionModals({
   ]);
 
   useEffect(() => {
-    if (!isDbAdminModalOpen || isSchemaDiffModalOpen) return;
+    if (!isErdModalOpen) return;
+    const names = Array.isArray(databaseNames) ? databaseNames : [];
+    const preferred = names.includes(activeDb) ? activeDb : names[0] || '';
+    setErdDb(preferred);
+    setErdData({
+      loading: false,
+      error: '',
+      tables: [],
+      relationships: [],
+    });
+  }, [activeDb, databaseNames, isErdModalOpen]);
+
+  useEffect(() => {
+    if (!isErdModalOpen) return;
+    if (!erdDb) {
+      setErdData({
+        loading: false,
+        error: t('erdSelectDatabase') || 'Select a database to render the diagram.',
+        tables: [],
+        relationships: [],
+      });
+      return;
+    }
+
+    let cancelled = false;
+    const loadErd = async () => {
+      setErdData((prev) => ({ ...prev, loading: true, error: '' }));
+      try {
+        const snapshot = await buildErdSnapshot(erdDb);
+        if (cancelled) return;
+        const relationLookup = new Set(
+          snapshot.relations.map(
+            (row) => `${String(row.table_name || '').trim()}::${String(row.column_name || '').trim()}`,
+          ),
+        );
+
+        const tablesByName = new Map();
+        snapshot.tables.forEach((row) => {
+          const tableName = String(row.table_name || '').trim();
+          if (!tableName) return;
+          const rawType = String(row.table_type || '').toLowerCase();
+          tablesByName.set(tableName, {
+            name: tableName,
+            type: rawType.includes('view') ? 'view' : 'table',
+            columns: [],
+          });
+        });
+
+        snapshot.columns.forEach((row) => {
+          const tableName = String(row.table_name || '').trim();
+          const columnName = String(row.column_name || '').trim();
+          if (!tableName || !columnName) return;
+          if (!tablesByName.has(tableName)) {
+            tablesByName.set(tableName, {
+              name: tableName,
+              type: 'table',
+              columns: [],
+            });
+          }
+          tablesByName.get(tableName).columns.push({
+            name: columnName,
+            dataType: String(row.data_type || '').trim(),
+            isPrimary: String(row.column_key || '').toUpperCase() === 'PRI',
+            isForeign: relationLookup.has(`${tableName}::${columnName}`),
+          });
+        });
+
+        const tables = Array.from(tablesByName.values())
+          .map((table) => ({
+            ...table,
+            columns: table.columns.sort((a, b) => a.name.localeCompare(b.name)),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        const relationships = snapshot.relations
+          .map((row) => ({
+            constraint: String(row.constraint_name || '').trim(),
+            fromTable: String(row.table_name || '').trim(),
+            fromColumn: String(row.column_name || '').trim(),
+            toTable: String(row.referenced_table_name || '').trim(),
+            toColumn: String(row.referenced_column_name || '').trim(),
+          }))
+          .filter((row) => row.fromTable && row.fromColumn && row.toTable && row.toColumn);
+
+        setErdData({
+          loading: false,
+          error: '',
+          tables,
+          relationships,
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setErdData({
+          loading: false,
+          error: error?.message || t('loadFailed') || 'Failed to load data.',
+          tables: [],
+          relationships: [],
+        });
+      }
+    };
+
+    void loadErd();
+    return () => {
+      cancelled = true;
+    };
+  }, [buildErdSnapshot, erdDb, isErdModalOpen, t]);
+
+  useEffect(() => {
+    if (!isDbAdminModalOpen || isSchemaDiffModalOpen || isErdModalOpen) return;
     if (!isMysql) {
       setDbAdminData({
         loading: false,
@@ -728,7 +1024,7 @@ export default function DatabaseActionModals({
       return;
     }
     loadDbAdminData();
-  }, [activeDb, activeDbAdminConfig, isDbAdminModalOpen, isMysql, isSchemaDiffModalOpen, loadDbAdminData, t]);
+  }, [activeDb, activeDbAdminConfig, isDbAdminModalOpen, isErdModalOpen, isMysql, isSchemaDiffModalOpen, loadDbAdminData, t]);
 
   return (
     <>
@@ -852,7 +1148,163 @@ export default function DatabaseActionModals({
             </div>
 
             <div className="p-6 overflow-auto custom-scrollbar">
-              {isSchemaDiffModalOpen ? (
+              {isErdModalOpen ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-zinc-400 mb-2">
+                        {t('selectDb')}
+                      </label>
+                      <SearchableSelectField
+                        value={erdDb}
+                        onChange={setErdDb}
+                        options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                        placeholder={t('selectDb')}
+                        searchPlaceholder={t('search')}
+                        emptyLabel={t('noFilterResults')}
+                        tc={tc}
+                      />
+                    </div>
+                    <div className="bg-[#151518] border border-[#333] rounded-md px-3 py-2 flex items-center justify-between">
+                      <span className="text-[11px] text-zinc-500">{t('tables') || 'Tables'}</span>
+                      <span className="text-sm font-semibold text-zinc-100">{erdData.tables.length}</span>
+                      <span className="text-[11px] text-zinc-500">{t('relationships') || 'Relationships'}</span>
+                      <span className="text-sm font-semibold text-zinc-100">{erdData.relationships.length}</span>
+                    </div>
+                  </div>
+
+                  {erdData.loading ? (
+                    <div className="bg-[#151518] border border-[#333] rounded-lg p-6 flex items-center justify-center gap-2 text-zinc-400 text-sm">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{t('loading') || 'Loading...'}</span>
+                    </div>
+                  ) : erdData.error ? (
+                    <div className="bg-[#151518] border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
+                      {erdData.error}
+                    </div>
+                  ) : erdData.tables.length === 0 ? (
+                    <div className="bg-[#151518] border border-[#333] rounded-lg p-4 text-sm text-zinc-400">
+                      {t('noRecords')}
+                    </div>
+                  ) : (
+                    <div className="bg-[#151518] border border-[#333] rounded-lg overflow-hidden">
+                      <div className="overflow-auto custom-scrollbar max-h-[64vh]">
+                        {(() => {
+                          const COLUMN_COUNT = 4;
+                          const CARD_WIDTH = 250;
+                          const CARD_HEIGHT_BASE = 62;
+                          const CARD_HEIGHT_PER_COLUMN = 18;
+                          const GAP_X = 56;
+                          const GAP_Y = 36;
+                          const PADDING = 24;
+
+                          const positions = new Map();
+                          let maxX = 0;
+                          let maxY = 0;
+
+                          erdData.tables.forEach((table, index) => {
+                            const col = index % COLUMN_COUNT;
+                            const row = Math.floor(index / COLUMN_COUNT);
+                            const height =
+                              CARD_HEIGHT_BASE +
+                              Math.min(table.columns.length, 10) * CARD_HEIGHT_PER_COLUMN;
+                            const x = PADDING + col * (CARD_WIDTH + GAP_X);
+                            const y = PADDING + row * (210 + GAP_Y);
+                            positions.set(table.name, { x, y, width: CARD_WIDTH, height });
+                            maxX = Math.max(maxX, x + CARD_WIDTH);
+                            maxY = Math.max(maxY, y + height);
+                          });
+
+                          const canvasWidth = maxX + PADDING;
+                          const canvasHeight = maxY + PADDING;
+
+                          return (
+                            <div className="relative" style={{ width: canvasWidth, height: canvasHeight }}>
+                              <svg className="absolute inset-0" width={canvasWidth} height={canvasHeight}>
+                                {erdData.relationships.map((relation, index) => {
+                                  const from = positions.get(relation.fromTable);
+                                  const to = positions.get(relation.toTable);
+                                  if (!from || !to) return null;
+
+                                  const fromOnLeft = from.x <= to.x;
+                                  const startX = fromOnLeft ? from.x + from.width : from.x;
+                                  const endX = fromOnLeft ? to.x : to.x + to.width;
+                                  const startY = from.y + from.height / 2;
+                                  const endY = to.y + to.height / 2;
+                                  const midX = (startX + endX) / 2;
+
+                                  return (
+                                    <path
+                                      key={`${relation.fromTable}-${relation.fromColumn}-${relation.toTable}-${relation.toColumn}-${index}`}
+                                      d={`M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`}
+                                      fill="none"
+                                      stroke="rgba(161,161,170,0.45)"
+                                      strokeWidth="1.5"
+                                    />
+                                  );
+                                })}
+                              </svg>
+
+                              {erdData.tables.map((table) => {
+                                const position = positions.get(table.name);
+                                if (!position) return null;
+                                return (
+                                  <div
+                                    key={table.name}
+                                    className="absolute rounded-md border border-[#3a3a40] bg-[#101013]/95 backdrop-blur-sm shadow-lg"
+                                    style={{
+                                      left: position.x,
+                                      top: position.y,
+                                      width: position.width,
+                                      minHeight: position.height,
+                                    }}
+                                  >
+                                    <div className="px-2.5 py-2 border-b border-[#2b2b30] flex items-center justify-between gap-2">
+                                      <span className="text-xs font-semibold text-zinc-100 truncate">
+                                        {table.name}
+                                      </span>
+                                      <span className="text-[10px] uppercase text-zinc-500">
+                                        {table.type}
+                                      </span>
+                                    </div>
+                                    <div className="px-2.5 py-2 space-y-1.5">
+                                      {table.columns.slice(0, 10).map((column) => (
+                                        <div key={`${table.name}-${column.name}`} className="text-[11px] text-zinc-300">
+                                          <span className="inline-flex items-center gap-1 mr-1.5">
+                                            {column.isPrimary ? (
+                                              <span className="text-[10px] px-1 rounded border border-amber-500/40 text-amber-300">
+                                                PK
+                                              </span>
+                                            ) : null}
+                                            {column.isForeign ? (
+                                              <span className="text-[10px] px-1 rounded border border-cyan-500/40 text-cyan-300">
+                                                FK
+                                              </span>
+                                            ) : null}
+                                          </span>
+                                          <span className="font-medium text-zinc-200">{column.name}</span>
+                                          {column.dataType ? (
+                                            <span className="text-zinc-500"> · {column.dataType}</span>
+                                          ) : null}
+                                        </div>
+                                      ))}
+                                      {table.columns.length > 10 ? (
+                                        <div className="text-[10px] text-zinc-500">
+                                          +{table.columns.length - 10} {t('columns') || 'columns'}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : isSchemaDiffModalOpen ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
