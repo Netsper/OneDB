@@ -7,6 +7,7 @@ import {
   FileDown,
   GitBranch,
   History,
+  Info,
   ListChecks,
   ListTree,
   Loader2,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import SelectField from '../shared/SelectField.jsx';
 import SearchableSelectField from '../shared/SearchableSelectField.jsx';
+import HoverTooltip from '../shared/HoverTooltip.jsx';
 
 export default function DatabaseActionModals({
   modalConfig,
@@ -1179,6 +1181,23 @@ export default function DatabaseActionModals({
                 <h3 className="text-base font-semibold text-zinc-100 truncate">
                   {activeDbAdminConfig?.title || ''}
                 </h3>
+                {isSchemaDiffModalOpen ? (
+                  <HoverTooltip
+                    content={
+                      `${t('schemaDiffAddedHint') || 'Present in source, missing in target'}\n` +
+                      `${t('schemaDiffRemovedHint') || 'Present in target, missing in source'}\n` +
+                      `${t('schemaDiffChangedHint') || 'Exists on both sides but metadata differs'}`
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="text-zinc-500 hover:text-zinc-200 transition-colors p-1 rounded"
+                      aria-label={t('schemaDiffLegend') || 'Schema diff legend'}
+                    >
+                      <Info className="w-4 h-4" />
+                    </button>
+                  </HoverTooltip>
+                ) : null}
               </div>
               <div className="flex items-center gap-2 md:gap-3">
                 {isErdModalOpen ? (
@@ -1502,11 +1521,11 @@ export default function DatabaseActionModals({
                               {schemaDiffData.summary.columnsAdded}
                             </div>
                           </div>
-                          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-                            <div className="text-[10px] uppercase text-red-200/90">
+                          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                            <div className="text-[10px] uppercase text-amber-200/90">
                               {t('schemaDiffColumnsRemoved') || 'Columns -'}
                             </div>
-                            <div className="text-lg font-semibold text-red-200 mt-1">
+                            <div className="text-lg font-semibold text-amber-200 mt-1">
                               {schemaDiffData.summary.columnsRemoved}
                             </div>
                           </div>
@@ -1618,7 +1637,7 @@ export default function DatabaseActionModals({
                                       </div>
                                     ) : null}
                                     {item.columnsRemoved.length > 0 ? (
-                                      <div className="mb-1.5 text-[12px] text-red-300">
+                                      <div className="mb-1.5 text-[12px] text-amber-300">
                                         - {item.columnsRemoved.join(', ')}
                                       </div>
                                     ) : null}
