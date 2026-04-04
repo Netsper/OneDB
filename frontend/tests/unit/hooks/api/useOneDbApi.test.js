@@ -5,10 +5,10 @@ import {
   resolveBrowseRowCount,
 } from '../../../../src/hooks/api/useOneDbApi.js';
 
-test('shouldIncludeBrowseRowCount defaults to first page only', () => {
-  assert.equal(shouldIncludeBrowseRowCount(1), true);
+test('shouldIncludeBrowseRowCount defaults to disabled for performance', () => {
+  assert.equal(shouldIncludeBrowseRowCount(1), false);
   assert.equal(shouldIncludeBrowseRowCount(2), false);
-  assert.equal(shouldIncludeBrowseRowCount(undefined), true);
+  assert.equal(shouldIncludeBrowseRowCount(undefined), false);
 });
 
 test('shouldIncludeBrowseRowCount respects explicit override', () => {
@@ -27,13 +27,29 @@ test('resolveBrowseRowCount uses API value when count is included', () => {
   );
 });
 
-test('resolveBrowseRowCount preserves fallback when count is skipped', () => {
+test('resolveBrowseRowCount estimates row count when count query is skipped', () => {
   assert.equal(
-    resolveBrowseRowCount({ includeRowCount: false, apiRowCount: 42, fallbackRowCount: 9 }),
-    9,
+    resolveBrowseRowCount({
+      includeRowCount: false,
+      apiRowCount: 42,
+      fallbackRowCount: 9,
+      hasMore: true,
+      page: 2,
+      perPage: 15,
+      pageRowsLength: 15,
+    }),
+    31,
   );
   assert.equal(
-    resolveBrowseRowCount({ includeRowCount: false, apiRowCount: 42, fallbackRowCount: null }),
-    0,
+    resolveBrowseRowCount({
+      includeRowCount: false,
+      apiRowCount: 42,
+      fallbackRowCount: null,
+      hasMore: false,
+      page: 3,
+      perPage: 10,
+      pageRowsLength: 4,
+    }),
+    24,
   );
 });

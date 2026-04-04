@@ -336,6 +336,7 @@ export default function useWorkspaceImportExportActions({
         table: tableName,
         page,
         perPage,
+        includeRowCount: false,
         sort: null,
         filters: [],
       });
@@ -366,7 +367,7 @@ export default function useWorkspaceImportExportActions({
         break;
       }
 
-      if (!expectedRowCountKnown && pageRows.length < perPage) {
+      if (!expectedRowCountKnown && !result.hasMore) {
         break;
       }
 

@@ -312,7 +312,8 @@ final class MetadataService
         }
 
         $offset = ($page - 1) * $perPage;
-        $dataSql = 'SELECT * FROM ' . $qualifiedTable . $whereSql . $orderSql . ' LIMIT ' . $perPage . ' OFFSET ' . $offset;
+        $dataLimit = $perPage + 1;
+        $dataSql = 'SELECT * FROM ' . $qualifiedTable . $whereSql . $orderSql . ' LIMIT ' . $dataLimit . ' OFFSET ' . $offset;
         $dataStmt = $pdo->prepare($dataSql);
 
         foreach ($bindings as $key => $value) {
@@ -325,6 +326,10 @@ final class MetadataService
             $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
         } finally {
             $dataStmt->closeCursor();
+        }
+        $hasMore = count($rows) > $perPage;
+        if ($hasMore) {
+            $rows = array_slice($rows, 0, $perPage);
         }
         $durationMs = (microtime(true) - $startedAt) * 1000;
 
@@ -345,6 +350,7 @@ final class MetadataService
             'columns' => $columns,
             'rows' => $rows,
             'rowCount' => $rowCount,
+            'hasMore' => $hasMore,
             'page' => $page,
             'perPage' => $perPage,
             'durationMs' => round($durationMs, 2),

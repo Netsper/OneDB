@@ -4,17 +4,31 @@ export const shouldIncludeBrowseRowCount = (nextPage, overrideValue) => {
   if (typeof overrideValue === 'boolean') {
     return overrideValue;
   }
-  return Number(nextPage || 1) <= 1;
+  return false;
 };
 
-export const resolveBrowseRowCount = ({ includeRowCount, apiRowCount, fallbackRowCount }) => {
+export const resolveBrowseRowCount = ({
+  includeRowCount,
+  apiRowCount,
+  fallbackRowCount,
+  hasMore,
+  page,
+  perPage,
+  pageRowsLength,
+}) => {
   if (includeRowCount) {
     const parsed = Number(apiRowCount || 0);
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
   }
 
   const fallback = Number(fallbackRowCount || 0);
-  return Number.isFinite(fallback) && fallback >= 0 ? fallback : 0;
+  const safeFallback = Number.isFinite(fallback) && fallback >= 0 ? fallback : 0;
+  const safePage = Math.max(1, Number(page || 1));
+  const safePerPage = Math.max(1, Number(perPage || 1));
+  const safePageRowsLength = Math.max(0, Number(pageRowsLength || 0));
+  const knownMinimum = (safePage - 1) * safePerPage + safePageRowsLength;
+  const inferred = hasMore ? knownMinimum + 1 : knownMinimum;
+  return Math.max(safeFallback, inferred);
 };
 
 export default function useOneDbApi({
@@ -334,6 +348,7 @@ export default function useOneDbApi({
                   loaded: false,
                   page: 1,
                   perPage: rowsPerPage,
+                  hasMore: false,
                 };
           });
 
@@ -433,6 +448,10 @@ export default function useOneDbApi({
           includeRowCount,
           apiRowCount: result.rowCount,
           fallbackRowCount: currentEntry.rowCount,
+          hasMore: Boolean(result.hasMore),
+          page: Number(result.page || nextPage),
+          perPage: Number(result.perPage || nextPerPage),
+          pageRowsLength: rows.length,
         });
         return {
           ...prev,
@@ -451,6 +470,7 @@ export default function useOneDbApi({
               loaded: true,
               page: Number(result.page || nextPage),
               perPage: Number(result.perPage || nextPerPage),
+              hasMore: Boolean(result.hasMore),
             },
           },
         };
