@@ -154,6 +154,7 @@ export default function useWorkspaceOverlaysViewModel(params) {
       inputVal,
       setInputVal,
       activeDb,
+      databaseNames: Object.keys(databases || {}).sort((a, b) => a.localeCompare(b)),
       currentDriver,
       executeSql,
       dbCharset,

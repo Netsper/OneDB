@@ -238,6 +238,7 @@ export default function AppSidebar({
                     { key: 'db_process_list', label: t('processListTab') || 'Process list' },
                     { key: 'db_variables', label: t('variablesTab') || 'Variables' },
                     { key: 'db_status', label: t('statusTab') || 'Status' },
+                    { key: 'db_schema_diff', label: t('schemaDiffTab') || 'Schema diff' },
                   ].map((item) => (
                     <button
                       key={item.key}

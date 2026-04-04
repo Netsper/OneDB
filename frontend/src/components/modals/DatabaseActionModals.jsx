@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ArrowLeftRight,
   Bookmark,
   Database,
   FileDown,
@@ -24,6 +25,7 @@ export default function DatabaseActionModals({
   inputVal,
   setInputVal,
   activeDb,
+  databaseNames,
   currentDriver,
   executeSql,
   dbCharset,
@@ -80,6 +82,16 @@ export default function DatabaseActionModals({
     error: '',
     rows: [],
   });
+  const [schemaDiffSourceDb, setSchemaDiffSourceDb] = useState('');
+  const [schemaDiffTargetDb, setSchemaDiffTargetDb] = useState('');
+  const [schemaDiffData, setSchemaDiffData] = useState({
+    loading: false,
+    error: '',
+    summary: null,
+    tablesAdded: [],
+    tablesRemoved: [],
+    tablesChanged: [],
+  });
 
   const dbAdminModalMap = useMemo(
     () => ({
@@ -103,12 +115,18 @@ export default function DatabaseActionModals({
         icon: ListTree,
         sql: 'SHOW STATUS;',
       },
+      db_schema_diff: {
+        title: t('schemaDiffTab') || 'Schema diff',
+        icon: ArrowLeftRight,
+        sql: '',
+      },
     }),
     [t],
   );
 
   const activeDbAdminConfig = dbAdminModalMap[modalConfig.type] || null;
   const isDbAdminModalOpen = modalConfig.isOpen && Boolean(activeDbAdminConfig);
+  const isSchemaDiffModalOpen = modalConfig.isOpen && modalConfig.type === 'db_schema_diff';
 
   const fallbackCharsetList = useMemo(
     () => [
@@ -301,6 +319,302 @@ export default function DatabaseActionModals({
     }
   }, [activeDb, activeDbAdminConfig, executeSql, isMysql, normalizeResultRows, t]);
 
+  const buildSchemaSnapshot = useCallback(
+    async (databaseName) => {
+      const tableMap = new Map();
+
+      if (currentDriver === 'mysql') {
+        const [tableResult, columnResult] = await Promise.all([
+          executeSql(
+            `
+            SELECT
+              TABLE_NAME AS table_name,
+              TABLE_TYPE AS table_type
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+            ORDER BY TABLE_NAME;
+            `,
+            databaseName,
+          ),
+          executeSql(
+            `
+            SELECT
+              TABLE_NAME AS table_name,
+              COLUMN_NAME AS column_name,
+              COLUMN_TYPE AS column_type,
+              IS_NULLABLE AS is_nullable,
+              COLUMN_DEFAULT AS column_default,
+              EXTRA AS extra,
+              COLUMN_KEY AS column_key
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+            ORDER BY TABLE_NAME, ORDINAL_POSITION;
+            `,
+            databaseName,
+          ),
+        ]);
+
+        const tableRows = normalizeResultRows(tableResult);
+        const columnRows = normalizeResultRows(columnResult);
+
+        tableRows.forEach((row) => {
+          const tableName = String(row.table_name || '').trim();
+          if (!tableName) return;
+          const rawType = String(row.table_type || '').toLowerCase();
+          tableMap.set(tableName, {
+            type: rawType.includes('view') ? 'view' : 'table',
+            columns: new Map(),
+          });
+        });
+
+        columnRows.forEach((row) => {
+          const tableName = String(row.table_name || '').trim();
+          const columnName = String(row.column_name || '').trim();
+          if (!tableName || !columnName) return;
+          if (!tableMap.has(tableName)) {
+            tableMap.set(tableName, { type: 'table', columns: new Map() });
+          }
+          const tableEntry = tableMap.get(tableName);
+          tableEntry.columns.set(columnName, {
+            dataType: String(row.column_type || '').trim(),
+            nullable: String(row.is_nullable || '').toLowerCase() === 'yes',
+            defaultValue:
+              row.column_default == null ? null : String(row.column_default),
+            extra: String(row.extra || '').trim(),
+            key: String(row.column_key || '').trim(),
+          });
+        });
+      } else if (currentDriver === 'pgsql') {
+        const [tableResult, columnResult] = await Promise.all([
+          executeSql(
+            `
+            SELECT
+              table_name,
+              table_type
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_type IN ('BASE TABLE', 'VIEW')
+            ORDER BY table_name;
+            `,
+            databaseName,
+          ),
+          executeSql(
+            `
+            SELECT
+              table_name,
+              column_name,
+              data_type,
+              udt_name,
+              is_nullable,
+              column_default,
+              character_maximum_length,
+              numeric_precision,
+              numeric_scale
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+            ORDER BY table_name, ordinal_position;
+            `,
+            databaseName,
+          ),
+        ]);
+
+        const tableRows = normalizeResultRows(tableResult);
+        const columnRows = normalizeResultRows(columnResult);
+
+        tableRows.forEach((row) => {
+          const tableName = String(row.table_name || '').trim();
+          if (!tableName) return;
+          const rawType = String(row.table_type || '').toLowerCase();
+          tableMap.set(tableName, {
+            type: rawType.includes('view') ? 'view' : 'table',
+            columns: new Map(),
+          });
+        });
+
+        columnRows.forEach((row) => {
+          const tableName = String(row.table_name || '').trim();
+          const columnName = String(row.column_name || '').trim();
+          if (!tableName || !columnName) return;
+          if (!tableMap.has(tableName)) {
+            tableMap.set(tableName, { type: 'table', columns: new Map() });
+          }
+
+          const charLength = Number(row.character_maximum_length);
+          const numericPrecision = Number(row.numeric_precision);
+          const numericScale = Number(row.numeric_scale);
+          const rawDataType = String(row.data_type || '').trim();
+          let dataType = rawDataType;
+          if (Number.isFinite(charLength) && charLength > 0) {
+            dataType = `${rawDataType}(${charLength})`;
+          } else if (Number.isFinite(numericPrecision) && numericPrecision > 0) {
+            dataType = Number.isFinite(numericScale) && numericScale >= 0
+              ? `${rawDataType}(${numericPrecision},${numericScale})`
+              : `${rawDataType}(${numericPrecision})`;
+          } else if (!dataType) {
+            dataType = String(row.udt_name || '').trim();
+          }
+
+          const tableEntry = tableMap.get(tableName);
+          tableEntry.columns.set(columnName, {
+            dataType,
+            nullable: String(row.is_nullable || '').toLowerCase() === 'yes',
+            defaultValue:
+              row.column_default == null ? null : String(row.column_default),
+            extra: '',
+            key: '',
+          });
+        });
+      } else if (currentDriver === 'sqlite') {
+        const tableResult = await executeSql(
+          `
+          SELECT
+            name,
+            type
+          FROM sqlite_master
+          WHERE type IN ('table', 'view')
+            AND name NOT LIKE 'sqlite_%'
+          ORDER BY name;
+          `,
+          databaseName,
+        );
+        const tableRows = normalizeResultRows(tableResult);
+        for (const row of tableRows) {
+          const tableName = String(row.name || '').trim();
+          if (!tableName) continue;
+          const tableType = String(row.type || '').toLowerCase() === 'view' ? 'view' : 'table';
+          const escapedTable = tableName.replace(/"/g, '""');
+          const columnResult = await executeSql(`PRAGMA table_info("${escapedTable}");`, databaseName);
+          const columnRows = normalizeResultRows(columnResult);
+          const columns = new Map();
+          columnRows.forEach((columnRow) => {
+            const columnName = String(columnRow.name || '').trim();
+            if (!columnName) return;
+            columns.set(columnName, {
+              dataType: String(columnRow.type || '').trim(),
+              nullable: Number(columnRow.notnull || 0) !== 1,
+              defaultValue:
+                columnRow.dflt_value == null ? null : String(columnRow.dflt_value),
+              extra: '',
+              key: Number(columnRow.pk || 0) === 1 ? 'PRI' : '',
+            });
+          });
+          tableMap.set(tableName, { type: tableType, columns });
+        }
+      } else {
+        throw new Error(t('schemaDiffDriverUnsupported') || 'Schema diff is not supported for this driver.');
+      }
+
+      const normalizedTables = {};
+      Array.from(tableMap.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([tableName, value]) => {
+          const normalizedColumns = {};
+          Array.from(value.columns.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .forEach(([columnName, columnSignature]) => {
+              normalizedColumns[columnName] = columnSignature;
+            });
+          normalizedTables[tableName] = {
+            type: value.type,
+            columns: normalizedColumns,
+          };
+        });
+
+      return {
+        databaseName,
+        tables: normalizedTables,
+      };
+    },
+    [currentDriver, executeSql, normalizeResultRows, t],
+  );
+
+  const compareSchemaSnapshots = useCallback((leftSnapshot, rightSnapshot) => {
+    const leftTables = leftSnapshot?.tables || {};
+    const rightTables = rightSnapshot?.tables || {};
+    const leftNames = Object.keys(leftTables);
+    const rightNames = Object.keys(rightTables);
+
+    const tablesAdded = rightNames.filter((name) => !leftTables[name]).sort((a, b) => a.localeCompare(b));
+    const tablesRemoved = leftNames.filter((name) => !rightTables[name]).sort((a, b) => a.localeCompare(b));
+
+    const commonNames = leftNames.filter((name) => rightTables[name]).sort((a, b) => a.localeCompare(b));
+    const tablesChanged = [];
+
+    const diffFields = ['dataType', 'nullable', 'defaultValue', 'extra', 'key'];
+
+    commonNames.forEach((tableName) => {
+      const leftTable = leftTables[tableName];
+      const rightTable = rightTables[tableName];
+      const leftColumns = leftTable?.columns || {};
+      const rightColumns = rightTable?.columns || {};
+
+      const columnsAdded = Object.keys(rightColumns)
+        .filter((columnName) => !leftColumns[columnName])
+        .sort((a, b) => a.localeCompare(b));
+      const columnsRemoved = Object.keys(leftColumns)
+        .filter((columnName) => !rightColumns[columnName])
+        .sort((a, b) => a.localeCompare(b));
+
+      const changedColumns = [];
+      Object.keys(leftColumns)
+        .filter((columnName) => rightColumns[columnName])
+        .sort((a, b) => a.localeCompare(b))
+        .forEach((columnName) => {
+          const leftColumn = leftColumns[columnName];
+          const rightColumn = rightColumns[columnName];
+          const changedProps = diffFields
+            .map((field) => {
+              const leftValue = leftColumn[field] == null ? null : String(leftColumn[field]);
+              const rightValue = rightColumn[field] == null ? null : String(rightColumn[field]);
+              if (leftValue === rightValue) return null;
+              return {
+                field,
+                before: leftColumn[field],
+                after: rightColumn[field],
+              };
+            })
+            .filter(Boolean);
+          if (changedProps.length > 0) {
+            changedColumns.push({
+              name: columnName,
+              changedProps,
+            });
+          }
+        });
+
+      const tableTypeChanged = leftTable?.type !== rightTable?.type;
+      if (!tableTypeChanged && columnsAdded.length === 0 && columnsRemoved.length === 0 && changedColumns.length === 0) {
+        return;
+      }
+
+      tablesChanged.push({
+        table: tableName,
+        tableTypeChanged,
+        beforeType: leftTable?.type || 'table',
+        afterType: rightTable?.type || 'table',
+        columnsAdded,
+        columnsRemoved,
+        changedColumns,
+      });
+    });
+
+    const summary = {
+      tablesAdded: tablesAdded.length,
+      tablesRemoved: tablesRemoved.length,
+      tablesChanged: tablesChanged.length,
+      columnsAdded: tablesChanged.reduce((sum, item) => sum + item.columnsAdded.length, 0),
+      columnsRemoved: tablesChanged.reduce((sum, item) => sum + item.columnsRemoved.length, 0),
+      columnsChanged: tablesChanged.reduce((sum, item) => sum + item.changedColumns.length, 0),
+    };
+
+    return {
+      summary,
+      tablesAdded,
+      tablesRemoved,
+      tablesChanged,
+    };
+  }, []);
+
   useEffect(() => {
     if (!isCreateDbModalOpen) return;
     if (isMysql) {
@@ -314,7 +628,95 @@ export default function DatabaseActionModals({
   }, [isCreateDbModalOpen, isMysql, dbCharset, loadCollationsForCharset]);
 
   useEffect(() => {
-    if (!isDbAdminModalOpen) return;
+    if (!isSchemaDiffModalOpen) return;
+    const names = Array.isArray(databaseNames) ? databaseNames : [];
+    const preferredSource = names.includes(activeDb) ? activeDb : names[0] || '';
+    const preferredTarget = names.find((name) => name !== preferredSource) || '';
+    setSchemaDiffSourceDb(preferredSource);
+    setSchemaDiffTargetDb(preferredTarget);
+    setSchemaDiffData({
+      loading: false,
+      error: '',
+      summary: null,
+      tablesAdded: [],
+      tablesRemoved: [],
+      tablesChanged: [],
+    });
+  }, [activeDb, databaseNames, isSchemaDiffModalOpen]);
+
+  useEffect(() => {
+    if (!isSchemaDiffModalOpen) return;
+    if (!schemaDiffSourceDb || !schemaDiffTargetDb) {
+      setSchemaDiffData((prev) => ({
+        ...prev,
+        loading: false,
+        error: t('schemaDiffSelectDatabases') || 'Select source and target databases.',
+      }));
+      return;
+    }
+    if (schemaDiffSourceDb === schemaDiffTargetDb) {
+      setSchemaDiffData((prev) => ({
+        ...prev,
+        loading: false,
+        error:
+          t('schemaDiffSelectDifferentDatabases') ||
+          'Source and target databases must be different.',
+      }));
+      return;
+    }
+
+    let cancelled = false;
+    const loadDiff = async () => {
+      setSchemaDiffData((prev) => ({
+        ...prev,
+        loading: true,
+        error: '',
+      }));
+
+      try {
+        const [leftSnapshot, rightSnapshot] = await Promise.all([
+          buildSchemaSnapshot(schemaDiffSourceDb),
+          buildSchemaSnapshot(schemaDiffTargetDb),
+        ]);
+        if (cancelled) return;
+        const compared = compareSchemaSnapshots(leftSnapshot, rightSnapshot);
+        setSchemaDiffData({
+          loading: false,
+          error: '',
+          summary: compared.summary,
+          tablesAdded: compared.tablesAdded,
+          tablesRemoved: compared.tablesRemoved,
+          tablesChanged: compared.tablesChanged,
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setSchemaDiffData({
+          loading: false,
+          error:
+            error?.message || t('loadFailed') || 'Failed to load data.',
+          summary: null,
+          tablesAdded: [],
+          tablesRemoved: [],
+          tablesChanged: [],
+        });
+      }
+    };
+
+    void loadDiff();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    buildSchemaSnapshot,
+    compareSchemaSnapshots,
+    isSchemaDiffModalOpen,
+    schemaDiffSourceDb,
+    schemaDiffTargetDb,
+    t,
+  ]);
+
+  useEffect(() => {
+    if (!isDbAdminModalOpen || isSchemaDiffModalOpen) return;
     if (!isMysql) {
       setDbAdminData({
         loading: false,
@@ -326,7 +728,7 @@ export default function DatabaseActionModals({
       return;
     }
     loadDbAdminData();
-  }, [activeDb, activeDbAdminConfig, isDbAdminModalOpen, isMysql, loadDbAdminData, t]);
+  }, [activeDb, activeDbAdminConfig, isDbAdminModalOpen, isMysql, isSchemaDiffModalOpen, loadDbAdminData, t]);
 
   return (
     <>
@@ -450,7 +852,215 @@ export default function DatabaseActionModals({
             </div>
 
             <div className="p-6 overflow-auto custom-scrollbar">
-              {!isMysql ? (
+              {isSchemaDiffModalOpen ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-zinc-400 mb-2">
+                        {t('schemaDiffSourceDb') || 'Source database'}
+                      </label>
+                      <SearchableSelectField
+                        value={schemaDiffSourceDb}
+                        onChange={setSchemaDiffSourceDb}
+                        options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                        placeholder={t('schemaDiffSourceDb') || 'Source database'}
+                        searchPlaceholder={t('search')}
+                        emptyLabel={t('noFilterResults')}
+                        tc={tc}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-zinc-400 mb-2">
+                        {t('schemaDiffTargetDb') || 'Target database'}
+                      </label>
+                      <SearchableSelectField
+                        value={schemaDiffTargetDb}
+                        onChange={setSchemaDiffTargetDb}
+                        options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                        placeholder={t('schemaDiffTargetDb') || 'Target database'}
+                        searchPlaceholder={t('search')}
+                        emptyLabel={t('noFilterResults')}
+                        tc={tc}
+                      />
+                    </div>
+                  </div>
+
+                  {schemaDiffData.loading ? (
+                    <div className="bg-[#151518] border border-[#333] rounded-lg p-6 flex items-center justify-center gap-2 text-zinc-400 text-sm">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{t('loading') || 'Loading...'}</span>
+                    </div>
+                  ) : schemaDiffData.error ? (
+                    <div className="bg-[#151518] border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
+                      {schemaDiffData.error}
+                    </div>
+                  ) : (
+                    <>
+                      {schemaDiffData.summary ? (
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
+                            <div className="text-[10px] uppercase text-zinc-500">
+                              {t('schemaDiffTablesAdded') || 'Tables +'}
+                            </div>
+                            <div className="text-sm font-semibold text-emerald-300">
+                              {schemaDiffData.summary.tablesAdded}
+                            </div>
+                          </div>
+                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
+                            <div className="text-[10px] uppercase text-zinc-500">
+                              {t('schemaDiffTablesRemoved') || 'Tables -'}
+                            </div>
+                            <div className="text-sm font-semibold text-red-300">
+                              {schemaDiffData.summary.tablesRemoved}
+                            </div>
+                          </div>
+                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
+                            <div className="text-[10px] uppercase text-zinc-500">
+                              {t('schemaDiffTablesChanged') || 'Tables changed'}
+                            </div>
+                            <div className="text-sm font-semibold text-zinc-200">
+                              {schemaDiffData.summary.tablesChanged}
+                            </div>
+                          </div>
+                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
+                            <div className="text-[10px] uppercase text-zinc-500">
+                              {t('schemaDiffColumnsAdded') || 'Columns +'}
+                            </div>
+                            <div className="text-sm font-semibold text-emerald-300">
+                              {schemaDiffData.summary.columnsAdded}
+                            </div>
+                          </div>
+                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
+                            <div className="text-[10px] uppercase text-zinc-500">
+                              {t('schemaDiffColumnsRemoved') || 'Columns -'}
+                            </div>
+                            <div className="text-sm font-semibold text-red-300">
+                              {schemaDiffData.summary.columnsRemoved}
+                            </div>
+                          </div>
+                          <div className="bg-[#151518] border border-[#333] rounded-md p-2">
+                            <div className="text-[10px] uppercase text-zinc-500">
+                              {t('schemaDiffColumnsChanged') || 'Columns changed'}
+                            </div>
+                            <div className="text-sm font-semibold text-zinc-200">
+                              {schemaDiffData.summary.columnsChanged}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {schemaDiffData.tablesAdded.length === 0 &&
+                      schemaDiffData.tablesRemoved.length === 0 &&
+                      schemaDiffData.tablesChanged.length === 0 ? (
+                        <div className="bg-[#151518] border border-[#333] rounded-lg p-4 text-sm text-zinc-400">
+                          {t('schemaDiffNoDiff') || 'No schema differences detected.'}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {schemaDiffData.tablesAdded.length > 0 ? (
+                            <div className="bg-[#151518] border border-[#333] rounded-lg p-3">
+                              <h4 className="text-xs font-semibold text-emerald-300 mb-2">
+                                {t('schemaDiffTablesAdded') || 'Tables added'}
+                              </h4>
+                              <div className="flex flex-wrap gap-1.5">
+                                {schemaDiffData.tablesAdded.map((tableName) => (
+                                  <span
+                                    key={`added-${tableName}`}
+                                    className="px-2 py-1 rounded border border-emerald-500/40 bg-emerald-500/10 text-[11px] text-emerald-200"
+                                  >
+                                    {tableName}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {schemaDiffData.tablesRemoved.length > 0 ? (
+                            <div className="bg-[#151518] border border-[#333] rounded-lg p-3">
+                              <h4 className="text-xs font-semibold text-red-300 mb-2">
+                                {t('schemaDiffTablesRemoved') || 'Tables removed'}
+                              </h4>
+                              <div className="flex flex-wrap gap-1.5">
+                                {schemaDiffData.tablesRemoved.map((tableName) => (
+                                  <span
+                                    key={`removed-${tableName}`}
+                                    className="px-2 py-1 rounded border border-red-500/40 bg-red-500/10 text-[11px] text-red-200"
+                                  >
+                                    {tableName}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {schemaDiffData.tablesChanged.length > 0 ? (
+                            <div className="bg-[#151518] border border-[#333] rounded-lg overflow-hidden">
+                              <div className="px-3 py-2 border-b border-[#2e2e32]">
+                                <h4 className="text-xs font-semibold text-zinc-200">
+                                  {t('schemaDiffTablesChanged') || 'Tables changed'}
+                                </h4>
+                              </div>
+                              <div className="max-h-[46vh] overflow-auto custom-scrollbar">
+                                {schemaDiffData.tablesChanged.map((item) => (
+                                  <div
+                                    key={`changed-${item.table}`}
+                                    className="px-3 py-3 border-b border-[#252529] last:border-b-0"
+                                  >
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className="text-sm font-semibold text-zinc-100">{item.table}</span>
+                                      {item.tableTypeChanged ? (
+                                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                          {item.beforeType} → {item.afterType}
+                                        </span>
+                                      ) : null}
+                                    </div>
+
+                                    {item.columnsAdded.length > 0 ? (
+                                      <div className="mb-1.5 text-[11px] text-emerald-300">
+                                        + {item.columnsAdded.join(', ')}
+                                      </div>
+                                    ) : null}
+                                    {item.columnsRemoved.length > 0 ? (
+                                      <div className="mb-1.5 text-[11px] text-red-300">
+                                        - {item.columnsRemoved.join(', ')}
+                                      </div>
+                                    ) : null}
+                                    {item.changedColumns.map((column) => (
+                                      <div
+                                        key={`${item.table}-${column.name}`}
+                                        className="mb-1.5 text-[11px] text-zinc-300"
+                                      >
+                                        <span className="font-semibold text-zinc-100">{column.name}</span>
+                                        <span className="text-zinc-500">: </span>
+                                        {column.changedProps.map((prop, index) => (
+                                          <span key={`${column.name}-${prop.field}`} className="mr-3">
+                                            <span className="text-zinc-400">{prop.field}</span>
+                                            <span className="text-zinc-500"> </span>
+                                            <span className="text-red-300">
+                                              {prop.before == null ? 'NULL' : String(prop.before)}
+                                            </span>
+                                            <span className="text-zinc-500"> → </span>
+                                            <span className="text-emerald-300">
+                                              {prop.after == null ? 'NULL' : String(prop.after)}
+                                            </span>
+                                            {index < column.changedProps.length - 1 ? (
+                                              <span className="text-zinc-600">; </span>
+                                            ) : null}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : !isMysql ? (
                 <div className="bg-[#151518] border border-[#333] rounded-lg p-4 text-sm text-zinc-400">
                   {t('mysqlOnlyAdminTabNotice') ||
                     'This section is currently available for MySQL-compatible drivers.'}
