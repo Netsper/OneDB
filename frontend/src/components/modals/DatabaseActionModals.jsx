@@ -1229,6 +1229,54 @@ export default function DatabaseActionModals({
               </div>
             </div>
 
+            {isSchemaDiffModalOpen ? (
+              <div className="px-4 md:px-6 pt-4 pb-4 border-b border-[#2e2e32] bg-[#17171a] shrink-0 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 md:gap-4 items-end">
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-400 mb-2">
+                      {t('schemaDiffSourceDb') || 'Source database'}
+                    </label>
+                    <SearchableSelectField
+                      value={schemaDiffSourceDb}
+                      onChange={setSchemaDiffSourceDb}
+                      options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                      placeholder={t('schemaDiffSourceDb') || 'Source database'}
+                      searchPlaceholder={t('search')}
+                      emptyLabel={t('noFilterResults')}
+                      tc={tc}
+                    />
+                  </div>
+
+                  <div className="hidden md:flex items-center justify-center pb-2">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-[#3a3a41] bg-[#121318] px-3 py-1.5 text-[11px] text-zinc-400">
+                      <ArrowLeftRight className="w-3.5 h-3.5" />
+                      <span>source → target</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-400 mb-2">
+                      {t('schemaDiffTargetDb') || 'Target database'}
+                    </label>
+                    <SearchableSelectField
+                      value={schemaDiffTargetDb}
+                      onChange={setSchemaDiffTargetDb}
+                      options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                      placeholder={t('schemaDiffTargetDb') || 'Target database'}
+                      searchPlaceholder={t('search')}
+                      emptyLabel={t('noFilterResults')}
+                      tc={tc}
+                    />
+                  </div>
+                </div>
+
+                <div className="md:hidden inline-flex items-center gap-2 rounded-full border border-[#3a3a41] bg-[#121318] px-3 py-1.5 text-[11px] text-zinc-400">
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  <span>source → target</span>
+                </div>
+              </div>
+            ) : null}
+
             <div
               className={isErdModalOpen ? 'p-0 overflow-hidden flex-1 min-h-0' : 'p-6 overflow-auto custom-scrollbar'}
             >
@@ -1396,51 +1444,7 @@ export default function DatabaseActionModals({
               ) : isSchemaDiffModalOpen ? (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-[#333] bg-gradient-to-b from-[#191a1f] to-[#151518] p-4 md:p-5">
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 items-end">
-                      <div>
-                        <label className="block text-[11px] font-medium text-zinc-400 mb-2">
-                          {t('schemaDiffSourceDb') || 'Source database'}
-                        </label>
-                        <SearchableSelectField
-                          value={schemaDiffSourceDb}
-                          onChange={setSchemaDiffSourceDb}
-                          options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
-                          placeholder={t('schemaDiffSourceDb') || 'Source database'}
-                          searchPlaceholder={t('search')}
-                          emptyLabel={t('noFilterResults')}
-                          tc={tc}
-                        />
-                      </div>
-
-                      <div className="hidden md:flex items-center justify-center pb-2">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-[#3a3a41] bg-[#121318] px-3 py-1.5 text-[11px] text-zinc-400">
-                          <ArrowLeftRight className="w-3.5 h-3.5" />
-                          <span>source → target</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-medium text-zinc-400 mb-2">
-                          {t('schemaDiffTargetDb') || 'Target database'}
-                        </label>
-                        <SearchableSelectField
-                          value={schemaDiffTargetDb}
-                          onChange={setSchemaDiffTargetDb}
-                          options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
-                          placeholder={t('schemaDiffTargetDb') || 'Target database'}
-                          searchPlaceholder={t('search')}
-                          emptyLabel={t('noFilterResults')}
-                          tc={tc}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="md:hidden mt-3 inline-flex items-center gap-2 rounded-full border border-[#3a3a41] bg-[#121318] px-3 py-1.5 text-[11px] text-zinc-400">
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
-                      <span>source → target</span>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                    <div className="flex flex-wrap gap-2 text-[11px]">
                       <span className="px-2 py-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">
                         + {t('schemaDiffAddedHint') || 'Present in source, missing in target'}
                       </span>
