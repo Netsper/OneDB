@@ -104,6 +104,7 @@ export default function DatabaseActionModals({
     tables: [],
     relationships: [],
   });
+  const [isSchemaDiffFullscreen, setIsSchemaDiffFullscreen] = useState(false);
   const [isErdFullscreen, setIsErdFullscreen] = useState(false);
   const schemaDiffInitializedRef = useRef(false);
   const erdInitializedRef = useRef(false);
@@ -827,6 +828,7 @@ export default function DatabaseActionModals({
   useEffect(() => {
     if (!isSchemaDiffModalOpen) {
       schemaDiffInitializedRef.current = false;
+      setIsSchemaDiffFullscreen(false);
       return;
     }
     if (schemaDiffInitializedRef.current) return;
@@ -1166,7 +1168,8 @@ export default function DatabaseActionModals({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div
             className={`bg-[#1c1c1c] border border-[#333] rounded-xl w-full flex flex-col shadow-2xl animate-in zoom-in-95 ${
-              isErdModalOpen && isErdFullscreen
+              (isErdModalOpen && isErdFullscreen) ||
+              (isSchemaDiffModalOpen && isSchemaDiffFullscreen)
                 ? 'max-w-[calc(100vw-2rem)] h-[calc(100vh-2rem)]'
                 : 'max-w-5xl max-h-[88vh]'
             }`}
@@ -1184,10 +1187,33 @@ export default function DatabaseActionModals({
                 {isSchemaDiffModalOpen ? (
                   <HoverTooltip
                     content={
-                      `${t('schemaDiffAddedHint') || 'Present in source, missing in target'}\n` +
-                      `${t('schemaDiffRemovedHint') || 'Present in target, missing in source'}\n` +
-                      `${t('schemaDiffChangedHint') || 'Exists on both sides but metadata differs'}`
+                      <div className="space-y-1.5 min-w-[250px]">
+                        <div className="text-[10px] uppercase tracking-wide text-zinc-400">
+                          {t('schemaDiffLegend') || 'Schema diff legend'}
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-zinc-200">
+                          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400" />
+                          <span>+ {t('schemaDiffTablesAdded') || 'Tables added'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-zinc-200">
+                          <span className="w-2.5 h-2.5 rounded-sm bg-rose-400" />
+                          <span>- {t('schemaDiffTablesRemoved') || 'Tables removed'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-zinc-200">
+                          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-300" />
+                          <span>+ {t('schemaDiffColumnsAdded') || 'Columns added'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-zinc-200">
+                          <span className="w-2.5 h-2.5 rounded-sm bg-amber-300" />
+                          <span>- {t('schemaDiffColumnsRemoved') || 'Columns removed'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-zinc-200">
+                          <span className="w-2.5 h-2.5 rounded-sm bg-zinc-400" />
+                          <span>~ {t('schemaDiffChangedHint') || 'Exists on both sides but metadata differs'}</span>
+                        </div>
+                      </div>
                     }
+                    className="w-auto"
                   >
                     <button
                       type="button"
@@ -1239,6 +1265,23 @@ export default function DatabaseActionModals({
                     )}
                   </button>
                 ) : null}
+                {isSchemaDiffModalOpen ? (
+                  <button
+                    onClick={() => setIsSchemaDiffFullscreen((prev) => !prev)}
+                    className="text-zinc-500 hover:text-zinc-200 p-1.5 hover:bg-[#2a2a2f] rounded transition-colors"
+                    title={
+                      isSchemaDiffFullscreen
+                        ? t('schemaDiffExitFullscreen') || 'Exit fullscreen'
+                        : t('schemaDiffFullscreen') || 'Fullscreen'
+                    }
+                  >
+                    {isSchemaDiffFullscreen ? (
+                      <Minimize2 className="w-4 h-4" />
+                    ) : (
+                      <Expand className="w-4 h-4" />
+                    )}
+                  </button>
+                ) : null}
                 <button
                   onClick={() => setModalConfig({ isOpen: false })}
                   className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"
@@ -1250,7 +1293,7 @@ export default function DatabaseActionModals({
 
             {isSchemaDiffModalOpen ? (
               <div className="px-4 md:px-6 pt-4 pb-4 border-b border-[#2e2e32] bg-[#17171a] shrink-0 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 md:gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-end">
                   <div>
                     <label className="block text-[11px] font-medium text-zinc-400 mb-2">
                       {t('schemaDiffSourceDb') || 'Source database'}
@@ -1264,13 +1307,6 @@ export default function DatabaseActionModals({
                       emptyLabel={t('noFilterResults')}
                       tc={tc}
                     />
-                  </div>
-
-                  <div className="hidden md:flex items-center justify-center pb-2">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[#3a3a41] bg-[#121318] px-3 py-1.5 text-[11px] text-zinc-400">
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
-                      <span>source → target</span>
-                    </div>
                   </div>
 
                   <div>
@@ -1288,16 +1324,17 @@ export default function DatabaseActionModals({
                     />
                   </div>
                 </div>
-
-                <div className="md:hidden inline-flex items-center gap-2 rounded-full border border-[#3a3a41] bg-[#121318] px-3 py-1.5 text-[11px] text-zinc-400">
-                  <ArrowLeftRight className="w-3.5 h-3.5" />
-                  <span>source → target</span>
-                </div>
               </div>
             ) : null}
 
             <div
-              className={isErdModalOpen ? 'p-0 overflow-hidden flex-1 min-h-0' : 'p-6 overflow-auto custom-scrollbar'}
+              className={
+                isErdModalOpen
+                  ? 'p-0 overflow-hidden flex-1 min-h-0'
+                  : isSchemaDiffModalOpen
+                    ? 'p-4 md:p-6 overflow-auto custom-scrollbar flex-1 min-h-0'
+                    : 'p-6 overflow-auto custom-scrollbar'
+              }
             >
               {isErdModalOpen ? (
                 <div className="h-full min-h-0 flex flex-col">
@@ -1462,20 +1499,6 @@ export default function DatabaseActionModals({
                 </div>
               ) : isSchemaDiffModalOpen ? (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-[#333] bg-gradient-to-b from-[#191a1f] to-[#151518] p-4 md:p-5">
-                    <div className="flex flex-wrap gap-2 text-[11px]">
-                      <span className="px-2 py-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">
-                        + {t('schemaDiffAddedHint') || 'Present in source, missing in target'}
-                      </span>
-                      <span className="px-2 py-1 rounded-md border border-red-500/30 bg-red-500/10 text-red-200">
-                        - {t('schemaDiffRemovedHint') || 'Present in target, missing in source'}
-                      </span>
-                      <span className="px-2 py-1 rounded-md border border-zinc-500/40 bg-zinc-500/10 text-zinc-300">
-                        ~ {t('schemaDiffChangedHint') || 'Exists on both sides but metadata differs'}
-                      </span>
-                    </div>
-                  </div>
-
                   {schemaDiffData.loading ? (
                     <div className="bg-[#151518] border border-[#333] rounded-xl p-8 flex items-center justify-center gap-2 text-zinc-400 text-sm">
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1497,11 +1520,11 @@ export default function DatabaseActionModals({
                               {schemaDiffData.summary.tablesAdded}
                             </div>
                           </div>
-                          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-                            <div className="text-[10px] uppercase text-red-200/90">
+                          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3">
+                            <div className="text-[10px] uppercase text-rose-200/90">
                               {t('schemaDiffTablesRemoved') || 'Tables -'}
                             </div>
-                            <div className="text-lg font-semibold text-red-200 mt-1">
+                            <div className="text-lg font-semibold text-rose-200 mt-1">
                               {schemaDiffData.summary.tablesRemoved}
                             </div>
                           </div>
@@ -1579,12 +1602,12 @@ export default function DatabaseActionModals({
                               )}
                             </div>
 
-                            <div className="rounded-xl border border-red-500/25 bg-red-500/5 p-3.5">
+                            <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-3.5">
                               <div className="flex items-center justify-between mb-2.5">
-                                <h4 className="text-xs font-semibold text-red-300">
+                                <h4 className="text-xs font-semibold text-rose-300">
                                   {t('schemaDiffTablesRemoved') || 'Tables removed'}
                                 </h4>
-                                <span className="text-[10px] px-2 py-0.5 rounded border border-red-500/30 text-red-200">
+                                <span className="text-[10px] px-2 py-0.5 rounded border border-rose-500/30 text-rose-200">
                                   {schemaDiffData.tablesRemoved.length}
                                 </span>
                               </div>
@@ -1593,7 +1616,7 @@ export default function DatabaseActionModals({
                                   {schemaDiffData.tablesRemoved.map((tableName) => (
                                     <div
                                       key={`removed-${tableName}`}
-                                      className="text-[12px] text-red-100 border border-red-500/20 bg-red-500/10 rounded-md px-2.5 py-1.5"
+                                      className="text-[12px] text-rose-100 border border-rose-500/20 bg-rose-500/10 rounded-md px-2.5 py-1.5"
                                     >
                                       {tableName}
                                     </div>

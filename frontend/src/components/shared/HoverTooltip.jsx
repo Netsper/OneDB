@@ -9,9 +9,12 @@ export default function HoverTooltip({
 }) {
   const anchorRef = useRef(null);
   const [open, setOpen] = useState(false);
-  const text = String(content || '');
+  const hasContent =
+    content !== null &&
+    content !== undefined &&
+    !(typeof content === 'string' && content.trim() === '');
 
-  if (text === '') {
+  if (!hasContent) {
     return <span className={`inline-block w-full ${className}`}>{children}</span>;
   }
 
@@ -30,7 +33,7 @@ export default function HoverTooltip({
         offset={6}
         className="pointer-events-auto bg-[#2e2e32] border border-[#444] p-2.5 rounded-lg shadow-2xl z-[160] text-xs text-zinc-200 whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-auto w-fit max-w-[min(680px,calc(100vw-32px))] leading-relaxed"
       >
-        {text}
+        {content}
       </FloatingPanel>
     </span>
   );
