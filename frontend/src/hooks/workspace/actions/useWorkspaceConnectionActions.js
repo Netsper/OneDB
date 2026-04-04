@@ -20,6 +20,13 @@ export default function useWorkspaceConnectionActions({
   refreshSchemas,
   showToast,
 }) {
+  const getSessionStorage = () => {
+    if (typeof sessionStorage === 'undefined' || sessionStorage == null) {
+      return null;
+    }
+    return sessionStorage;
+  };
+
   const persistLastConnection = () => {
     try {
       if (typeof localStorage === 'undefined' || typeof localStorage.setItem !== 'function') {
@@ -33,8 +40,14 @@ export default function useWorkspaceConnectionActions({
           user: String(connForm.user || '').trim(),
           port: String(connForm.port || '').trim(),
           driver: connForm.driver === 'pgsql' ? 'pgsql' : 'mysql',
+          requiresPassword: String(connForm.pass || '') !== '',
         }),
       );
+
+      const session = getSessionStorage();
+      if (session && typeof session.setItem === 'function') {
+        session.setItem('dbm_last_connection_pass', String(connForm.pass || ''));
+      }
     } catch {
       // Ignore storage failures in restricted/private runtime contexts.
     }

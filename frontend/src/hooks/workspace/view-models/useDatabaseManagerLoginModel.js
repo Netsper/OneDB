@@ -28,11 +28,22 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
     if (workspace.isConnected) return;
     if (workspace.isConnecting) return;
     if (didAttemptRestoreRef.current) return;
-    if (!localStorage.getItem('dbm_last_connection')) return;
+    const rawLastConnection = localStorage.getItem('dbm_last_connection');
+    if (!rawLastConnection) return;
+
+    try {
+      const parsed = JSON.parse(rawLastConnection);
+      const requiresPassword = Boolean(parsed?.requiresPassword);
+      if (requiresPassword && !String(workspace.connForm?.pass || '')) {
+        return;
+      }
+    } catch {
+      // Fallback to attempting connection when persisted shape is invalid.
+    }
 
     didAttemptRestoreRef.current = true;
     handleConnect();
-  }, [handleConnect, workspace.isConnected, workspace.isConnecting]);
+  }, [handleConnect, workspace.connForm?.pass, workspace.isConnected, workspace.isConnecting]);
 
   const loginScreenProps = {
     t,

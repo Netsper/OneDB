@@ -145,6 +145,13 @@ export default function useWorkspaceLayoutViewModel(params) {
       onOpenSettings: () => setIsSettingsOpen(true),
       onLogout: () => {
         localStorage.removeItem('dbm_last_connection');
+        try {
+          if (typeof sessionStorage !== 'undefined' && typeof sessionStorage.removeItem === 'function') {
+            sessionStorage.removeItem('dbm_last_connection_pass');
+          }
+        } catch {
+          // Ignore storage access failures.
+        }
         setIsConnected(false);
       },
     },

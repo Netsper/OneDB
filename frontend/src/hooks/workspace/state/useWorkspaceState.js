@@ -121,6 +121,10 @@ function loadPersistedConnectionForm() {
           user: String(parsed.user || DEFAULT_CONNECTION_FORM.user),
           port: String(parsed.port || DEFAULT_CONNECTION_FORM.port),
           driver: parsed.driver === 'pgsql' ? 'pgsql' : 'mysql',
+          requiresPassword:
+            typeof parsed.requiresPassword === 'boolean'
+              ? parsed.requiresPassword
+              : String(parsed.pass || '') !== '',
         };
         localStorage.setItem('dbm_last_connection', JSON.stringify(sanitized));
       } catch {
@@ -128,11 +132,20 @@ function loadPersistedConnectionForm() {
       }
     }
 
+    let sessionPass = '';
+    try {
+      if (typeof sessionStorage !== 'undefined' && typeof sessionStorage.getItem === 'function') {
+        sessionPass = String(sessionStorage.getItem('dbm_last_connection_pass') || '');
+      }
+    } catch {
+      sessionPass = '';
+    }
+
     return {
       name: String(parsed.name || '').trim(),
       host: String(parsed.host || DEFAULT_CONNECTION_FORM.host),
       user: String(parsed.user || DEFAULT_CONNECTION_FORM.user),
-      pass: '',
+      pass: sessionPass,
       port: String(parsed.port || DEFAULT_CONNECTION_FORM.port),
       driver: parsed.driver === 'pgsql' ? 'pgsql' : 'mysql',
     };
