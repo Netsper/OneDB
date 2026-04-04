@@ -42,18 +42,66 @@ export default function useOneDbApi({
     (database = '') => {
       const host = connForm.host.trim();
       const port = connForm.port.trim();
+      const sshTunnelEnabled = Boolean(connForm.sshTunnelEnabled);
+      const resolvedHost = sshTunnelEnabled
+        ? String(connForm.sshTunnelHost || '').trim() || '127.0.0.1'
+        : host;
+      const resolvedPort = sshTunnelEnabled
+        ? String(connForm.sshTunnelPort || '').trim()
+        : port;
+      const sslEnabled = Boolean(connForm.sslEnabled);
+
+      const ssl = sslEnabled
+        ? {
+            enabled: true,
+            mode: String(connForm.sslMode || '').trim(),
+            ca: String(connForm.sslCa || '').trim(),
+            cert: String(connForm.sslCert || '').trim(),
+            key: String(connForm.sslKey || '').trim(),
+            passphrase: String(connForm.sslPassphrase || ''),
+          }
+        : { enabled: false };
 
       return {
         driver: currentDriver,
-        ...(host !== '' ? { host } : {}),
-        ...(port !== '' ? { port } : {}),
+        ...(resolvedHost !== '' ? { host: resolvedHost } : {}),
+        ...(resolvedPort !== '' ? { port: resolvedPort } : {}),
         username: connForm.user.trim(),
         password: connForm.pass,
         database: currentDriver === 'pgsql' ? database || 'postgres' : database,
         charset: 'utf8mb4',
+        ssl,
+        ...(sshTunnelEnabled
+          ? {
+              ssh_tunnel: {
+                enabled: true,
+                host: String(connForm.sshTunnelHost || '').trim(),
+                port: String(connForm.sshTunnelPort || '').trim(),
+              },
+            }
+          : {}),
+        ...(String(connForm.secretRef || '').trim() !== ''
+          ? { secret_ref: String(connForm.secretRef || '').trim() }
+          : {}),
       };
     },
-    [connForm.host, connForm.pass, connForm.port, connForm.user, currentDriver],
+    [
+      connForm.host,
+      connForm.pass,
+      connForm.port,
+      connForm.secretRef,
+      connForm.sshTunnelEnabled,
+      connForm.sshTunnelHost,
+      connForm.sshTunnelPort,
+      connForm.sslCa,
+      connForm.sslCert,
+      connForm.sslEnabled,
+      connForm.sslKey,
+      connForm.sslMode,
+      connForm.sslPassphrase,
+      connForm.user,
+      currentDriver,
+    ],
   );
 
   const apiActionUrl = useCallback((action) => `?api=${encodeURIComponent(action)}`, []);

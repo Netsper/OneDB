@@ -40,6 +40,15 @@ export default function useWorkspaceConnectionActions({
           user: String(connForm.user || '').trim(),
           port: String(connForm.port || '').trim(),
           driver: connForm.driver === 'pgsql' ? 'pgsql' : 'mysql',
+          sslEnabled: Boolean(connForm.sslEnabled),
+          sslMode: String(connForm.sslMode || 'prefer'),
+          sslCa: String(connForm.sslCa || ''),
+          sslCert: String(connForm.sslCert || ''),
+          sslKey: String(connForm.sslKey || ''),
+          sshTunnelEnabled: Boolean(connForm.sshTunnelEnabled),
+          sshTunnelHost: String(connForm.sshTunnelHost || '127.0.0.1'),
+          sshTunnelPort: String(connForm.sshTunnelPort || ''),
+          secretRef: String(connForm.secretRef || '').trim(),
           requiresPassword: String(connForm.pass || '') !== '',
         }),
       );
@@ -104,7 +113,7 @@ export default function useWorkspaceConnectionActions({
 
     setSavedConnections((prev) => [
       ...prev.filter((connection) => connection.name !== profileName),
-      { ...connForm, pass: '', name: profileName },
+      { ...connForm, pass: '', sslPassphrase: '', name: profileName },
     ]);
     setConnForm((prev) => ({ ...prev, name: profileName }));
     setIsSaveProfileModalOpen(false);
@@ -120,6 +129,16 @@ export default function useWorkspaceConnectionActions({
       port: profile.port || '',
       name: profile.name || '',
       driver: inferredDriver,
+      sslEnabled: Boolean(profile.sslEnabled),
+      sslMode: String(profile.sslMode || 'prefer'),
+      sslCa: String(profile.sslCa || ''),
+      sslCert: String(profile.sslCert || ''),
+      sslKey: String(profile.sslKey || ''),
+      sslPassphrase: '',
+      sshTunnelEnabled: Boolean(profile.sshTunnelEnabled),
+      sshTunnelHost: String(profile.sshTunnelHost || '127.0.0.1'),
+      sshTunnelPort: String(profile.sshTunnelPort || ''),
+      secretRef: String(profile.secretRef || ''),
     });
     setLoginError('');
   };

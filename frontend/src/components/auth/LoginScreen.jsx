@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { Database, Loader2, Server, Settings, Trash2, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Database,
+  Loader2,
+  Server,
+  Settings,
+  Trash2,
+  X,
+} from 'lucide-react';
 import SettingsModal from '../modals/SettingsModal.jsx';
 import SelectField from '../shared/SelectField.jsx';
 
@@ -30,6 +39,7 @@ export default function LoginScreen({
   clearLoginError,
 }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   return (
     <div
@@ -190,6 +200,220 @@ export default function LoginScreen({
                   setConnForm({ ...connForm, pass: e.target.value });
                 }}
               />
+            </div>
+
+            <div className="border border-[#333] rounded-md bg-[#1c1c1c] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setIsAdvancedOpen((prev) => !prev)}
+                className="w-full px-3 py-2.5 flex items-center justify-between text-xs text-zinc-300 hover:bg-[#222228] transition-colors"
+              >
+                <span className="font-medium uppercase tracking-wider">
+                  {t('advancedConnection') || 'Advanced connection'}
+                </span>
+                {isAdvancedOpen ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+                )}
+              </button>
+
+              {isAdvancedOpen ? (
+                <div className="border-t border-[#2e2e32] p-3 space-y-3 bg-[#18181b]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-zinc-300 font-medium">
+                        {t('sslTls') || 'SSL/TLS'}
+                      </p>
+                      <p className="text-[11px] text-zinc-500">
+                        {t('sslTlsHint') ||
+                          'Use secure transport and optional client certificates.'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearLoginError();
+                        setConnForm({ ...connForm, sslEnabled: !connForm.sslEnabled });
+                      }}
+                      className={`h-6 w-11 rounded-full border transition-colors relative ${
+                        connForm.sslEnabled
+                          ? `${tc.bg} border-transparent`
+                          : 'bg-[#232328] border-[#444]'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                          connForm.sslEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {connForm.sslEnabled ? (
+                    <div className="grid grid-cols-1 gap-2">
+                      <div>
+                        <label className="block text-[11px] text-zinc-400 mb-1">
+                          {t('sslMode') || 'SSL mode'}
+                        </label>
+                        <SelectField
+                          className={`w-full appearance-none bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-xs text-zinc-100 ${tc.focusRing}`}
+                          value={connForm.sslMode || 'prefer'}
+                          onChange={(event) =>
+                            setConnForm({ ...connForm, sslMode: event.target.value })
+                          }
+                        >
+                          <option value="disable">disable</option>
+                          <option value="allow">allow</option>
+                          <option value="prefer">prefer</option>
+                          <option value="require">require</option>
+                          <option value="verify-ca">verify-ca</option>
+                          <option value="verify-full">verify-full</option>
+                        </SelectField>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-zinc-400 mb-1">
+                          {t('sslCaPath') || 'CA cert path'}
+                        </label>
+                        <input
+                          type="text"
+                          className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-xs text-zinc-200 ${tc.focusRing}`}
+                          value={connForm.sslCa || ''}
+                          onChange={(event) =>
+                            setConnForm({ ...connForm, sslCa: event.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] text-zinc-400 mb-1">
+                            {t('sslCertPath') || 'Client cert path'}
+                          </label>
+                          <input
+                            type="text"
+                            className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-xs text-zinc-200 ${tc.focusRing}`}
+                            value={connForm.sslCert || ''}
+                            onChange={(event) =>
+                              setConnForm({ ...connForm, sslCert: event.target.value })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-zinc-400 mb-1">
+                            {t('sslKeyPath') || 'Client key path'}
+                          </label>
+                          <input
+                            type="text"
+                            className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-xs text-zinc-200 ${tc.focusRing}`}
+                            value={connForm.sslKey || ''}
+                            onChange={(event) =>
+                              setConnForm({ ...connForm, sslKey: event.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-zinc-400 mb-1">
+                          {t('sslKeyPassphrase') || 'Key passphrase'}
+                        </label>
+                        <input
+                          type="password"
+                          className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-xs text-zinc-200 ${tc.focusRing}`}
+                          value={connForm.sslPassphrase || ''}
+                          onChange={(event) =>
+                            setConnForm({ ...connForm, sslPassphrase: event.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="border-t border-[#2e2e32] pt-3">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div>
+                        <p className="text-xs text-zinc-300 font-medium">
+                          {t('sshTunnel') || 'SSH tunnel'}
+                        </p>
+                        <p className="text-[11px] text-zinc-500">
+                          {t('sshTunnelHint') ||
+                            'Use an already established local tunnel endpoint.'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearLoginError();
+                          setConnForm({
+                            ...connForm,
+                            sshTunnelEnabled: !connForm.sshTunnelEnabled,
+                          });
+                        }}
+                        className={`h-6 w-11 rounded-full border transition-colors relative ${
+                          connForm.sshTunnelEnabled
+                            ? `${tc.bg} border-transparent`
+                            : 'bg-[#232328] border-[#444]'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                            connForm.sshTunnelEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {connForm.sshTunnelEnabled ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] text-zinc-400 mb-1">
+                            {t('sshLocalHost') || 'Local host'}
+                          </label>
+                          <input
+                            type="text"
+                            className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-xs text-zinc-200 ${tc.focusRing}`}
+                            value={connForm.sshTunnelHost || ''}
+                            onChange={(event) =>
+                              setConnForm({ ...connForm, sshTunnelHost: event.target.value })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-zinc-400 mb-1">
+                            {t('sshLocalPort') || 'Local port'}
+                          </label>
+                          <input
+                            type="text"
+                            className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-xs text-zinc-200 ${tc.focusRing}`}
+                            value={connForm.sshTunnelPort || ''}
+                            onChange={(event) =>
+                              setConnForm({ ...connForm, sshTunnelPort: event.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="border-t border-[#2e2e32] pt-3">
+                    <label className="block text-xs text-zinc-300 font-medium mb-1">
+                      {t('secretProfileRef') || 'Secret profile reference'}
+                    </label>
+                    <input
+                      type="text"
+                      className={`w-full bg-[#1c1c1c] border border-[#333] rounded-md py-2 px-3 text-xs text-zinc-200 ${tc.focusRing}`}
+                      placeholder={t('secretProfileRefHint') || 'e.g. PROD_MAIN'}
+                      value={connForm.secretRef || ''}
+                      onChange={(event) =>
+                        setConnForm({ ...connForm, secretRef: event.target.value })
+                      }
+                    />
+                    <p className="mt-1 text-[11px] text-zinc-500">
+                      {t('secretProfileRefDesc') ||
+                        'Backend reads ONEDB_SECRET_<REF> from environment and merges credentials.'}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
             {loginError && (
               <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">

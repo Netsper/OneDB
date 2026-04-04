@@ -19,7 +19,9 @@ final class ConnectionFactory
      */
     public static function makePdo(array $connection): PDO
     {
+        $connection = self::resolveConnectionSecretPayload($connection);
         $driver = strtolower((string)($connection['driver'] ?? 'mysql'));
+        $sslConfig = self::normalizeSslConfig($connection['ssl'] ?? null);
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -29,6 +31,33 @@ final class ConnectionFactory
         if ($driver === 'mysql' && defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY')) {
             // Stream large SELECT result sets instead of buffering all rows in client memory.
             $options[PDO::MYSQL_ATTR_USE_BUFFERED_QUERY] = false;
+        }
+
+        if ($driver === 'mysql' && $sslConfig['enabled']) {
+            if (
+                $sslConfig['ca'] !== ''
+                && defined('PDO::MYSQL_ATTR_SSL_CA')
+            ) {
+                $options[PDO::MYSQL_ATTR_SSL_CA] = $sslConfig['ca'];
+            }
+            if (
+                $sslConfig['cert'] !== ''
+                && defined('PDO::MYSQL_ATTR_SSL_CERT')
+            ) {
+                $options[PDO::MYSQL_ATTR_SSL_CERT] = $sslConfig['cert'];
+            }
+            if (
+                $sslConfig['key'] !== ''
+                && defined('PDO::MYSQL_ATTR_SSL_KEY')
+            ) {
+                $options[PDO::MYSQL_ATTR_SSL_KEY] = $sslConfig['key'];
+            }
+            if (
+                $sslConfig['verifyServerCert'] !== null
+                && defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')
+            ) {
+                $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = $sslConfig['verifyServerCert'];
+            }
         }
 
         if ($driver === 'sqlite') {
@@ -55,12 +84,29 @@ final class ConnectionFactory
 
             if ($driver === 'pgsql') {
                 // Server-level connections are allowed even when no database is selected.
-                $dsn = sprintf(
-                    'pgsql:host=%s;port=%s%s',
-                    $host,
-                    $port,
-                    $db !== '' ? ';dbname=' . $db : ''
-                );
+                $dsnParts = [
+                    'pgsql:host=' . $host,
+                    'port=' . $port,
+                ];
+                if ($db !== '') {
+                    $dsnParts[] = 'dbname=' . $db;
+                }
+                if ($sslConfig['enabled']) {
+                    $dsnParts[] = 'sslmode=' . ($sslConfig['mode'] !== '' ? $sslConfig['mode'] : 'require');
+                    if ($sslConfig['ca'] !== '') {
+                        $dsnParts[] = 'sslrootcert=' . $sslConfig['ca'];
+                    }
+                    if ($sslConfig['cert'] !== '') {
+                        $dsnParts[] = 'sslcert=' . $sslConfig['cert'];
+                    }
+                    if ($sslConfig['key'] !== '') {
+                        $dsnParts[] = 'sslkey=' . $sslConfig['key'];
+                    }
+                    if ($sslConfig['passphrase'] !== '') {
+                        $dsnParts[] = 'sslpassword=' . $sslConfig['passphrase'];
+                    }
+                }
+                $dsn = implode(';', $dsnParts);
             } else {
                 $mysqlSocket = trim((string)($connection['unix_socket'] ?? $connection['socket'] ?? ''));
 
@@ -218,5 +264,120 @@ final class ConnectionFactory
         $normalizedRoot = rtrim(str_replace('\\', '/', $root), '/');
 
         return $normalizedPath === $normalizedRoot || strpos($normalizedPath, $normalizedRoot . '/') === 0;
+    }
+
+    /**
+     * Loads optional connection payload overrides from environment-backed secret profiles.
+     *
+     * @param array<string,mixed> $connection
+     * @return array<string,mixed>
+     */
+    private static function resolveConnectionSecretPayload(array $connection): array
+    {
+        $secretRefRaw = trim((string)($connection['secret_ref'] ?? ''));
+        if ($secretRefRaw === '') {
+            return $connection;
+        }
+
+        $normalizedRef = strtoupper((string)preg_replace('/[^A-Z0-9_]/', '_', $secretRefRaw));
+        if ($normalizedRef === '') {
+            throw new \RuntimeException('Secret reference is invalid.');
+        }
+
+        $envKey = 'ONEDB_SECRET_' . $normalizedRef;
+        $rawSecret = getenv($envKey);
+        if (!is_string($rawSecret) || trim($rawSecret) === '') {
+            throw new \RuntimeException('Secret profile was not found: ' . $normalizedRef);
+        }
+
+        $decoded = json_decode($rawSecret, true);
+        if (!is_array($decoded)) {
+            throw new \RuntimeException('Secret profile payload is invalid JSON: ' . $normalizedRef);
+        }
+
+        return self::mergeConnectionPayload($connection, $decoded);
+    }
+
+    /**
+     * @param array<string,mixed> $connection
+     * @param array<string,mixed> $secret
+     * @return array<string,mixed>
+     */
+    private static function mergeConnectionPayload(array $connection, array $secret): array
+    {
+        $merged = $connection;
+        foreach ($secret as $key => $value) {
+            if (!is_string($key) || $key === '') {
+                continue;
+            }
+
+            if ($key === 'ssl' && is_array($value)) {
+                $existingSsl = is_array($merged['ssl'] ?? null) ? $merged['ssl'] : [];
+                $merged['ssl'] = array_merge($value, $existingSsl);
+                continue;
+            }
+
+            if (!array_key_exists($key, $merged) || self::isEmptyConnectionValue($merged[$key])) {
+                $merged[$key] = $value;
+            }
+        }
+
+        return $merged;
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private static function isEmptyConnectionValue($value): bool
+    {
+        if ($value === null) {
+            return true;
+        }
+        if (is_string($value)) {
+            return trim($value) === '';
+        }
+        if (is_array($value)) {
+            return $value === [];
+        }
+        return false;
+    }
+
+    /**
+     * @param mixed $value
+     * @return array{
+     *   enabled:bool,
+     *   mode:string,
+     *   ca:string,
+     *   cert:string,
+     *   key:string,
+     *   passphrase:string,
+     *   verifyServerCert:?bool
+     * }
+     */
+    private static function normalizeSslConfig($value): array
+    {
+        $ssl = is_array($value) ? $value : [];
+        $verifyRaw = $ssl['verifyServerCert'] ?? $ssl['verify_server_cert'] ?? null;
+        $verify = null;
+        if (is_bool($verifyRaw)) {
+            $verify = $verifyRaw;
+        } elseif (is_string($verifyRaw) && trim($verifyRaw) !== '') {
+            $normalized = strtolower(trim($verifyRaw));
+            if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+                $verify = true;
+            } elseif (in_array($normalized, ['0', 'false', 'no', 'off'], true)) {
+                $verify = false;
+            }
+        }
+
+        return [
+            'enabled' => (bool)($ssl['enabled'] ?? false),
+            'mode' => trim((string)($ssl['mode'] ?? '')),
+            'ca' => trim((string)($ssl['ca'] ?? '')),
+            'cert' => trim((string)($ssl['cert'] ?? '')),
+            'key' => trim((string)($ssl['key'] ?? '')),
+            'passphrase' => (string)($ssl['passphrase'] ?? ''),
+            'verifyServerCert' => $verify,
+        ];
     }
 }

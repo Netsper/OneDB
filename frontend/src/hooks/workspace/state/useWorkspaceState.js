@@ -22,6 +22,16 @@ const DEFAULT_CONNECTION_FORM = Object.freeze({
   pass: '',
   port: '3306',
   driver: 'mysql',
+  sslEnabled: false,
+  sslMode: 'prefer',
+  sslCa: '',
+  sslCert: '',
+  sslKey: '',
+  sslPassphrase: '',
+  sshTunnelEnabled: false,
+  sshTunnelHost: '127.0.0.1',
+  sshTunnelPort: '',
+  secretRef: '',
 });
 
 function sanitizeSavedConnectionProfiles(rawValue) {
@@ -38,6 +48,16 @@ function sanitizeSavedConnectionProfiles(rawValue) {
       pass: '',
       port: String(item.port || ''),
       driver: item.driver === 'pgsql' ? 'pgsql' : 'mysql',
+      sslEnabled: Boolean(item.sslEnabled),
+      sslMode: String(item.sslMode || 'prefer'),
+      sslCa: String(item.sslCa || ''),
+      sslCert: String(item.sslCert || ''),
+      sslKey: String(item.sslKey || ''),
+      sslPassphrase: '',
+      sshTunnelEnabled: Boolean(item.sshTunnelEnabled),
+      sshTunnelHost: String(item.sshTunnelHost || '127.0.0.1'),
+      sshTunnelPort: String(item.sshTunnelPort || ''),
+      secretRef: String(item.secretRef || ''),
     }))
     .filter((item) => item.name !== '' || item.host !== '' || item.user !== '');
 }
@@ -148,6 +168,16 @@ function loadPersistedConnectionForm() {
       pass: sessionPass,
       port: String(parsed.port || DEFAULT_CONNECTION_FORM.port),
       driver: parsed.driver === 'pgsql' ? 'pgsql' : 'mysql',
+      sslEnabled: Boolean(parsed.sslEnabled),
+      sslMode: String(parsed.sslMode || DEFAULT_CONNECTION_FORM.sslMode),
+      sslCa: String(parsed.sslCa || ''),
+      sslCert: String(parsed.sslCert || ''),
+      sslKey: String(parsed.sslKey || ''),
+      sslPassphrase: '',
+      sshTunnelEnabled: Boolean(parsed.sshTunnelEnabled),
+      sshTunnelHost: String(parsed.sshTunnelHost || DEFAULT_CONNECTION_FORM.sshTunnelHost),
+      sshTunnelPort: String(parsed.sshTunnelPort || ''),
+      secretRef: String(parsed.secretRef || ''),
     };
   } catch {
     return { ...DEFAULT_CONNECTION_FORM };
