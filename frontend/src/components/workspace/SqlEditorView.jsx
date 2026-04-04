@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { autocompletion, completeFromList } from '@codemirror/autocomplete';
 import { sql } from '@codemirror/lang-sql';
 import { EditorView, lineNumbers } from '@codemirror/view';
@@ -10,7 +10,6 @@ import {
   Check,
   CircleDot,
   Download,
-  GitCommit,
   GripHorizontal,
   History,
   Loader2,
@@ -102,6 +101,8 @@ export default function SqlEditorView({
   exportToCSV,
   copyToClipboard,
 }) {
+  const [explainViewMode, setExplainViewMode] = useState('timeline');
+
   const sqlEditorSettings = {
     ...DEFAULT_SQL_EDITOR_SETTINGS,
     ...(settings?.sqlEditor || {}),
@@ -213,28 +214,127 @@ export default function SqlEditorView({
     sqlEditorSettings.wordWrap,
   ]);
 
-  const renderPlanSteps = (steps) =>
-    (Array.isArray(steps) ? steps : []).map((planItem, i) => (
-        <div key={i} className="flex items-start gap-4 mb-3 relative pl-6">
-        <div className="absolute left-1.5 top-1.5 bottom-[-1rem] w-[1px] bg-[#333]" />
-        <GitCommit className="w-3 h-3 text-zinc-500 absolute left-0 top-1 bg-[#1c1c1c]" />
-        <div className="flex-1">
-          <div className={`font-bold mb-1 ${tc.textLight}`}>
-            {planItem.node}{' '}
-            {planItem.entity !== '-' && (
-              <>
-                on <span className="text-zinc-200">"{planItem.entity}"</span>
-              </>
-            )}
+  const parsePlanMetric = (value) => {
+    const raw = String(value ?? '').trim();
+    if (!raw || raw === '-') return 0;
+    if (raw.includes('..')) {
+      const tail = raw.split('..').at(-1);
+      const parsedRange = Number(String(tail || '').replace(/[^\d.]/g, ''));
+      return Number.isFinite(parsedRange) ? parsedRange : 0;
+    }
+    const parsed = Number(raw.replace(/[^\d.]/g, ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const buildPlanMetrics = (steps) => {
+    const items = (Array.isArray(steps) ? steps : []).map((item) => ({
+      ...item,
+      rowsValue: parsePlanMetric(item?.rows),
+      costValue: parsePlanMetric(item?.cost),
+      timeValue: parsePlanMetric(item?.time),
+    }));
+
+    const maxRows = Math.max(0, ...items.map((item) => item.rowsValue));
+    const maxCost = Math.max(0, ...items.map((item) => item.costValue));
+    const maxTime = Math.max(0, ...items.map((item) => item.timeValue));
+    const totalRows = items.reduce((sum, item) => sum + item.rowsValue, 0);
+
+    return { items, maxRows, maxCost, maxTime, totalRows };
+  };
+
+  const metricWidth = (value, max) => {
+    if (max <= 0 || value <= 0) return '0%';
+    return `${Math.max(4, Math.round((value / max) * 100))}%`;
+  };
+
+  const renderPlanTimeline = (steps) => {
+    const { items, maxRows, maxCost, maxTime } = buildPlanMetrics(steps);
+    return items.map((planItem, i) => (
+      <div key={i} className="mb-3 rounded border border-[#2e2e32] bg-[#18181b] p-3">
+        <div className="text-[11px] font-semibold text-zinc-200">
+          {planItem.node} <span className="text-zinc-500">on</span>{' '}
+          <span className="text-zinc-400">{planItem.entity}</span>
+        </div>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div>
+            <div className="text-[10px] text-zinc-500 uppercase">{t('rows')}</div>
+            <div className="text-[11px] text-zinc-200">{planItem.rows}</div>
+            <div className="h-1.5 mt-1 rounded bg-[#222]">
+              <div
+                className="h-1.5 rounded bg-cyan-600/80"
+                style={{ width: metricWidth(planItem.rowsValue, maxRows) }}
+              />
+            </div>
           </div>
-          <div className="text-zinc-500">
-            {t('cost')}: <span className="text-zinc-400">{planItem.cost}</span> • {t('rows')}:{' '}
-            <span className="text-zinc-400">{planItem.rows}</span> • {t('time')}:{' '}
-            <span className="text-zinc-400">{planItem.time}s</span>
+          <div>
+            <div className="text-[10px] text-zinc-500 uppercase">{t('cost')}</div>
+            <div className="text-[11px] text-zinc-200">{planItem.cost}</div>
+            <div className="h-1.5 mt-1 rounded bg-[#222]">
+              <div
+                className="h-1.5 rounded bg-amber-600/80"
+                style={{ width: metricWidth(planItem.costValue, maxCost) }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] text-zinc-500 uppercase">{t('time')}</div>
+            <div className="text-[11px] text-zinc-200">{planItem.time}</div>
+            <div className="h-1.5 mt-1 rounded bg-[#222]">
+              <div
+                className="h-1.5 rounded bg-emerald-600/80"
+                style={{ width: metricWidth(planItem.timeValue, maxTime) }}
+              />
+            </div>
           </div>
         </div>
       </div>
     ));
+  };
+
+  const renderPlanTable = (steps) => (
+    <div className="overflow-auto border border-[#2e2e32] rounded">
+      <table className="min-w-full text-[11px] text-left">
+        <thead className="bg-[#18181b] text-zinc-400 border-b border-[#2e2e32]">
+          <tr>
+            <th className="px-3 py-2">#</th>
+            <th className="px-3 py-2">{t('planNode')}</th>
+            <th className="px-3 py-2">{t('planEntity')}</th>
+            <th className="px-3 py-2">{t('rows')}</th>
+            <th className="px-3 py-2">{t('cost')}</th>
+            <th className="px-3 py-2">{t('time')}</th>
+          </tr>
+        </thead>
+        <tbody className="text-zinc-300">
+          {(Array.isArray(steps) ? steps : []).map((item, index) => (
+            <tr key={`${item.node}-${index}`} className="border-b border-[#242428] last:border-b-0">
+              <td className="px-3 py-2 text-zinc-500">{index + 1}</td>
+              <td className="px-3 py-2">{item.node}</td>
+              <td className="px-3 py-2">{item.entity}</td>
+              <td className="px-3 py-2">{item.rows}</td>
+              <td className="px-3 py-2">{item.cost}</td>
+              <td className="px-3 py-2">{item.time}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderPlanRaw = (steps) => (
+    <pre className="text-[11px] leading-relaxed text-zinc-300 bg-[#18181b] border border-[#2e2e32] rounded p-3 overflow-auto">
+      {JSON.stringify(
+        (Array.isArray(steps) ? steps : []).map((item) => item?.raw || item),
+        null,
+        2,
+      )}
+    </pre>
+  );
+
+  const renderPlanByMode = (steps) => {
+    if (explainViewMode === 'table') return renderPlanTable(steps);
+    if (explainViewMode === 'raw') return renderPlanRaw(steps);
+    return renderPlanTimeline(steps);
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#18181b]" ref={sqlContainerRef}>
@@ -494,8 +594,48 @@ export default function SqlEditorView({
                       </button>
                     </div>
                   </div>
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setExplainViewMode('timeline')}
+                      className={`px-2.5 py-1 rounded text-[10px] border transition-colors ${explainViewMode === 'timeline' ? `${tc.border} ${tc.textLight} bg-[#202124]` : 'border-[#333] text-zinc-400 hover:text-zinc-200'}`}
+                    >
+                      {t('explainViewTimeline')}
+                    </button>
+                    <button
+                      onClick={() => setExplainViewMode('table')}
+                      className={`px-2.5 py-1 rounded text-[10px] border transition-colors ${explainViewMode === 'table' ? `${tc.border} ${tc.textLight} bg-[#202124]` : 'border-[#333] text-zinc-400 hover:text-zinc-200'}`}
+                    >
+                      {t('explainViewTable')}
+                    </button>
+                    <button
+                      onClick={() => setExplainViewMode('raw')}
+                      className={`px-2.5 py-1 rounded text-[10px] border transition-colors ${explainViewMode === 'raw' ? `${tc.border} ${tc.textLight} bg-[#202124]` : 'border-[#333] text-zinc-400 hover:text-zinc-200'}`}
+                    >
+                      {t('explainViewRaw')}
+                    </button>
+                  </div>
+                  {sqlResult.plan && (
+                    <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <div className="rounded border border-[#2e2e32] bg-[#18181b] px-3 py-2">
+                        <div className="text-[10px] text-zinc-500 uppercase">{t('planSteps')}</div>
+                        <div className="text-sm text-zinc-200">{sqlResult.plan.length}</div>
+                      </div>
+                      <div className="rounded border border-[#2e2e32] bg-[#18181b] px-3 py-2">
+                        <div className="text-[10px] text-zinc-500 uppercase">{t('explainSummaryRows')}</div>
+                        <div className="text-sm text-zinc-200">
+                          {buildPlanMetrics(sqlResult.plan).totalRows}
+                        </div>
+                      </div>
+                      <div className="rounded border border-[#2e2e32] bg-[#18181b] px-3 py-2">
+                        <div className="text-[10px] text-zinc-500 uppercase">{t('explainSummaryCost')}</div>
+                        <div className="text-sm text-zinc-200">
+                          {buildPlanMetrics(sqlResult.plan).maxCost}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {sqlResult.plan ? (
-                    renderPlanSteps(sqlResult.plan)
+                    renderPlanByMode(sqlResult.plan)
                   ) : (
                     <div className="text-zinc-500">{t('noPlan')}</div>
                   )}
@@ -508,13 +648,13 @@ export default function SqlEditorView({
                           <div className="text-[11px] uppercase tracking-wide text-zinc-500 mb-3">
                             {t('explainEstimated')}
                           </div>
-                          {renderPlanSteps(sqlResult.planCompare.estimated)}
+                          {renderPlanByMode(sqlResult.planCompare.estimated)}
                         </div>
                         <div className="border border-[#2e2e32] rounded bg-[#18181b] p-3">
                           <div className="text-[11px] uppercase tracking-wide text-zinc-500 mb-3">
                             {t('explainActual')}
                           </div>
-                          {renderPlanSteps(sqlResult.planCompare.actual)}
+                          {renderPlanByMode(sqlResult.planCompare.actual)}
                         </div>
                       </div>
                     ) : (
