@@ -110,6 +110,7 @@ export default function WorkspaceMainPanel({
   saveSnippet,
   setHistoryTab,
   runSql,
+  cancelRunningSql,
   isQueryRunning,
   sqlQuery,
   handleSqlKeyDown,
@@ -290,6 +291,7 @@ export default function WorkspaceMainPanel({
                 setModalConfig({ isOpen: true, type: 'sql_history' });
               }}
               runSql={runSql}
+              cancelRunningSql={cancelRunningSql}
               isQueryRunning={isQueryRunning}
               sqlQuery={sqlQuery}
               handleSqlKeyDown={handleSqlKeyDown}

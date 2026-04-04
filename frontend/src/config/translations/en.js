@@ -128,6 +128,7 @@ export const en = {
   saveSnippet: 'Save',
   historySaved: 'History & Saved',
   run: 'Run',
+  cancelQuery: 'Cancel Query',
   queryResults: 'Query Results',
   dataTab: 'Data',
   explainTab: 'Execution Plan (EXPLAIN)',
@@ -143,6 +144,7 @@ export const en = {
   noPlan: 'Plan not found. Supported for SELECT queries only.',
   sqlFormatted: 'SQL query formatted.',
   sqlExecuted: 'Query executed successfully.',
+  sqlCanceled: 'Query canceled.',
 
   // Dashboard
   dbOverview: 'Database overview and management',

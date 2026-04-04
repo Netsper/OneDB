@@ -118,10 +118,26 @@ export default function useWorkspaceSqlActions({
   setSqlQuery,
   setSqlSnippets,
   currentDriver,
+  sqlAbortControllerRef,
 }) {
+  const abortControllerRef = sqlAbortControllerRef || { current: null };
+
+  const cancelRunningSql = () => {
+    if (!abortControllerRef.current) return;
+    abortControllerRef.current.abort();
+    abortControllerRef.current = null;
+  };
+
   const runSql = async () => {
     const sql = sqlQuery.trim();
     if (!sql) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const queryAbortController = new AbortController();
+    abortControllerRef.current = queryAbortController;
+
     setIsQueryRunning(true);
 
     if (!sqlHistory.includes(sqlQuery)) {
@@ -130,7 +146,9 @@ export default function useWorkspaceSqlActions({
 
     const started = performance.now();
     try {
-      const result = await executeSql(sql, activeDb || '');
+      const result = await executeSql(sql, activeDb || '', {
+        signal: queryAbortController.signal,
+      });
       const elapsedSec = ((performance.now() - started) / 1000).toFixed(3);
       setQps((prev) => prev + 1);
 
@@ -142,7 +160,9 @@ export default function useWorkspaceSqlActions({
         let planCompare = null;
         if (/^(select|with)\b/i.test(sql)) {
           try {
-            const explainResult = await executeSql(`EXPLAIN ${sql}`, activeDb || '');
+            const explainResult = await executeSql(`EXPLAIN ${sql}`, activeDb || '', {
+              signal: queryAbortController.signal,
+            });
             plan = mapExplainRowsToPlanItems(explainResult.rows || [], getFirstValue);
           } catch {
             plan = null;
@@ -154,6 +174,9 @@ export default function useWorkspaceSqlActions({
                 const analyzeResult = await executeSql(
                   `EXPLAIN (ANALYZE, BUFFERS) ${sql}`,
                   activeDb || '',
+                  {
+                    signal: queryAbortController.signal,
+                  },
                 );
                 const actualPlan = mapExplainRowsToPlanItems(analyzeResult.rows || [], getFirstValue);
                 if (actualPlan.length > 0) {
@@ -163,7 +186,9 @@ export default function useWorkspaceSqlActions({
                   };
                 }
               } else if (currentDriver === 'mysql') {
-                const jsonPlanResult = await executeSql(`EXPLAIN FORMAT=JSON ${sql}`, activeDb || '');
+                const jsonPlanResult = await executeSql(`EXPLAIN FORMAT=JSON ${sql}`, activeDb || '', {
+                  signal: queryAbortController.signal,
+                });
                 const actualPlan = mapExplainRowsToPlanItems(
                   jsonPlanResult.rows || [],
                   getFirstValue,
@@ -175,7 +200,9 @@ export default function useWorkspaceSqlActions({
                   };
                 }
               } else if (currentDriver === 'sqlite') {
-                const sqlitePlanResult = await executeSql(`EXPLAIN QUERY PLAN ${sql}`, activeDb || '');
+                const sqlitePlanResult = await executeSql(`EXPLAIN QUERY PLAN ${sql}`, activeDb || '', {
+                  signal: queryAbortController.signal,
+                });
                 const actualPlan = mapExplainRowsToPlanItems(
                   sqlitePlanResult.rows || [],
                   getFirstValue,
@@ -217,8 +244,15 @@ export default function useWorkspaceSqlActions({
 
       showToast(t('sqlExecuted'), 'success');
     } catch (error) {
+      if (error?.name === 'AbortError') {
+        showToast(t('sqlCanceled'), 'info');
+        return;
+      }
       showToast(error.message || 'SQL execution failed.', 'error');
     } finally {
+      if (abortControllerRef.current === queryAbortController) {
+        abortControllerRef.current = null;
+      }
       setIsQueryRunning(false);
     }
   };
@@ -253,6 +287,7 @@ export default function useWorkspaceSqlActions({
 
   return {
     runSql,
+    cancelRunningSql,
     handleSqlKeyDown,
     formatSql,
     saveSnippet,

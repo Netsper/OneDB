@@ -13,6 +13,7 @@ import {
   History,
   Loader2,
   Play,
+  Square,
   Sparkles,
 } from 'lucide-react';
 
@@ -83,6 +84,7 @@ export default function SqlEditorView({
   saveSnippet,
   openSqlHistory,
   runSql,
+  cancelRunningSql,
   isQueryRunning,
   sqlQuery,
   handleSqlKeyDown,
@@ -312,6 +314,15 @@ export default function SqlEditorView({
             {t('run')}{' '}
             <span className="text-white/60 ml-1 font-normal tracking-widest text-[10px]">⌘↵</span>
           </button>
+          {isQueryRunning && (
+            <button
+              onClick={cancelRunningSql}
+              className="px-3 py-1.5 rounded text-xs font-medium bg-[#2a1f22] hover:bg-[#3a2529] text-rose-200 border border-rose-900/60 transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+              {t('cancelQuery')}
+            </button>
+          )}
         </div>
 
         <div className="flex-1 bg-[#18181b]">

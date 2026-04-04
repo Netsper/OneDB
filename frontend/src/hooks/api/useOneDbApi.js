@@ -96,6 +96,7 @@ export default function useOneDbApi({
         credentials: 'same-origin',
         headers,
         body: method === 'GET' ? undefined : JSON.stringify(payload || {}),
+        signal: options.signal,
       });
 
       let data = null;
@@ -114,11 +115,11 @@ export default function useOneDbApi({
   );
 
   const executeSql = useCallback(
-    async (sql, database = activeDb) =>
+    async (sql, database = activeDb, options = {}) =>
       callApi('query', {
         connection: buildConnectionPayload(database || ''),
         sql,
-      }),
+      }, options),
     [activeDb, buildConnectionPayload, callApi],
   );
 

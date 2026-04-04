@@ -119,6 +119,7 @@ export const tr = {
   saveSnippet: 'Kaydet',
   historySaved: 'Geçmiş & Kayıtlılar',
   run: 'Çalıştır',
+  cancelQuery: 'Sorguyu İptal Et',
   queryResults: 'Sorgu Sonuçları',
   dataTab: 'Veri',
   explainTab: 'Sorgu Planı (EXPLAIN)',
@@ -134,6 +135,7 @@ export const tr = {
   noPlan: 'Plan bulunamadı. Sadece SELECT sorguları için desteklenir.',
   sqlFormatted: 'SQL sorgusu formatlandı.',
   sqlExecuted: 'SQL sorgusu başarıyla yürütüldü.',
+  sqlCanceled: 'Sorgu iptal edildi.',
 
   dbOverview: 'Veritabanı genel bakış ve yönetimi',
   importSqlBtn: 'İçe Aktar (.sql)',

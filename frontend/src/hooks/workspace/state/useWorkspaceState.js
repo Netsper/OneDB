@@ -372,6 +372,7 @@ export default function useWorkspaceState() {
   const tableFilterButtonRef = useRef(null);
   const tableColumnsButtonRef = useRef(null);
   const autoRefreshButtonRef = useRef(null);
+  const sqlAbortControllerRef = useRef(null);
 
   const [cpuUsage, setCpuUsage] = useState(0);
   const [qps, setQps] = useState(0);
@@ -534,6 +535,7 @@ export default function useWorkspaceState() {
     tableFilterButtonRef,
     tableColumnsButtonRef,
     autoRefreshButtonRef,
+    sqlAbortControllerRef,
     cpuUsage,
     setCpuUsage,
     qps,
