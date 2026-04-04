@@ -1169,18 +1169,40 @@ export default function DatabaseActionModals({
                 : 'max-w-5xl max-h-[88vh]'
             }`}
           >
-            <div className="px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center bg-[#18181b] rounded-t-xl shrink-0">
-              <div className="flex items-center gap-2">
+            <div className="px-4 md:px-6 py-4 border-b border-[#2e2e32] flex justify-between items-center gap-3 bg-[#18181b] rounded-t-xl shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
                 {activeDbAdminConfig?.icon ? (
                   <activeDbAdminConfig.icon className="w-4 h-4 text-zinc-300" />
                 ) : (
                   <Database className="w-4 h-4 text-zinc-300" />
                 )}
-                <h3 className="text-base font-semibold text-zinc-100">
+                <h3 className="text-base font-semibold text-zinc-100 truncate">
                   {activeDbAdminConfig?.title || ''}
                 </h3>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2 md:gap-3">
+                {isErdModalOpen ? (
+                  <div className="hidden md:flex items-center gap-2">
+                    <div className="w-[260px]">
+                      <SearchableSelectField
+                        value={erdDb}
+                        onChange={setErdDb}
+                        options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                        placeholder={t('selectDb')}
+                        searchPlaceholder={t('search')}
+                        emptyLabel={t('noFilterResults')}
+                        tc={tc}
+                      />
+                    </div>
+                    <div className="px-2.5 py-1.5 rounded-md border border-[#333] bg-[#151518] text-[11px] text-zinc-400">
+                      {t('tables') || 'Tables'}: <span className="text-zinc-100 font-semibold">{erdData.tables.length}</span>
+                    </div>
+                    <div className="px-2.5 py-1.5 rounded-md border border-[#333] bg-[#151518] text-[11px] text-zinc-400">
+                      {t('relationships') || 'Relationships'}:{' '}
+                      <span className="text-zinc-100 font-semibold">{erdData.relationships.length}</span>
+                    </div>
+                  </div>
+                ) : null}
                 {isErdModalOpen ? (
                   <button
                     onClick={() => setIsErdFullscreen((prev) => !prev)}
@@ -1207,67 +1229,62 @@ export default function DatabaseActionModals({
               </div>
             </div>
 
-            <div className="p-6 overflow-auto custom-scrollbar">
+            <div
+              className={isErdModalOpen ? 'p-0 overflow-hidden flex-1 min-h-0' : 'p-6 overflow-auto custom-scrollbar'}
+            >
               {isErdModalOpen ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-medium text-zinc-400 mb-2">
-                        {t('selectDb')}
-                      </label>
-                      <SearchableSelectField
-                        value={erdDb}
-                        onChange={setErdDb}
-                        options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
-                        placeholder={t('selectDb')}
-                        searchPlaceholder={t('search')}
-                        emptyLabel={t('noFilterResults')}
-                        tc={tc}
-                      />
-                    </div>
-                    <div className="bg-[#151518] border border-[#333] rounded-md px-3 py-2">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <span className="text-[11px] text-zinc-500">{t('tables') || 'Tables'}</span>
-                          <div className="text-sm font-semibold text-zinc-100">{erdData.tables.length}</div>
-                        </div>
-                        <div>
-                          <span className="text-[11px] text-zinc-500">{t('relationships') || 'Relationships'}</span>
-                          <div className="text-sm font-semibold text-zinc-100">
-                            {erdData.relationships.length}
-                          </div>
-                        </div>
+                <div className="h-full min-h-0 flex flex-col">
+                  <div className="md:hidden px-4 py-3 border-b border-[#2b2b30] bg-[#17171a] space-y-2.5">
+                    <SearchableSelectField
+                      value={erdDb}
+                      onChange={setErdDb}
+                      options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                      placeholder={t('selectDb')}
+                      searchPlaceholder={t('search')}
+                      emptyLabel={t('noFilterResults')}
+                      tc={tc}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="px-2.5 py-1.5 rounded-md border border-[#333] bg-[#151518] text-[11px] text-zinc-400">
+                        {t('tables') || 'Tables'}: <span className="text-zinc-100 font-semibold">{erdData.tables.length}</span>
+                      </div>
+                      <div className="px-2.5 py-1.5 rounded-md border border-[#333] bg-[#151518] text-[11px] text-zinc-400">
+                        {t('relationships') || 'Relationships'}:{' '}
+                        <span className="text-zinc-100 font-semibold">{erdData.relationships.length}</span>
                       </div>
                     </div>
                   </div>
 
                   {erdData.loading ? (
-                    <div className="bg-[#151518] border border-[#333] rounded-lg p-6 flex items-center justify-center gap-2 text-zinc-400 text-sm">
+                    <div className="h-full bg-[#131316] flex items-center justify-center gap-2 text-zinc-400 text-sm">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>{t('loading') || 'Loading...'}</span>
                     </div>
                   ) : erdData.error ? (
-                    <div className="bg-[#151518] border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
+                    <div className="m-4 bg-[#151518] border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
                       {erdData.error}
                     </div>
                   ) : erdData.tables.length === 0 ? (
-                    <div className="bg-[#151518] border border-[#333] rounded-lg p-4 text-sm text-zinc-400">
+                    <div className="m-4 bg-[#151518] border border-[#333] rounded-lg p-4 text-sm text-zinc-400">
                       {t('noRecords')}
                     </div>
                   ) : (
-                    <div className="bg-[#151518] border border-[#333] rounded-lg overflow-hidden">
+                    <div className="bg-[#131316] flex-1 min-h-0 overflow-hidden">
                       <div
-                        className={`overflow-auto custom-scrollbar ${
-                          isErdFullscreen ? 'max-h-[calc(100vh-11rem)]' : 'max-h-[64vh]'
-                        }`}
+                        className="h-full overflow-auto custom-scrollbar"
+                        style={{
+                          backgroundImage:
+                            'radial-gradient(circle at 1px 1px, rgba(148,163,184,0.14) 1px, transparent 0)',
+                          backgroundSize: '24px 24px',
+                        }}
                       >
                         {(() => {
                           const COLUMN_COUNT = isErdFullscreen ? 5 : 4;
-                          const CARD_WIDTH = isErdFullscreen ? 290 : 250;
-                          const CARD_HEIGHT_BASE = 70;
+                          const CARD_WIDTH = isErdFullscreen ? 320 : 280;
+                          const CARD_HEIGHT_BASE = 72;
                           const CARD_HEIGHT_PER_COLUMN = 19;
-                          const GAP_X = isErdFullscreen ? 64 : 56;
-                          const GAP_Y = isErdFullscreen ? 48 : 36;
+                          const GAP_X = isErdFullscreen ? 72 : 62;
+                          const GAP_Y = isErdFullscreen ? 52 : 42;
                           const PADDING = isErdFullscreen ? 36 : 24;
 
                           const positions = new Map();
@@ -1310,8 +1327,8 @@ export default function DatabaseActionModals({
                                       key={`${relation.fromTable}-${relation.fromColumn}-${relation.toTable}-${relation.toColumn}-${index}`}
                                       d={`M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`}
                                       fill="none"
-                                      stroke="rgba(161,161,170,0.45)"
-                                      strokeWidth="1.5"
+                                      stroke="rgba(148,163,184,0.62)"
+                                      strokeWidth="1.8"
                                     />
                                   );
                                 })}
@@ -1323,7 +1340,7 @@ export default function DatabaseActionModals({
                                 return (
                                   <div
                                     key={table.name}
-                                    className="absolute rounded-md border border-[#3a3a40] bg-[#101013]/95 backdrop-blur-sm shadow-lg"
+                                    className="absolute rounded-lg border border-[#464652] bg-[#0f1014]/95 backdrop-blur-sm shadow-[0_10px_35px_rgba(0,0,0,0.45)]"
                                     style={{
                                       left: position.x,
                                       top: position.y,
@@ -1335,7 +1352,7 @@ export default function DatabaseActionModals({
                                       <span className="text-xs font-semibold text-zinc-100 truncate">
                                         {table.name}
                                       </span>
-                                      <span className="text-[10px] uppercase text-zinc-500">
+                                      <span className="text-[10px] uppercase text-zinc-400">
                                         {table.type}
                                       </span>
                                     </div>
