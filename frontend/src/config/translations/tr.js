@@ -329,4 +329,6 @@ export const tr = {
   colAdded: "Sütun '{name}' eklendi.",
   mockDataAdded: '10 adet sahte veri üretildi.',
   mustBeNumber: "'{col}' sütunu sayısal bir değer olmalıdır!",
+  downloadCompiledOneDb: "Derlenmiş OneDb'yi İndir",
+  building: 'Derleniyor...',
 };

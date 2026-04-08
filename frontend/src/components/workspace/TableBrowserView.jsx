@@ -121,10 +121,7 @@ export default function TableBrowserView({
     const safeViewportHeight = Math.max(viewportHeight, ROW_HEIGHT * 8);
     const visibleRows = Math.ceil(safeViewportHeight / ROW_HEIGHT);
     const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN_ROWS);
-    const endIndex = Math.min(
-      paginatedData.length,
-      startIndex + visibleRows + OVERSCAN_ROWS * 2,
-    );
+    const endIndex = Math.min(paginatedData.length, startIndex + visibleRows + OVERSCAN_ROWS * 2);
 
     return {
       startIndex,
@@ -170,7 +167,11 @@ export default function TableBrowserView({
 
   useEffect(() => {
     const recalcPinnedOffsets = () => {
-      if (!indexHeaderRef.current || !Array.isArray(pinnedColumnNames) || pinnedColumnNames.length === 0) {
+      if (
+        !indexHeaderRef.current ||
+        !Array.isArray(pinnedColumnNames) ||
+        pinnedColumnNames.length === 0
+      ) {
         setPinnedLeftOffsets({});
         return;
       }
@@ -443,184 +444,184 @@ export default function TableBrowserView({
                 const pinnedLeft = pinnedLeftOffsets[col.name];
 
                 return (
-                <th
-                  key={col.name}
-                  ref={(node) => {
-                    if (node) {
-                      columnHeaderRefs.current[col.name] = node;
-                    } else {
-                      delete columnHeaderRefs.current[col.name];
-                    }
-                  }}
-                  className={`px-4 py-2 border-r border-[#2e2e32] font-normal last:border-r-0 hover:bg-[#232323] transition-colors group relative align-top ${
-                    pinned ? 'sticky bg-[#1c1c1c] shadow-[inset_-1px_0_0_rgba(46,46,50,1)]' : ''
-                  }`}
-                  style={{
-                    resize: 'horizontal',
-                    overflow: 'visible',
-                    minWidth: '100px',
-                    ...(pinned && pinnedLeft !== undefined
-                      ? { left: `${pinnedLeft}px`, zIndex: 24 }
-                      : {}),
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {getColumnIcon(col.type)}
-                      <span className="text-zinc-200 font-medium">{col.name}</span>
-                      {pinned ? <Pin className={`w-3 h-3 ${tc.textLight} opacity-80`} /> : null}
-                      {col.isPrimary && <Key className="w-3 h-3 text-amber-500 opacity-70" />}
-                      {col.isForeign && (
-                        <LinkIcon
-                          className="w-3 h-3 text-blue-400 opacity-70"
-                          title="Foreign Key"
-                        />
-                      )}
-                    </div>
-                    <div className="flex items-center">
-                      {sortConfig.key === col.name && (
-                        <ArrowDownUp
-                          className={`w-3.5 h-3.5 mr-1 ${tc.textLight} ${sortConfig.direction === 'desc' ? 'rotate-180' : ''} transition-transform`}
-                        />
-                      )}
-                      <button
-                        ref={(node) => {
-                          if (node) {
-                            columnTriggerRefs.current[col.name] = node;
-                          } else {
-                            delete columnTriggerRefs.current[col.name];
-                          }
-                        }}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openColumnMenu(col);
-                        }}
-                        className="p-1 rounded text-zinc-500 hover:text-zinc-200 hover:bg-[#2e2e32] opacity-0 group-hover:opacity-100 transition-opacity"
-                        title={t('columnOptions')}
-                      >
-                        <MoreHorizontal className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <MenuSurface
-                    open={columnMenu.columnName === col.name && Boolean(columnMenu.draft)}
-                    anchor={columnTriggerRefs.current[col.name] || null}
-                    placement="bottom-end"
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-3 z-[120] w-64"
+                  <th
+                    key={col.name}
+                    ref={(node) => {
+                      if (node) {
+                        columnHeaderRefs.current[col.name] = node;
+                      } else {
+                        delete columnHeaderRefs.current[col.name];
+                      }
+                    }}
+                    className={`px-4 py-2 border-r border-[#2e2e32] font-normal last:border-r-0 hover:bg-[#232323] transition-colors group relative align-top ${
+                      pinned ? 'sticky bg-[#1c1c1c] shadow-[inset_-1px_0_0_rgba(46,46,50,1)]' : ''
+                    }`}
+                    style={{
+                      resize: 'horizontal',
+                      overflow: 'visible',
+                      minWidth: '100px',
+                      ...(pinned && pinnedLeft !== undefined
+                        ? { left: `${pinnedLeft}px`, zIndex: 24 }
+                        : {}),
+                    }}
                   >
-                    {columnMenu.columnName === col.name && columnMenu.draft ? (
-                      <>
-                        <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-                          {t('columnOptions')}
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              toggleColumnPin(col.name);
-                              setColumnMenu({ columnName: null, draft: null });
-                            }}
-                            className={`col-span-2 px-2 py-1.5 rounded text-xs border flex items-center justify-center gap-1.5 ${
-                              pinned
-                                ? `${tc.border} ${tc.textLight} ${tc.lightBg}`
-                                : 'border-[#333] text-zinc-300 hover:bg-[#2e2e32]'
-                            }`}
-                          >
-                            <Pin className="w-3.5 h-3.5" />
-                            {pinned ? t('unpinColumn') : t('pinColumn')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPage(1);
-                              setSortConfig({ key: col.name, direction: 'asc' });
-                              setColumnMenu({ columnName: null, draft: null });
-                            }}
-                            className="px-2 py-1.5 rounded text-xs border border-[#333] text-zinc-300 hover:bg-[#2e2e32]"
-                          >
-                            {t('sortAsc')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPage(1);
-                              setSortConfig({ key: col.name, direction: 'desc' });
-                              setColumnMenu({ columnName: null, draft: null });
-                            }}
-                            className="px-2 py-1.5 rounded text-xs border border-[#333] text-zinc-300 hover:bg-[#2e2e32]"
-                          >
-                            {t('sortDesc')}
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          <SelectField
-                            value={columnMenu.draft.operator}
-                            onChange={(e) =>
-                              setColumnMenu((prev) => ({
-                                ...prev,
-                                draft: { ...prev.draft, operator: e.target.value },
-                              }))
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {getColumnIcon(col.type)}
+                        <span className="text-zinc-200 font-medium">{col.name}</span>
+                        {pinned ? <Pin className={`w-3 h-3 ${tc.textLight} opacity-80`} /> : null}
+                        {col.isPrimary && <Key className="w-3 h-3 text-amber-500 opacity-70" />}
+                        {col.isForeign && (
+                          <LinkIcon
+                            className="w-3 h-3 text-blue-400 opacity-70"
+                            title="Foreign Key"
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center">
+                        {sortConfig.key === col.name && (
+                          <ArrowDownUp
+                            className={`w-3.5 h-3.5 mr-1 ${tc.textLight} ${sortConfig.direction === 'desc' ? 'rotate-180' : ''} transition-transform`}
+                          />
+                        )}
+                        <button
+                          ref={(node) => {
+                            if (node) {
+                              columnTriggerRefs.current[col.name] = node;
+                            } else {
+                              delete columnTriggerRefs.current[col.name];
                             }
-                            className={`${selectClass} px-2 py-1.5 text-xs`}
-                          >
-                            {getFilterOperatorOptions(col).map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </SelectField>
-                          {isTemporalColumn(col) ? (
-                            <TemporalInputField
-                              type="datetime-local"
-                              value={columnMenu.draft.value}
-                              onChange={(e) =>
-                                setColumnMenu((prev) => ({
-                                  ...prev,
-                                  draft: { ...prev.draft, value: e.target.value },
-                                }))
-                              }
-                              className={`w-full bg-[#18181b] border border-[#333] rounded px-2 py-1.5 text-xs text-zinc-200 ${tc.focusRing}`}
-                            />
-                          ) : (
-                            <input
-                              type={isNumericColumn(col) ? 'number' : 'text'}
-                              value={columnMenu.draft.value}
-                              onChange={(e) =>
-                                setColumnMenu((prev) => ({
-                                  ...prev,
-                                  draft: { ...prev.draft, value: e.target.value },
-                                }))
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') applyColumnFilter(col.name);
+                          }}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openColumnMenu(col);
+                          }}
+                          className="p-1 rounded text-zinc-500 hover:text-zinc-200 hover:bg-[#2e2e32] opacity-0 group-hover:opacity-100 transition-opacity"
+                          title={t('columnOptions')}
+                        >
+                          <MoreHorizontal className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <MenuSurface
+                      open={columnMenu.columnName === col.name && Boolean(columnMenu.draft)}
+                      anchor={columnTriggerRefs.current[col.name] || null}
+                      placement="bottom-end"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-3 z-[120] w-64"
+                    >
+                      {columnMenu.columnName === col.name && columnMenu.draft ? (
+                        <>
+                          <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+                            {t('columnOptions')}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                toggleColumnPin(col.name);
+                                setColumnMenu({ columnName: null, draft: null });
                               }}
-                              placeholder={t('valuePlaceholder')}
-                              className={`w-full bg-[#18181b] border border-[#333] rounded px-2 py-1.5 text-xs text-zinc-200 ${tc.focusRing}`}
-                            />
-                          )}
-                        </div>
-                        <div className="flex justify-between gap-2 mt-3">
-                          <button
-                            type="button"
-                            onClick={() => clearColumnFilter(col.name)}
-                            className="px-2 py-1.5 rounded text-xs border border-[#333] text-zinc-300 hover:bg-[#2e2e32]"
-                          >
-                            {t('clearFilter')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => applyColumnFilter(col.name)}
-                            className={`px-2 py-1.5 rounded text-xs text-white ${tc.bg} ${tc.hoverBg}`}
-                          >
-                            {t('apply')}
-                          </button>
-                        </div>
-                      </>
-                    ) : null}
-                  </MenuSurface>
-                </th>
+                              className={`col-span-2 px-2 py-1.5 rounded text-xs border flex items-center justify-center gap-1.5 ${
+                                pinned
+                                  ? `${tc.border} ${tc.textLight} ${tc.lightBg}`
+                                  : 'border-[#333] text-zinc-300 hover:bg-[#2e2e32]'
+                              }`}
+                            >
+                              <Pin className="w-3.5 h-3.5" />
+                              {pinned ? t('unpinColumn') : t('pinColumn')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPage(1);
+                                setSortConfig({ key: col.name, direction: 'asc' });
+                                setColumnMenu({ columnName: null, draft: null });
+                              }}
+                              className="px-2 py-1.5 rounded text-xs border border-[#333] text-zinc-300 hover:bg-[#2e2e32]"
+                            >
+                              {t('sortAsc')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPage(1);
+                                setSortConfig({ key: col.name, direction: 'desc' });
+                                setColumnMenu({ columnName: null, draft: null });
+                              }}
+                              className="px-2 py-1.5 rounded text-xs border border-[#333] text-zinc-300 hover:bg-[#2e2e32]"
+                            >
+                              {t('sortDesc')}
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            <SelectField
+                              value={columnMenu.draft.operator}
+                              onChange={(e) =>
+                                setColumnMenu((prev) => ({
+                                  ...prev,
+                                  draft: { ...prev.draft, operator: e.target.value },
+                                }))
+                              }
+                              className={`${selectClass} px-2 py-1.5 text-xs`}
+                            >
+                              {getFilterOperatorOptions(col).map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </SelectField>
+                            {isTemporalColumn(col) ? (
+                              <TemporalInputField
+                                type="datetime-local"
+                                value={columnMenu.draft.value}
+                                onChange={(e) =>
+                                  setColumnMenu((prev) => ({
+                                    ...prev,
+                                    draft: { ...prev.draft, value: e.target.value },
+                                  }))
+                                }
+                                className={`w-full bg-[#18181b] border border-[#333] rounded px-2 py-1.5 text-xs text-zinc-200 ${tc.focusRing}`}
+                              />
+                            ) : (
+                              <input
+                                type={isNumericColumn(col) ? 'number' : 'text'}
+                                value={columnMenu.draft.value}
+                                onChange={(e) =>
+                                  setColumnMenu((prev) => ({
+                                    ...prev,
+                                    draft: { ...prev.draft, value: e.target.value },
+                                  }))
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') applyColumnFilter(col.name);
+                                }}
+                                placeholder={t('valuePlaceholder')}
+                                className={`w-full bg-[#18181b] border border-[#333] rounded px-2 py-1.5 text-xs text-zinc-200 ${tc.focusRing}`}
+                              />
+                            )}
+                          </div>
+                          <div className="flex justify-between gap-2 mt-3">
+                            <button
+                              type="button"
+                              onClick={() => clearColumnFilter(col.name)}
+                              className="px-2 py-1.5 rounded text-xs border border-[#333] text-zinc-300 hover:bg-[#2e2e32]"
+                            >
+                              {t('clearFilter')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyColumnFilter(col.name)}
+                              className={`px-2 py-1.5 rounded text-xs text-white ${tc.bg} ${tc.hoverBg}`}
+                            >
+                              {t('apply')}
+                            </button>
+                          </div>
+                        </>
+                      ) : null}
+                    </MenuSurface>
+                  </th>
                 );
               })}
               <th className="px-4 py-2 font-normal w-[140px] border-b border-[#2e2e32] sticky right-0 z-20 bg-[#1c1c1c]" />
@@ -640,196 +641,200 @@ export default function TableBrowserView({
               const absoluteIndex = virtualWindow.startIndex + index;
 
               return (
-              <tr
-                key={row._origIndex}
-                className={`border-b border-[#2e2e32] group transition-colors ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/50' : 'hover:bg-[#232323]/60'}`}
-              >
-                <td
-                  className={`px-3 py-1.5 border-r border-[#2e2e32] text-zinc-600 text-xs sticky left-0 z-[12] shadow-[inset_-1px_0_0_rgba(46,46,50,1)] ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/70' : 'bg-[#18181b] group-hover:bg-[#232323]'} ${currentTableData.type !== 'view' ? 'cursor-pointer' : ''}`}
-                  onClick={
-                    currentTableData.type !== 'view'
-                      ? () => toggleRowSelection(row._origIndex)
-                      : undefined
-                  }
+                <tr
+                  key={row._origIndex}
+                  className={`border-b border-[#2e2e32] group transition-colors ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/50' : 'hover:bg-[#232323]/60'}`}
                 >
-                  <div className="flex items-center justify-center gap-1.5">
-                    {currentTableData.type !== 'view' && selectedRows.has(row._origIndex) && (
-                      <span
-                        className={`inline-flex items-center justify-center w-4 h-4 rounded border ${tc.border} ${tc.textLight} ${tc.lightBg}`}
-                      >
-                        <Check className="w-3 h-3" />
+                  <td
+                    className={`px-3 py-1.5 border-r border-[#2e2e32] text-zinc-600 text-xs sticky left-0 z-[12] shadow-[inset_-1px_0_0_rgba(46,46,50,1)] ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/70' : 'bg-[#18181b] group-hover:bg-[#232323]'} ${currentTableData.type !== 'view' ? 'cursor-pointer' : ''}`}
+                    onClick={
+                      currentTableData.type !== 'view'
+                        ? () => toggleRowSelection(row._origIndex)
+                        : undefined
+                    }
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      {currentTableData.type !== 'view' && selectedRows.has(row._origIndex) && (
+                        <span
+                          className={`inline-flex items-center justify-center w-4 h-4 rounded border ${tc.border} ${tc.textLight} ${tc.lightBg}`}
+                        >
+                          <Check className="w-3 h-3" />
+                        </span>
+                      )}
+                      <span className={selectedRows.has(row._origIndex) ? tc.textLight : ''}>
+                        {rowOffset + absoluteIndex + 1}
                       </span>
-                    )}
-                    <span className={selectedRows.has(row._origIndex) ? tc.textLight : ''}>
-                      {rowOffset + absoluteIndex + 1}
-                    </span>
-                  </div>
-                </td>
+                    </div>
+                  </td>
 
-                {visibleColumns.map((col) => {
-                  const cellMeta = cellMetaByRow.get(row._origIndex)?.[col.name];
-                  const rawValue = cellMeta?.rawValue ?? row[col.name];
-                  const cellTextValue = cellMeta?.cellTextValue ?? getCellTextValue(rawValue);
-                  const timestampTooltip =
-                    cellMeta?.timestampTooltip ?? getTimestampTooltip(rawValue, col);
-                  const hoverTooltip = cellMeta?.hoverTooltip ?? '';
-                  const jsonPreview =
-                    cellMeta?.jsonPreview ??
-                    (isJsonColumn(col) ? formatJsonCellValue(rawValue) : '');
-                  const isEditingThisCell =
-                    editingCell?.rowIndex === row._origIndex && editingCell?.colName === col.name;
-                  const pinned = isColumnPinned(col.name);
-                  const pinnedLeft = pinnedLeftOffsets[col.name];
-                  const pinnedBackground = selectedRows.has(row._origIndex)
-                    ? 'bg-zinc-800/70'
-                    : 'bg-[#18181b] group-hover:bg-[#232323]';
+                  {visibleColumns.map((col) => {
+                    const cellMeta = cellMetaByRow.get(row._origIndex)?.[col.name];
+                    const rawValue = cellMeta?.rawValue ?? row[col.name];
+                    const cellTextValue = cellMeta?.cellTextValue ?? getCellTextValue(rawValue);
+                    const timestampTooltip =
+                      cellMeta?.timestampTooltip ?? getTimestampTooltip(rawValue, col);
+                    const hoverTooltip = cellMeta?.hoverTooltip ?? '';
+                    const jsonPreview =
+                      cellMeta?.jsonPreview ??
+                      (isJsonColumn(col) ? formatJsonCellValue(rawValue) : '');
+                    const isEditingThisCell =
+                      editingCell?.rowIndex === row._origIndex && editingCell?.colName === col.name;
+                    const pinned = isColumnPinned(col.name);
+                    const pinnedLeft = pinnedLeftOffsets[col.name];
+                    const pinnedBackground = selectedRows.has(row._origIndex)
+                      ? 'bg-zinc-800/70'
+                      : 'bg-[#18181b] group-hover:bg-[#232323]';
 
-                  return (
-                    <td
-                      key={col.name}
-                      onDoubleClick={() =>
-                        currentTableData.type !== 'view' &&
-                        setEditingCell({
-                          rowIndex: row._origIndex,
-                          colName: col.name,
-                          value: row[col.name],
-                        })
-                      }
-                      className={`px-4 py-1 border-r border-[#2e2e32] last:border-r-0 max-w-[250px] relative group/cell cursor-text ${
-                        pinned ? `sticky ${pinnedBackground} shadow-[inset_-1px_0_0_rgba(46,46,50,1)]` : ''
-                      }`}
-                      style={
-                        pinned && pinnedLeft !== undefined ? { left: `${pinnedLeft}px`, zIndex: 6 } : undefined
-                      }
-                      title={showCellTooltipOnHover ? timestampTooltip || undefined : undefined}
-                    >
-                      <div
-                        onContextMenu={(event) =>
-                          onCellContextMenu(event, row._origIndex, col, rawValue)
+                    return (
+                      <td
+                        key={col.name}
+                        onDoubleClick={() =>
+                          currentTableData.type !== 'view' &&
+                          setEditingCell({
+                            rowIndex: row._origIndex,
+                            colName: col.name,
+                            value: row[col.name],
+                          })
                         }
-                        className="w-full"
+                        className={`px-4 py-1 border-r border-[#2e2e32] last:border-r-0 max-w-[250px] relative group/cell cursor-text ${
+                          pinned
+                            ? `sticky ${pinnedBackground} shadow-[inset_-1px_0_0_rgba(46,46,50,1)]`
+                            : ''
+                        }`}
+                        style={
+                          pinned && pinnedLeft !== undefined
+                            ? { left: `${pinnedLeft}px`, zIndex: 6 }
+                            : undefined
+                        }
+                        title={showCellTooltipOnHover ? timestampTooltip || undefined : undefined}
                       >
-                        {isEditingThisCell ? (
-                          <input
-                            autoFocus
-                            value={editingCell.value || ''}
-                            onChange={(e) =>
-                              setEditingCell({ ...editingCell, value: e.target.value })
-                            }
-                            onBlur={saveInlineEdit}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveInlineEdit();
-                            }}
-                            className={`w-full bg-[#18181b] border ${tc.border} rounded px-1 py-0.5 text-sm text-zinc-200 outline-none shadow-lg`}
-                          />
-                        ) : (
-                          <HoverTooltip content={hoverTooltip}>
-                            <div className="truncate w-full block">
-                              {cellMeta?.renderedValue ?? renderCellContent(row, col)}
-                            </div>
-                          </HoverTooltip>
-                        )}
-                      </div>
-                      <div
-                        className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 bg-[#18181b] p-0.5 rounded shadow-lg border border-[#333] transition-opacity ${jsonPreview ? 'opacity-100' : 'opacity-0 group-hover/cell:opacity-100'}`}
+                        <div
+                          onContextMenu={(event) =>
+                            onCellContextMenu(event, row._origIndex, col, rawValue)
+                          }
+                          className="w-full"
+                        >
+                          {isEditingThisCell ? (
+                            <input
+                              autoFocus
+                              value={editingCell.value || ''}
+                              onChange={(e) =>
+                                setEditingCell({ ...editingCell, value: e.target.value })
+                              }
+                              onBlur={saveInlineEdit}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveInlineEdit();
+                              }}
+                              className={`w-full bg-[#18181b] border ${tc.border} rounded px-1 py-0.5 text-sm text-zinc-200 outline-none shadow-lg`}
+                            />
+                          ) : (
+                            <HoverTooltip content={hoverTooltip}>
+                              <div className="truncate w-full block">
+                                {cellMeta?.renderedValue ?? renderCellContent(row, col)}
+                              </div>
+                            </HoverTooltip>
+                          )}
+                        </div>
+                        <div
+                          className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 bg-[#18181b] p-0.5 rounded shadow-lg border border-[#333] transition-opacity ${jsonPreview ? 'opacity-100' : 'opacity-0 group-hover/cell:opacity-100'}`}
+                        >
+                          {jsonPreview && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalConfig({
+                                  isOpen: true,
+                                  type: 'json_viewer',
+                                  data: { columnName: col.name, value: rawValue },
+                                });
+                              }}
+                              className={`text-[10px] font-semibold ${tc.textLight} px-1.5 py-1 rounded hover:bg-[#333] transition-colors`}
+                              title={t('viewJson')}
+                            >
+                              JSON
+                            </button>
+                          )}
+                          {!isEditingThisCell && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(cellTextValue);
+                              }}
+                              className="text-zinc-500 hover:text-white p-1 rounded hover:bg-[#333] transition-colors"
+                              title={t('copy')}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+
+                  <td
+                    className={`px-4 py-1.5 text-right sticky right-0 z-10 border-l border-[#2e2e32] ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/70' : 'bg-[#18181b] group-hover:bg-[#232323]'}`}
+                  >
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => copyRowWithHeaders(row)}
+                        className="text-zinc-500 hover:text-zinc-200"
+                        title={t('copy')}
                       >
-                        {jsonPreview && (
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setFormData({ ...row });
+                          setRowDetailsTab('details');
+                          setModalConfig({
+                            isOpen: true,
+                            type: 'row_form',
+                            editIndex: row._origIndex,
+                            viewOnly: true,
+                          });
+                        }}
+                        className="text-zinc-500 hover:text-blue-400"
+                        title={t('rowDetails')}
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                      </button>
+                      {currentTableData.type !== 'view' && (
+                        <>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={() => handleCloneRow(row._origIndex)}
+                            className="text-zinc-500 hover:text-zinc-200"
+                            title={t('duplicateTable')}
+                          >
+                            <CopyPlus className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setFormData({ ...row });
+                              setRowDetailsTab('details');
                               setModalConfig({
                                 isOpen: true,
-                                type: 'json_viewer',
-                                data: { columnName: col.name, value: rawValue },
+                                type: 'row_form',
+                                editIndex: row._origIndex,
+                                viewOnly: false,
                               });
                             }}
-                            className={`text-[10px] font-semibold ${tc.textLight} px-1.5 py-1 rounded hover:bg-[#333] transition-colors`}
-                            title={t('viewJson')}
+                            className="text-zinc-500 hover:text-zinc-300"
+                            title={t('editRow')}
                           >
-                            JSON
+                            <Settings className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                        {!isEditingThisCell && (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyToClipboard(cellTextValue);
-                            }}
-                            className="text-zinc-500 hover:text-white p-1 rounded hover:bg-[#333] transition-colors"
-                            title={t('copy')}
+                            onClick={() => handleDeleteRow(row._origIndex)}
+                            className="text-zinc-500 hover:text-red-400"
+                            title={t('drop')}
                           >
-                            <Copy className="w-3 h-3" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  );
-                })}
-
-                <td
-                  className={`px-4 py-1.5 text-right sticky right-0 z-10 border-l border-[#2e2e32] ${selectedRows.has(row._origIndex) ? 'bg-zinc-800/70' : 'bg-[#18181b] group-hover:bg-[#232323]'}`}
-                >
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => copyRowWithHeaders(row)}
-                      className="text-zinc-500 hover:text-zinc-200"
-                      title={t('copy')}
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setFormData({ ...row });
-                        setRowDetailsTab('details');
-                        setModalConfig({
-                          isOpen: true,
-                          type: 'row_form',
-                          editIndex: row._origIndex,
-                          viewOnly: true,
-                        });
-                      }}
-                      className="text-zinc-500 hover:text-blue-400"
-                      title={t('rowDetails')}
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                    </button>
-                    {currentTableData.type !== 'view' && (
-                      <>
-                        <button
-                          onClick={() => handleCloneRow(row._origIndex)}
-                          className="text-zinc-500 hover:text-zinc-200"
-                          title={t('duplicateTable')}
-                        >
-                          <CopyPlus className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setFormData({ ...row });
-                            setRowDetailsTab('details');
-                            setModalConfig({
-                              isOpen: true,
-                              type: 'row_form',
-                              editIndex: row._origIndex,
-                              viewOnly: false,
-                            });
-                          }}
-                          className="text-zinc-500 hover:text-zinc-300"
-                          title={t('editRow')}
-                        >
-                          <Settings className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRow(row._origIndex)}
-                          className="text-zinc-500 hover:text-red-400"
-                          title={t('drop')}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
               );
             })}
             {shouldVirtualizeRows && virtualWindow.bottomPadding > 0 && (

@@ -274,56 +274,62 @@ export default function DatabaseActionModals({
     setDbCharset,
   ]);
 
-  const loadCollationsForCharset = useCallback(async (charset) => {
-    if (!isMysql || !charset) return;
-    setIsCollationLoading(true);
-    try {
-      const safeCharset = String(charset).replace(/'/g, "''");
-      const result = await executeSql(`SHOW COLLATION WHERE Charset = '${safeCharset}';`, activeDb || '');
-      const rows = normalizeResultRows(result);
-      const options = rows
-        .map((row) => {
-          const name = getFirstPresentValue(row, ['Collation', 'collation']);
-          if (!name) return null;
-          const isDefault = String(row.Default ?? row.default ?? '').toLowerCase();
-          return {
-            value: name,
-            label: isDefault === 'yes' ? `${name} (default)` : name,
-          };
-        })
-        .filter(Boolean);
-      const uniqueOptions =
-        options.length > 0
-          ? Array.from(new Map(options.map((entry) => [entry.value, entry])).values())
-          : (fallbackCollationByCharset[charset] || [`${charset}_general_ci`]).map((name) => ({
+  const loadCollationsForCharset = useCallback(
+    async (charset) => {
+      if (!isMysql || !charset) return;
+      setIsCollationLoading(true);
+      try {
+        const safeCharset = String(charset).replace(/'/g, "''");
+        const result = await executeSql(
+          `SHOW COLLATION WHERE Charset = '${safeCharset}';`,
+          activeDb || '',
+        );
+        const rows = normalizeResultRows(result);
+        const options = rows
+          .map((row) => {
+            const name = getFirstPresentValue(row, ['Collation', 'collation']);
+            if (!name) return null;
+            const isDefault = String(row.Default ?? row.default ?? '').toLowerCase();
+            return {
               value: name,
-              label: name,
-            }));
-      setCollationOptions(uniqueOptions);
-      if (!uniqueOptions.some((entry) => entry.value === dbCollation)) {
-        setDbCollation(uniqueOptions[0]?.value || '');
+              label: isDefault === 'yes' ? `${name} (default)` : name,
+            };
+          })
+          .filter(Boolean);
+        const uniqueOptions =
+          options.length > 0
+            ? Array.from(new Map(options.map((entry) => [entry.value, entry])).values())
+            : (fallbackCollationByCharset[charset] || [`${charset}_general_ci`]).map((name) => ({
+                value: name,
+                label: name,
+              }));
+        setCollationOptions(uniqueOptions);
+        if (!uniqueOptions.some((entry) => entry.value === dbCollation)) {
+          setDbCollation(uniqueOptions[0]?.value || '');
+        }
+      } catch {
+        const fallbackOptions = (
+          fallbackCollationByCharset[charset] || [`${charset}_general_ci`]
+        ).map((name) => ({ value: name, label: name }));
+        setCollationOptions(fallbackOptions);
+        if (!fallbackOptions.some((entry) => entry.value === dbCollation)) {
+          setDbCollation(fallbackOptions[0]?.value || '');
+        }
+      } finally {
+        setIsCollationLoading(false);
       }
-    } catch {
-      const fallbackOptions = (fallbackCollationByCharset[charset] || [`${charset}_general_ci`]).map(
-        (name) => ({ value: name, label: name }),
-      );
-      setCollationOptions(fallbackOptions);
-      if (!fallbackOptions.some((entry) => entry.value === dbCollation)) {
-        setDbCollation(fallbackOptions[0]?.value || '');
-      }
-    } finally {
-      setIsCollationLoading(false);
-    }
-  }, [
-    activeDb,
-    dbCollation,
-    executeSql,
-    fallbackCollationByCharset,
-    getFirstPresentValue,
-    isMysql,
-    normalizeResultRows,
-    setDbCollation,
-  ]);
+    },
+    [
+      activeDb,
+      dbCollation,
+      executeSql,
+      fallbackCollationByCharset,
+      getFirstPresentValue,
+      isMysql,
+      normalizeResultRows,
+      setDbCollation,
+    ],
+  );
 
   const loadDbAdminData = useCallback(async () => {
     if (!isMysql || !activeDbAdminConfig?.sql) return;
@@ -400,8 +406,7 @@ export default function DatabaseActionModals({
           tableEntry.columns.set(columnName, {
             dataType: String(row.column_type || '').trim(),
             nullable: String(row.is_nullable || '').toLowerCase() === 'yes',
-            defaultValue:
-              row.column_default == null ? null : String(row.column_default),
+            defaultValue: row.column_default == null ? null : String(row.column_default),
             extra: String(row.extra || '').trim(),
             key: String(row.column_key || '').trim(),
           });
@@ -469,9 +474,10 @@ export default function DatabaseActionModals({
           if (Number.isFinite(charLength) && charLength > 0) {
             dataType = `${rawDataType}(${charLength})`;
           } else if (Number.isFinite(numericPrecision) && numericPrecision > 0) {
-            dataType = Number.isFinite(numericScale) && numericScale >= 0
-              ? `${rawDataType}(${numericPrecision},${numericScale})`
-              : `${rawDataType}(${numericPrecision})`;
+            dataType =
+              Number.isFinite(numericScale) && numericScale >= 0
+                ? `${rawDataType}(${numericPrecision},${numericScale})`
+                : `${rawDataType}(${numericPrecision})`;
           } else if (!dataType) {
             dataType = String(row.udt_name || '').trim();
           }
@@ -480,8 +486,7 @@ export default function DatabaseActionModals({
           tableEntry.columns.set(columnName, {
             dataType,
             nullable: String(row.is_nullable || '').toLowerCase() === 'yes',
-            defaultValue:
-              row.column_default == null ? null : String(row.column_default),
+            defaultValue: row.column_default == null ? null : String(row.column_default),
             extra: '',
             key: '',
           });
@@ -505,7 +510,10 @@ export default function DatabaseActionModals({
           if (!tableName) continue;
           const tableType = String(row.type || '').toLowerCase() === 'view' ? 'view' : 'table';
           const escapedTable = tableName.replace(/"/g, '""');
-          const columnResult = await executeSql(`PRAGMA table_info("${escapedTable}");`, databaseName);
+          const columnResult = await executeSql(
+            `PRAGMA table_info("${escapedTable}");`,
+            databaseName,
+          );
           const columnRows = normalizeResultRows(columnResult);
           const columns = new Map();
           columnRows.forEach((columnRow) => {
@@ -514,8 +522,7 @@ export default function DatabaseActionModals({
             columns.set(columnName, {
               dataType: String(columnRow.type || '').trim(),
               nullable: Number(columnRow.notnull || 0) !== 1,
-              defaultValue:
-                columnRow.dflt_value == null ? null : String(columnRow.dflt_value),
+              defaultValue: columnRow.dflt_value == null ? null : String(columnRow.dflt_value),
               extra: '',
               key: Number(columnRow.pk || 0) === 1 ? 'PRI' : '',
             });
@@ -523,7 +530,9 @@ export default function DatabaseActionModals({
           tableMap.set(tableName, { type: tableType, columns });
         }
       } else {
-        throw new Error(t('schemaDiffDriverUnsupported') || 'Schema diff is not supported for this driver.');
+        throw new Error(
+          t('schemaDiffDriverUnsupported') || 'Schema diff is not supported for this driver.',
+        );
       }
 
       const normalizedTables = {};
@@ -557,10 +566,16 @@ export default function DatabaseActionModals({
     const rightNames = Object.keys(rightTables);
 
     // source(left) -> target(right): added means "exists in source, missing in target".
-    const tablesAdded = leftNames.filter((name) => !rightTables[name]).sort((a, b) => a.localeCompare(b));
-    const tablesRemoved = rightNames.filter((name) => !leftTables[name]).sort((a, b) => a.localeCompare(b));
+    const tablesAdded = leftNames
+      .filter((name) => !rightTables[name])
+      .sort((a, b) => a.localeCompare(b));
+    const tablesRemoved = rightNames
+      .filter((name) => !leftTables[name])
+      .sort((a, b) => a.localeCompare(b));
 
-    const commonNames = leftNames.filter((name) => rightTables[name]).sort((a, b) => a.localeCompare(b));
+    const commonNames = leftNames
+      .filter((name) => rightTables[name])
+      .sort((a, b) => a.localeCompare(b));
     const tablesChanged = [];
 
     const diffFields = ['dataType', 'nullable', 'defaultValue', 'extra', 'key'];
@@ -607,7 +622,12 @@ export default function DatabaseActionModals({
         });
 
       const tableTypeChanged = leftTable?.type !== rightTable?.type;
-      if (!tableTypeChanged && columnsAdded.length === 0 && columnsRemoved.length === 0 && changedColumns.length === 0) {
+      if (
+        !tableTypeChanged &&
+        columnsAdded.length === 0 &&
+        columnsRemoved.length === 0 &&
+        changedColumns.length === 0
+      ) {
         return;
       }
 
@@ -792,7 +812,10 @@ export default function DatabaseActionModals({
             });
           });
 
-          const relationResult = await executeSql(`PRAGMA foreign_key_list("${escaped}");`, databaseName);
+          const relationResult = await executeSql(
+            `PRAGMA foreign_key_list("${escaped}");`,
+            databaseName,
+          );
           const relationRows = normalizeResultRows(relationResult);
           relationRows.forEach((row) => {
             relations.push({
@@ -855,13 +878,7 @@ export default function DatabaseActionModals({
       tablesChanged: [],
     });
     schemaDiffInitializedRef.current = true;
-  }, [
-    activeDb,
-    databaseNames,
-    isSchemaDiffModalOpen,
-    schemaDiffSourceDb,
-    schemaDiffTargetDb,
-  ]);
+  }, [activeDb, databaseNames, isSchemaDiffModalOpen, schemaDiffSourceDb, schemaDiffTargetDb]);
 
   useEffect(() => {
     if (!isSchemaDiffModalOpen) return;
@@ -911,8 +928,7 @@ export default function DatabaseActionModals({
         if (cancelled) return;
         setSchemaDiffData({
           loading: false,
-          error:
-            error?.message || t('loadFailed') || 'Failed to load data.',
+          error: error?.message || t('loadFailed') || 'Failed to load data.',
           summary: null,
           tablesAdded: [],
           tablesRemoved: [],
@@ -975,7 +991,8 @@ export default function DatabaseActionModals({
         if (cancelled) return;
         const relationLookup = new Set(
           snapshot.relations.map(
-            (row) => `${String(row.table_name || '').trim()}::${String(row.column_name || '').trim()}`,
+            (row) =>
+              `${String(row.table_name || '').trim()}::${String(row.column_name || '').trim()}`,
           ),
         );
 
@@ -1063,7 +1080,16 @@ export default function DatabaseActionModals({
       return;
     }
     loadDbAdminData();
-  }, [activeDb, activeDbAdminConfig, isDbAdminModalOpen, isErdModalOpen, isMysql, isSchemaDiffModalOpen, loadDbAdminData, t]);
+  }, [
+    activeDb,
+    activeDbAdminConfig,
+    isDbAdminModalOpen,
+    isErdModalOpen,
+    isMysql,
+    isSchemaDiffModalOpen,
+    loadDbAdminData,
+    t,
+  ]);
 
   return (
     <>
@@ -1209,7 +1235,11 @@ export default function DatabaseActionModals({
                         </div>
                         <div className="flex items-center gap-2 text-[11px] text-zinc-200">
                           <span className="w-2.5 h-2.5 rounded-sm bg-zinc-400" />
-                          <span>~ {t('schemaDiffChangedHint') || 'Exists on both sides but metadata differs'}</span>
+                          <span>
+                            ~{' '}
+                            {t('schemaDiffChangedHint') ||
+                              'Exists on both sides but metadata differs'}
+                          </span>
                         </div>
                       </div>
                     }
@@ -1232,7 +1262,10 @@ export default function DatabaseActionModals({
                       <SearchableSelectField
                         value={erdDb}
                         onChange={setErdDb}
-                        options={(databaseNames || []).map((name) => ({ value: name, label: name }))}
+                        options={(databaseNames || []).map((name) => ({
+                          value: name,
+                          label: name,
+                        }))}
                         placeholder={t('selectDb')}
                         searchPlaceholder={t('search')}
                         emptyLabel={t('noFilterResults')}
@@ -1240,11 +1273,14 @@ export default function DatabaseActionModals({
                       />
                     </div>
                     <div className="px-2.5 py-1.5 rounded-md border border-[#333] bg-[#151518] text-[11px] text-zinc-400">
-                      {t('tables') || 'Tables'}: <span className="text-zinc-100 font-semibold">{erdData.tables.length}</span>
+                      {t('tables') || 'Tables'}:{' '}
+                      <span className="text-zinc-100 font-semibold">{erdData.tables.length}</span>
                     </div>
                     <div className="px-2.5 py-1.5 rounded-md border border-[#333] bg-[#151518] text-[11px] text-zinc-400">
                       {t('relationships') || 'Relationships'}:{' '}
-                      <span className="text-zinc-100 font-semibold">{erdData.relationships.length}</span>
+                      <span className="text-zinc-100 font-semibold">
+                        {erdData.relationships.length}
+                      </span>
                     </div>
                   </div>
                 ) : null}
@@ -1350,11 +1386,14 @@ export default function DatabaseActionModals({
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <div className="px-2.5 py-1.5 rounded-md border border-[#333] bg-[#151518] text-[11px] text-zinc-400">
-                        {t('tables') || 'Tables'}: <span className="text-zinc-100 font-semibold">{erdData.tables.length}</span>
+                        {t('tables') || 'Tables'}:{' '}
+                        <span className="text-zinc-100 font-semibold">{erdData.tables.length}</span>
                       </div>
                       <div className="px-2.5 py-1.5 rounded-md border border-[#333] bg-[#151518] text-[11px] text-zinc-400">
                         {t('relationships') || 'Relationships'}:{' '}
-                        <span className="text-zinc-100 font-semibold">{erdData.relationships.length}</span>
+                        <span className="text-zinc-100 font-semibold">
+                          {erdData.relationships.length}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1412,8 +1451,15 @@ export default function DatabaseActionModals({
                           const canvasHeight = maxY + PADDING;
 
                           return (
-                            <div className="relative" style={{ width: canvasWidth, height: canvasHeight }}>
-                              <svg className="absolute inset-0" width={canvasWidth} height={canvasHeight}>
+                            <div
+                              className="relative"
+                              style={{ width: canvasWidth, height: canvasHeight }}
+                            >
+                              <svg
+                                className="absolute inset-0"
+                                width={canvasWidth}
+                                height={canvasHeight}
+                              >
                                 {erdData.relationships.map((relation, index) => {
                                   const from = positions.get(relation.fromTable);
                                   const to = positions.get(relation.toTable);
@@ -1462,7 +1508,10 @@ export default function DatabaseActionModals({
                                     </div>
                                     <div className="px-2.5 py-2 space-y-1.5">
                                       {table.columns.slice(0, 10).map((column) => (
-                                        <div key={`${table.name}-${column.name}`} className="text-[11px] text-zinc-300">
+                                        <div
+                                          key={`${table.name}-${column.name}`}
+                                          className="text-[11px] text-zinc-300"
+                                        >
                                           <span className="inline-flex items-center gap-1 mr-1.5">
                                             {column.isPrimary ? (
                                               <span className="text-[10px] px-1 rounded border border-amber-500/40 text-amber-300">
@@ -1475,9 +1524,14 @@ export default function DatabaseActionModals({
                                               </span>
                                             ) : null}
                                           </span>
-                                          <span className="font-medium text-zinc-200">{column.name}</span>
+                                          <span className="font-medium text-zinc-200">
+                                            {column.name}
+                                          </span>
                                           {column.dataType ? (
-                                            <span className="text-zinc-500"> · {column.dataType}</span>
+                                            <span className="text-zinc-500">
+                                              {' '}
+                                              · {column.dataType}
+                                            </span>
                                           ) : null}
                                         </div>
                                       ))}
@@ -1646,7 +1700,9 @@ export default function DatabaseActionModals({
                                     className="rounded-lg border border-[#34343b] bg-[#111216] p-3"
                                   >
                                     <div className="flex items-center gap-2 mb-2">
-                                      <span className="text-sm font-semibold text-zinc-100">{item.table}</span>
+                                      <span className="text-sm font-semibold text-zinc-100">
+                                        {item.table}
+                                      </span>
                                       {item.tableTypeChanged ? (
                                         <span className="text-[10px] px-2 py-0.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-300">
                                           {item.beforeType} → {item.afterType}
@@ -1670,10 +1726,15 @@ export default function DatabaseActionModals({
                                         key={`${item.table}-${column.name}`}
                                         className="mb-1.5 text-[12px] text-zinc-300"
                                       >
-                                        <span className="font-semibold text-zinc-100">{column.name}</span>
+                                        <span className="font-semibold text-zinc-100">
+                                          {column.name}
+                                        </span>
                                         <span className="text-zinc-500">: </span>
                                         {column.changedProps.map((prop, index) => (
-                                          <span key={`${column.name}-${prop.field}`} className="mr-3">
+                                          <span
+                                            key={`${column.name}-${prop.field}`}
+                                            className="mr-3"
+                                          >
                                             <span className="text-zinc-400">{prop.field}</span>
                                             <span className="text-zinc-500"> </span>
                                             <span className="text-red-300">

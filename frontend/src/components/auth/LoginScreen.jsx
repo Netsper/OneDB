@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   Database,
+  Download,
   Loader2,
   Server,
   Settings,
@@ -38,13 +39,15 @@ export default function LoginScreen({
   setSettings,
   themes,
   clearLoginError,
+  isBuilding,
+  handleDownloadBuild,
 }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   return (
     <div
-      className={`min-h-screen bg-[#1c1c1c] flex items-center justify-center p-4 font-sans text-zinc-300 ${tc.selection}`}
+      className={`min-h-screen bg-[#1c1c1c] flex flex-col items-center justify-center p-4 font-sans text-zinc-300 ${tc.selection}`}
     >
       <div className="bg-[#232323] p-8 rounded-xl w-full max-w-4xl border border-[#333] shadow-2xl relative overflow-hidden flex flex-col md:flex-row gap-8">
         <div
@@ -75,26 +78,39 @@ export default function LoginScreen({
                 {t('noSavedConn')}
               </div>
             ) : (
-              savedConnections.map((conn, idx) => (
-                <div
-                  key={idx}
-                  className="bg-[#1c1c1c] border border-[#333] hover:border-[#555] rounded-lg p-3 transition-colors group cursor-pointer"
-                  onClick={() => loadConnectionProfile(conn)}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-medium text-zinc-200 text-sm">{conn.name}</span>
-                    <button
-                      onClick={(e) => deleteConnectionProfile(e, conn.name)}
-                      className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+              savedConnections.map((conn, idx) => {
+                const isSelected = connForm.name === conn.name;
+                return (
+                  <div
+                    key={idx}
+                    className={`bg-[#1c1c1c] border rounded-lg p-3 transition-all group cursor-pointer ${
+                      isSelected
+                        ? `${tc.border} ring-1 ${tc.border.replace('border-', 'ring-')}/30`
+                        : 'border-[#333] hover:border-[#555]'
+                    }`}
+                    onClick={() => loadConnectionProfile(conn)}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span
+                        className={`font-medium text-sm transition-colors ${
+                          isSelected ? tc.text : 'text-zinc-200'
+                        }`}
+                      >
+                        {conn.name}
+                      </span>
+                      <button
+                        onClick={(e) => deleteConnectionProfile(e, conn.name)}
+                        className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="text-xs text-zinc-500 font-mono">
+                      {conn.user} @ {conn.host}:{conn.port}
+                    </div>
                   </div>
-                  <div className="text-xs text-zinc-500 font-mono">
-                    {conn.user} @ {conn.host}:{conn.port}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -427,6 +443,26 @@ export default function LoginScreen({
             </div>
           </form>
         </div>
+      </div>
+
+      <div className="mt-8 text-center flex flex-col items-center gap-3 z-10">
+        <button
+          type="button"
+          onClick={handleDownloadBuild}
+          disabled={isBuilding}
+          className="text-zinc-500 hover:text-zinc-100 text-sm flex items-center gap-2 transition-all group disabled:opacity-60"
+        >
+          <div className={`p-1.5 rounded-full bg-[#232323] border border-[#333] group-hover:border-[#555] transition-colors ${isBuilding ? 'animate-pulse' : ''}`}>
+            {isBuilding ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
+            ) : (
+              <Download className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+            )}
+          </div>
+          <span className="font-medium tracking-wide">
+            {isBuilding ? t('building') : t('downloadCompiledOneDb')}
+          </span>
+        </button>
       </div>
 
       {isSaveProfileModalOpen && (

@@ -13,6 +13,9 @@ export default function useWorkspaceConnectionActions({
   setSavedConnections,
   setProfileNameDraft,
   setIsSaveProfileModalOpen,
+  isBuilding,
+  setIsBuilding,
+  setIsInitializing,
   csrfTokenRef,
   getCsrfToken,
   callApi,
@@ -76,11 +79,31 @@ export default function useWorkspaceConnectionActions({
 
       persistLastConnection();
 
-      const firstDb = dbNames[0] || null;
-      if (firstDb) {
-        setActiveDb(firstDb);
-        setExpandedDbs({ [firstDb]: true });
-        setExpandedGroups({ [`${firstDb}_tables`]: true, [`${firstDb}_views`]: true });
+      const params = new URLSearchParams(window.location.search);
+      const urlDb = params.get('db');
+      const urlTable = params.get('table');
+
+      const targetDb = (urlDb && dbNames.includes(urlDb)) ? urlDb : (dbNames[0] || null);
+
+      if (targetDb) {
+        setActiveDb(targetDb);
+        setExpandedDbs((prev) => ({ ...prev, [targetDb]: true }));
+        setExpandedGroups((prev) => ({ 
+          ...prev, 
+          [`${targetDb}_tables`]: true, 
+          [`${targetDb}_views`]: true 
+        }));
+
+        if (urlTable) {
+          const tabId = `${targetDb}::${urlTable}`;
+          // Ensure the tab exists in openTableTabs if it's new
+          setOpenTableTabs((prev) => {
+            if (prev.some(t => t.id === tabId)) return prev;
+            return [...prev, { id: tabId, dbName: targetDb, tableName: urlTable, pinned: false }];
+          });
+          setActiveTableTabId(tabId);
+          setActiveTable(urlTable);
+        }
       } else {
         setActiveDb(null);
         setActiveTable(null);
@@ -92,6 +115,7 @@ export default function useWorkspaceConnectionActions({
       showToast(error.message || 'Connection failed.', 'error');
     } finally {
       setIsConnecting(false);
+      if (setIsInitializing) setIsInitializing(false);
     }
   };
 
@@ -113,7 +137,7 @@ export default function useWorkspaceConnectionActions({
 
     setSavedConnections((prev) => [
       ...prev.filter((connection) => connection.name !== profileName),
-      { ...connForm, pass: '', sslPassphrase: '', name: profileName },
+      { ...connForm, name: profileName },
     ]);
     setConnForm((prev) => ({ ...prev, name: profileName }));
     setIsSaveProfileModalOpen(false);
@@ -125,7 +149,7 @@ export default function useWorkspaceConnectionActions({
     setConnForm({
       host: profile.host || '',
       user: profile.user || '',
-      pass: '',
+      pass: profile.pass || '',
       port: profile.port || '',
       name: profile.name || '',
       driver: inferredDriver,
@@ -134,7 +158,7 @@ export default function useWorkspaceConnectionActions({
       sslCa: String(profile.sslCa || ''),
       sslCert: String(profile.sslCert || ''),
       sslKey: String(profile.sslKey || ''),
-      sslPassphrase: '',
+      sslPassphrase: profile.sslPassphrase || '',
       sshTunnelEnabled: Boolean(profile.sshTunnelEnabled),
       sshTunnelHost: String(profile.sshTunnelHost || '127.0.0.1'),
       sshTunnelPort: String(profile.sshTunnelPort || ''),
@@ -148,6 +172,28 @@ export default function useWorkspaceConnectionActions({
     setSavedConnections((prev) => prev.filter((c) => c.name !== profileName));
   };
 
+  const handleDownloadBuild = async () => {
+    if (isBuilding) return;
+    
+    showToast(t('building') + '...', 'info');
+    setIsBuilding(true);
+    try {
+      const blob = await callApi('build_release', null, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'OneDB.php');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      showToast(error.message || 'Build failed.', 'error');
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
   return {
     handleConnect,
     openSaveProfileModal,
@@ -155,5 +201,6 @@ export default function useWorkspaceConnectionActions({
     saveConnectionProfile,
     loadConnectionProfile,
     deleteConnectionProfile,
+    handleDownloadBuild,
   };
 }

@@ -142,7 +142,8 @@ export default function useWorkspaceRuntimeEffects({
     let isDisposed = false;
 
     setIsRefreshing(true);
-    loadTableDetailsRef.current(activeDb, activeTable)
+    loadTableDetailsRef
+      .current(activeDb, activeTable)
       .catch((error) => {
         if (!isDisposed) {
           showToast(error.message || 'Failed to load table data.', 'error');

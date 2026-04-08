@@ -23,7 +23,9 @@ export default function SearchableSelectField({
   );
 
   const filteredOptions = useMemo(() => {
-    const normalizedQuery = String(query || '').trim().toLowerCase();
+    const normalizedQuery = String(query || '')
+      .trim()
+      .toLowerCase();
     if (normalizedQuery === '') return options;
     return options.filter((entry) =>
       String(entry.label || entry.value || '')
@@ -125,4 +127,3 @@ export default function SearchableSelectField({
     </div>
   );
 }
-

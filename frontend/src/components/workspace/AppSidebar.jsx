@@ -103,7 +103,11 @@ export default function AppSidebar({
   }, [isDbToolsMenuOpen]);
 
   useEffect(() => {
-    const activeKey = activeTable ? `${activeDb}::${activeTable}` : activeDb ? `db:${activeDb}` : '';
+    const activeKey = activeTable
+      ? `${activeDb}::${activeTable}`
+      : activeDb
+        ? `db:${activeDb}`
+        : '';
     if (!activeKey) return;
     const targetNode = sidebarEntryRefs.current[activeKey];
     if (!targetNode || typeof targetNode.scrollIntoView !== 'function') return;

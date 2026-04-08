@@ -20,8 +20,7 @@ export const en = {
   sshLocalPort: 'Local port',
   secretProfileRef: 'Secret profile reference',
   secretProfileRefHint: 'e.g. PROD_MAIN',
-  secretProfileRefDesc:
-    'Backend reads ONEDB_SECRET_<REF> from environment and merges credentials.',
+  secretProfileRefDesc: 'Backend reads ONEDB_SECRET_<REF> from environment and merges credentials.',
   connectBtn: 'Connect',
   saveBtn: 'Save',
   savedServers: 'Saved Servers',
@@ -342,4 +341,6 @@ export const en = {
   colAdded: "Column '{name}' added.",
   mockDataAdded: '10 mock data rows added.',
   mustBeNumber: "'{col}' must be a numerical value!",
+  downloadCompiledOneDb: 'Download Compiled OneDb',
+  building: 'Building...',
 };

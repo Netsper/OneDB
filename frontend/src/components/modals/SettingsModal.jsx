@@ -295,7 +295,9 @@ export default function SettingsModal({
                   <ToggleRow
                     label={t('settingsSqlAutocomplete')}
                     checked={settings.sqlEditor.autocomplete}
-                    onChange={() => updateSqlEditor('autocomplete', !settings.sqlEditor.autocomplete)}
+                    onChange={() =>
+                      updateSqlEditor('autocomplete', !settings.sqlEditor.autocomplete)
+                    }
                     tc={tc}
                   />
                   <ToggleRow

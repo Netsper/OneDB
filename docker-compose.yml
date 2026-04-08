@@ -1,0 +1,16 @@
+services:
+  onedb:
+    build: .
+    container_name: onedb_app
+    entrypoint: /var/www/html/docker/entrypoint.sh
+    ports:
+      - "${APP_PORT:-8080}:80"
+      - "5173:5173"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/frontend/node_modules
+    environment:
+      - APP_ENV=${APP_ENV:-dev}
+      - APP_DOMAIN=${APP_DOMAIN:-onedb.loc}
+      - TZ=Europe/Istanbul
+    restart: unless-stopped

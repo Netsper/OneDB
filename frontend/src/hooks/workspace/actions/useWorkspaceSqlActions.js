@@ -194,7 +194,10 @@ export default function useWorkspaceSqlActions({
                     signal: queryAbortController.signal,
                   },
                 );
-                const actualPlan = mapExplainRowsToPlanItems(analyzeResult.rows || [], getFirstValue);
+                const actualPlan = mapExplainRowsToPlanItems(
+                  analyzeResult.rows || [],
+                  getFirstValue,
+                );
                 if (actualPlan.length > 0) {
                   planCompare = {
                     estimated: plan,
@@ -202,9 +205,13 @@ export default function useWorkspaceSqlActions({
                   };
                 }
               } else if (currentDriver === 'mysql') {
-                const jsonPlanResult = await executeSql(`EXPLAIN FORMAT=JSON ${sql}`, activeDb || '', {
-                  signal: queryAbortController.signal,
-                });
+                const jsonPlanResult = await executeSql(
+                  `EXPLAIN FORMAT=JSON ${sql}`,
+                  activeDb || '',
+                  {
+                    signal: queryAbortController.signal,
+                  },
+                );
                 const actualPlan = mapExplainRowsToPlanItems(
                   jsonPlanResult.rows || [],
                   getFirstValue,
@@ -216,9 +223,13 @@ export default function useWorkspaceSqlActions({
                   };
                 }
               } else if (currentDriver === 'sqlite') {
-                const sqlitePlanResult = await executeSql(`EXPLAIN QUERY PLAN ${sql}`, activeDb || '', {
-                  signal: queryAbortController.signal,
-                });
+                const sqlitePlanResult = await executeSql(
+                  `EXPLAIN QUERY PLAN ${sql}`,
+                  activeDb || '',
+                  {
+                    signal: queryAbortController.signal,
+                  },
+                );
                 const actualPlan = mapExplainRowsToPlanItems(
                   sqlitePlanResult.rows || [],
                   getFirstValue,
@@ -325,7 +336,9 @@ export default function useWorkspaceSqlActions({
         }
       }
 
-      const committedCount = Number(result?.executedStatements || transactionDraftStatements.length);
+      const committedCount = Number(
+        result?.executedStatements || transactionDraftStatements.length,
+      );
       setTransactionDraftStatements([]);
       setTransactionDraftActive(false);
       showToast(t('transactionCommitted').replace('{count}', String(committedCount)), 'success');
