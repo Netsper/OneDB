@@ -10,6 +10,8 @@ export default function useWorkspaceConnectionActions({
   setActiveTable,
   setExpandedDbs,
   setExpandedGroups,
+  setOpenTableTabs,
+  setActiveTableTabId,
   setSavedConnections,
   setProfileNameDraft,
   setIsSaveProfileModalOpen,

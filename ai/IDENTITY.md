@@ -10,7 +10,7 @@ This document provides the foundational context for AI agents and IDEs to unders
 
 ## 🛠️ Technology Stack
 - **Frontend**: React 18, Vite, Lucide Icons, CodeMirror (SQL Editor).
-- **Backend**: PHP 8.1+ (Standard PDO).
+- **Backend**: PHP 7.4 (Standard PDO).
 - **Build System**: Custom NodeJS scripts (`pack-release.mjs`) for inlining assets into a single PHP file.
 
 ## 📈 Versioning & Status

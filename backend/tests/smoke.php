@@ -459,6 +459,50 @@ function run_smoke_suite(): void
         assert_true($debugLogText !== '', 'debug log file must be written');
         assert_true(strpos($debugLogText, 'action=ping') !== false, 'debug log must contain action');
         assert_true(strpos($debugLogText, 'status=200') !== false, 'debug log must contain status');
+
+        stop_backend_server($server);
+        $server = null;
+
+        // --- Build Release Action Tests ---
+
+        // 1. Test build_release is disabled by default (no env var)
+        $lockedServer = start_backend_server($rootDir);
+        $server = $lockedServer;
+        $lockedBaseUrl = 'http://127.0.0.1:' . $lockedServer['port'];
+        wait_until_server_ready($lockedBaseUrl);
+
+        $lockedCsrf = call_api($lockedBaseUrl, 'csrf');
+        $lockedToken = (string)($lockedCsrf['json']['token'] ?? '');
+        $lockedCookies = $lockedCsrf['cookies'];
+
+        $buildDisabled = call_api($lockedBaseUrl, 'build_release', 'POST', null, $lockedCookies, $lockedToken);
+        assert_same(403, $buildDisabled['status'], 'build_release must be forbidden by default');
+
+        // 2. Test build_release method enforcement (must be POST)
+        stop_backend_server($server);
+        $server = start_backend_server($rootDir, ['ONEDB_ALLOW_BUILD' => '1']);
+        $buildBaseUrl = 'http://127.0.0.1:' . $server['port'];
+        wait_until_server_ready($buildBaseUrl);
+        $buildCsrf = call_api($buildBaseUrl, 'csrf');
+        $buildToken = (string)($buildCsrf['json']['token'] ?? '');
+        $buildCookies = $buildCsrf['cookies'];
+
+        $buildGet = call_api($buildBaseUrl, 'build_release', 'GET', null, $buildCookies, $buildToken);
+        assert_same(405, $buildGet['status'], 'build_release must reject GET requests');
+
+        // 3. Test build_release rejection in readonly mode
+        stop_backend_server($server);
+        $server = start_backend_server($rootDir, ['ONEDB_READONLY' => '1', 'ONEDB_ALLOW_BUILD' => '1']);
+        $roBaseUrl = 'http://127.0.0.1:' . $server['port'];
+        wait_until_server_ready($roBaseUrl);
+        $roCsrf = call_api($roBaseUrl, 'csrf');
+        $roToken = (string)($roCsrf['json']['token'] ?? '');
+        $roCookies = $roCsrf['cookies'];
+
+        $buildRo = call_api($roBaseUrl, 'build_release', 'POST', null, $roCookies, $roToken);
+        assert_same(403, $buildRo['status'], 'build_release must be rejected in readonly mode');
+        assert_true(strpos($buildRo['body'], 'readonly mode') !== false, 'error message should mention readonly mode');
+
     } finally {
         if (is_array($server)) {
             stop_backend_server($server);

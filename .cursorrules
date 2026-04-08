@@ -3,10 +3,10 @@
 ## 🧠 AI Project Knowledge
 Before proposing ANY logic changes, structural modifications, or new features, YOU MUST read the following core identity and mapping files to understand the project architecture:
 
-- **Identity & Versioning**: [IDENTITY.md](file:///Users/sinanaydogan/Documents/MCP/OneDB/ai/IDENTITY.md)
-- **Architecture & Data Flow**: [SYSTEM_MAP.md](file:///Users/sinanaydogan/Documents/MCP/OneDB/ai/SYSTEM_MAP.md)
-- **Module & Component Map**: [COMPONENT_MAP.md](file:///Users/sinanaydogan/Documents/MCP/OneDB/ai/COMPONENT_MAP.md)
-- **Service & Method Registry**: [SERVICE_MAP.md](file:///Users/sinanaydogan/Documents/MCP/OneDB/ai/SERVICE_MAP.md)
+- **Identity & Versioning**: [IDENTITY.md](ai/IDENTITY.md)
+- **Architecture & Data Flow**: [SYSTEM_MAP.md](ai/SYSTEM_MAP.md)
+- **Module & Component Map**: [COMPONENT_MAP.md](ai/COMPONENT_MAP.md)
+- **Service & Method Registry**: [SERVICE_MAP.md](ai/SERVICE_MAP.md)
 
 ---
 

@@ -46,6 +46,14 @@ final class Environment
     }
 
     /**
+     * Returns true if build endpoint is explicitly enabled (`ONEDB_ALLOW_BUILD`).
+     */
+    public static function allowBuild(): bool
+    {
+        return self::boolFlag('ONEDB_ALLOW_BUILD');
+    }
+
+    /**
      * Returns optional debug log file path (`ONEDB_DEBUG_LOG_PATH`).
      */
     public static function debugLogPath(): ?string
@@ -115,6 +123,15 @@ final class Environment
     public static function isDocker(): bool
     {
         return file_exists('/.dockerenv');
+    }
+
+    /**
+     * Returns optional Docker host override for local connectivity (`ONEDB_DOCKER_HOST`).
+     */
+    public static function dockerHostOverride(): ?string
+    {
+        $raw = trim((string)(getenv('ONEDB_DOCKER_HOST') ?: ''));
+        return $raw !== '' ? $raw : null;
     }
 
     /**

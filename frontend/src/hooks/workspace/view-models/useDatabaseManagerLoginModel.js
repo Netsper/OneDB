@@ -21,6 +21,8 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
     buildConnectionPayload,
     refreshSchemas,
     showToast,
+    setOpenTableTabs: workspace.setOpenTableTabs,
+    setActiveTableTabId: workspace.setActiveTableTabId,
   });
 
   const didAttemptRestoreRef = useRef(false);
