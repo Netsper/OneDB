@@ -116,7 +116,7 @@ export default function useOneDbApi({
     ],
   );
 
-  const apiActionUrl = useCallback((action) => `?api=${encodeURIComponent(action)}`, []);
+  const apiActionUrl = useCallback((action) => `/api/${encodeURIComponent(action)}`, []);
 
   const quoteIdentifier = useCallback(
     (name) => {
@@ -158,6 +158,19 @@ export default function useOneDbApi({
         body: method === 'GET' ? undefined : JSON.stringify(payload || {}),
         signal: options.signal,
       });
+
+      if (options.responseType === 'blob') {
+        if (!res.ok) {
+          let errorData = null;
+          try {
+            errorData = await res.json();
+          } catch {
+            // ignore
+          }
+          throw new Error(errorData?.error || `API "${action}" failed (${res.status}).`);
+        }
+        return await res.blob();
+      }
 
       let data = null;
       try {

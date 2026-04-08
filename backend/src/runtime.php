@@ -164,6 +164,10 @@ final class Runtime
                 self::handleTransactionAction(ApiRequest::readJson());
                 return;
 
+            case 'build_release':
+                self::handleBuildRelease();
+                return;
+
             default:
                 JsonResponse::send(
                     ErrorResponder::fromMessage('Unsupported action.', 404, 'unsupported_action', $action),
@@ -310,5 +314,61 @@ final class Runtime
         if (!in_array($method, $normalizedAllowed, true)) {
             throw new HttpException('HTTP method not allowed for this action.', 405);
         }
+    }
+
+    /**
+     * Executes the build script and serves the resulting OneDB.php file.
+     */
+    private static function handleBuildRelease(): void
+    {
+        self::requireMethod(['POST']);
+        SessionCsrf::requireValidToken();
+
+        if (Environment::readonlyMode()) {
+            throw new HttpException('Build is not allowed in readonly mode.', 403);
+        }
+
+        $rootDir = dirname(__DIR__, 2);
+        $buildScript = $rootDir . '/build.sh';
+        $releaseFile = $rootDir . '/release/OneDB.php';
+
+        if (!file_exists($buildScript)) {
+            throw new HttpException('Build script not found.', 500);
+        }
+
+        $output = [];
+        $resultCode = 0;
+        
+        // Increase execution time and memory for the build process
+        @ini_set('max_execution_time', '300');
+        @ini_set('memory_limit', '512M');
+        
+        // Run with ONEDB_EMBEDDED=1 to ensure standalone build
+        // Use sh -c to ensure environment variables are handled correctly across shells
+        $command = "export ONEDB_EMBEDDED=1 && sh " . escapeshellarg($buildScript) . " 2>&1";
+        exec($command, $output, $resultCode);
+
+        if ($resultCode !== 0) {
+            JsonResponse::send([
+                'ok' => false,
+                'error' => 'Build failed.',
+                'details' => implode("\n", $output)
+            ], 500);
+            return;
+        }
+
+        if (!file_exists($releaseFile)) {
+            throw new HttpException('Build succeeded but release file was not found.', 500);
+        }
+
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="OneDB.php"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . filesize($releaseFile));
+        readfile($releaseFile);
+        exit;
     }
 }

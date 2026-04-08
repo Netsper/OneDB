@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   Database,
+  Download,
   Loader2,
   Server,
   Settings,
@@ -38,13 +39,15 @@ export default function LoginScreen({
   setSettings,
   themes,
   clearLoginError,
+  isBuilding,
+  handleDownloadBuild,
 }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   return (
     <div
-      className={`min-h-screen bg-[#1c1c1c] flex items-center justify-center p-4 font-sans text-zinc-300 ${tc.selection}`}
+      className={`min-h-screen bg-[#1c1c1c] flex flex-col items-center justify-center p-4 font-sans text-zinc-300 ${tc.selection}`}
     >
       <div className="bg-[#232323] p-8 rounded-xl w-full max-w-4xl border border-[#333] shadow-2xl relative overflow-hidden flex flex-col md:flex-row gap-8">
         <div
@@ -427,6 +430,26 @@ export default function LoginScreen({
             </div>
           </form>
         </div>
+      </div>
+
+      <div className="mt-8 text-center flex flex-col items-center gap-3 z-10">
+        <button
+          type="button"
+          onClick={handleDownloadBuild}
+          disabled={isBuilding}
+          className="text-zinc-500 hover:text-zinc-100 text-sm flex items-center gap-2 transition-all group disabled:opacity-60"
+        >
+          <div className={`p-1.5 rounded-full bg-[#232323] border border-[#333] group-hover:border-[#555] transition-colors ${isBuilding ? 'animate-pulse' : ''}`}>
+            {isBuilding ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
+            ) : (
+              <Download className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+            )}
+          </div>
+          <span className="font-medium tracking-wide">
+            {isBuilding ? t('building') : t('downloadCompiledOneDb')}
+          </span>
+        </button>
       </div>
 
       {isSaveProfileModalOpen && (

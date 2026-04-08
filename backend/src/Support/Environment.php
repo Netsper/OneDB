@@ -110,6 +110,14 @@ final class Environment
     }
 
     /**
+     * Returns true if running inside a Docker container.
+     */
+    public static function isDocker(): bool
+    {
+        return file_exists('/.dockerenv');
+    }
+
+    /**
      * Returns normalized boolean value for known env flag conventions.
      */
     private static function boolFlag(string $key): bool

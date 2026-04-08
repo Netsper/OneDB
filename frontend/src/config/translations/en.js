@@ -341,4 +341,6 @@ export const en = {
   colAdded: "Column '{name}' added.",
   mockDataAdded: '10 mock data rows added.',
   mustBeNumber: "'{col}' must be a numerical value!",
+  downloadCompiledOneDb: 'Download Compiled OneDb',
+  building: 'Building...',
 };

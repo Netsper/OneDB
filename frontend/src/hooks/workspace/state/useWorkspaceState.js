@@ -248,6 +248,7 @@ export default function useWorkspaceState() {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [ping, setPing] = useState(12);
+  const [isBuilding, setIsBuilding] = useState(false);
   const [connForm, setConnForm] = useState(loadPersistedConnectionForm);
   const [savedConnections, setSavedConnections] = useState(() => {
     try {
@@ -422,6 +423,8 @@ export default function useWorkspaceState() {
     setIsConnecting,
     ping,
     setPing,
+    isBuilding,
+    setIsBuilding,
     connForm,
     setConnForm,
     savedConnections,

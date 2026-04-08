@@ -13,6 +13,8 @@ export default function useWorkspaceConnectionActions({
   setSavedConnections,
   setProfileNameDraft,
   setIsSaveProfileModalOpen,
+  isBuilding,
+  setIsBuilding,
   csrfTokenRef,
   getCsrfToken,
   callApi,
@@ -148,6 +150,28 @@ export default function useWorkspaceConnectionActions({
     setSavedConnections((prev) => prev.filter((c) => c.name !== profileName));
   };
 
+  const handleDownloadBuild = async () => {
+    if (isBuilding) return;
+    
+    showToast(t('building') + '...', 'info');
+    setIsBuilding(true);
+    try {
+      const blob = await callApi('build_release', null, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'OneDB.php');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      showToast(error.message || 'Build failed.', 'error');
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
   return {
     handleConnect,
     openSaveProfileModal,
@@ -155,5 +179,6 @@ export default function useWorkspaceConnectionActions({
     saveConnectionProfile,
     loadConnectionProfile,
     deleteConnectionProfile,
+    handleDownloadBuild,
   };
 }

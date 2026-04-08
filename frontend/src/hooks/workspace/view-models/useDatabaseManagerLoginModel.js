@@ -12,6 +12,7 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
     saveConnectionProfile,
     loadConnectionProfile,
     deleteConnectionProfile,
+    handleDownloadBuild,
   } = useWorkspaceConnectionActions({
     ...workspace,
     t,
@@ -61,6 +62,8 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
     setProfileNameDraft: workspace.setProfileNameDraft,
     closeSaveProfileModal,
     isConnecting: workspace.isConnecting,
+    isBuilding: workspace.isBuilding,
+    handleDownloadBuild,
     loginError: workspace.loginError,
     lang: workspace.lang,
     setLang: workspace.setLang,

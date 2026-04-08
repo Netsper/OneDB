@@ -67,8 +67,12 @@ final class ConnectionFactory
             $pass = null;
         } else {
             $host = trim((string)($connection['host'] ?? ''));
-            if ($host === '') {
-                $host = '127.0.0.1';
+            if ($host === '' || $host === 'localhost' || $host === '127.0.0.1' || $host === '0.0.0.0') {
+                if (Environment::isDocker()) {
+                    $host = 'host.docker.internal';
+                } elseif ($host === '') {
+                    $host = '127.0.0.1';
+                }
             }
 
             $defaultPort = $driver === 'pgsql' ? '5432' : '3306';
