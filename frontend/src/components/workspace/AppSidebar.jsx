@@ -17,11 +17,22 @@ import {
 } from 'lucide-react';
 import MenuSurface from '../shared/MenuSurface.jsx';
 
-function SidebarEntry({ icon, label, active, accentBg, lightBg, textLight, onClick, trailing }) {
+function SidebarEntry({
+  icon,
+  label,
+  active,
+  accentBg,
+  lightBg,
+  textLight,
+  onClick,
+  onDoubleClick,
+  trailing,
+}) {
   return (
     <div
       className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm transition-colors group cursor-pointer relative ${active ? `${lightBg} ${textLight} font-medium` : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#232323]'}`}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
     >
       {active && (
         <div
@@ -472,7 +483,8 @@ export default function AppSidebar({
                               accentBg={tc.accentBg}
                               lightBg={tc.lightBg}
                               textLight={tc.textLight}
-                              onClick={() => selectDbAndTable(dbName, entry.name)}
+                              onClick={() => selectDbAndTable(dbName, entry.name, null, true)}
+                              onDoubleClick={() => selectDbAndTable(dbName, entry.name, null, false)}
                               trailing={
                                 <button
                                   onClick={(e) => {
@@ -529,7 +541,8 @@ export default function AppSidebar({
                               accentBg={tc.accentBg}
                               lightBg={tc.lightBg}
                               textLight={tc.textLight}
-                              onClick={() => selectDbAndTable(dbName, tableEntry.name)}
+                              onClick={() => selectDbAndTable(dbName, tableEntry.name, null, true)}
+                              onDoubleClick={() => selectDbAndTable(dbName, tableEntry.name, null, false)}
                               trailing={
                                 <button
                                   onClick={(e) => {
@@ -580,7 +593,8 @@ export default function AppSidebar({
                               accentBg={tc.accentBg}
                               lightBg={tc.lightBg}
                               textLight={tc.textLight}
-                              onClick={() => selectDbAndTable(dbName, viewEntry.name)}
+                              onClick={() => selectDbAndTable(dbName, viewEntry.name, null, true)}
+                              onDoubleClick={() => selectDbAndTable(dbName, viewEntry.name, null, false)}
                               trailing={
                                 <button
                                   onClick={(e) => {

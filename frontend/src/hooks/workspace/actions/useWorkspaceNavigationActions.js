@@ -83,13 +83,42 @@ export default function useWorkspaceNavigationActions({
     setSqlResult(null);
   };
 
-  const registerTableTab = (dbName, tableName) => {
+  const registerTableTab = (dbName, tableName, isTransient = false) => {
     const tabId = buildTableTabId(dbName, tableName);
+
     setOpenTableTabs((prev) => {
-      if (prev.some((tab) => tab.id === tabId)) {
+      const existingTabIndex = prev.findIndex((tab) => tab.id === tabId);
+
+      // If opening as transient
+      if (isTransient) {
+        // If it already exists (even if pinned or transient), just keep it as is
+        // but if it was permanent, don't make it transient. 
+        // Actually, if it exists, we just return prev.
+        if (existingTabIndex >= 0) {
+          return prev;
+        }
+
+        // Replace any existing transient tab, or add a new one
+        const withoutTransient = prev.filter((tab) => !tab.isTransient);
+        return orderTabs([
+          ...withoutTransient,
+          { id: tabId, dbName, tableName, pinned: false, isTransient: true },
+        ]);
+      }
+
+      // If opening as permanent (normal)
+      if (existingTabIndex >= 0) {
+        // Promote if it was transient
+        if (prev[existingTabIndex].isTransient) {
+          const next = [...prev];
+          next[existingTabIndex] = { ...next[existingTabIndex], isTransient: false };
+          return next;
+        }
         return prev;
       }
-      return orderTabs([...prev, { id: tabId, dbName, tableName, pinned: false }]);
+
+      // Add new permanent tab
+      return orderTabs([...prev, { id: tabId, dbName, tableName, pinned: false, isTransient: false }]);
     });
     setActiveTableTabId(tabId);
   };
@@ -114,7 +143,7 @@ export default function useWorkspaceNavigationActions({
     }
   };
 
-  const selectDbAndTable = async (dbName, tableName, forceTab = null) => {
+  const selectDbAndTable = async (dbName, tableName, forceTab = null, isTransient = false) => {
     try {
       await ensureDatabaseTablesLoaded(dbName);
     } catch (error) {
@@ -142,7 +171,7 @@ export default function useWorkspaceNavigationActions({
     setIsCommandOpen(false);
     setSqlQuery(`SELECT * FROM ${quoteIdentifier(tableName)} LIMIT 50;`);
     setSqlResult(null);
-    registerTableTab(dbName, tableName);
+    registerTableTab(dbName, tableName, isTransient);
   };
 
   const activateTableTab = async (tabId) => {
@@ -205,11 +234,19 @@ export default function useWorkspaceNavigationActions({
           ? {
               ...tab,
               pinned: !tab.pinned,
+              isTransient: false, // Pinning makes it permanent
             }
           : tab,
       );
       return orderTabs(nextTabs);
     });
+  };
+
+  const promoteTableTab = (tabId) => {
+    if (!tabId) return;
+    setOpenTableTabs((prev) =>
+      prev.map((tab) => (tab.id === tabId ? { ...tab, isTransient: false } : tab)),
+    );
   };
 
   const isTableTabPinned = (tabId) => {
@@ -327,5 +364,6 @@ export default function useWorkspaceNavigationActions({
     closeAllTableTabs,
     toggleTableTabPin,
     isTableTabPinned,
+    promoteTableTab,
   };
 }

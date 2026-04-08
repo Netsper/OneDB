@@ -205,6 +205,7 @@ function sanitizeOpenTableTabs(rawValue) {
       dbName,
       tableName,
       pinned: Boolean(item.pinned),
+      isTransient: Boolean(item.isTransient),
     });
   });
 

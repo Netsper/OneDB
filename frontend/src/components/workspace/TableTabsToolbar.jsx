@@ -12,6 +12,7 @@ import {
   Trash2,
   Rows,
   Pin,
+  Eye,
 } from 'lucide-react';
 import MenuSurface from '../shared/MenuSurface.jsx';
 import SelectField from '../shared/SelectField.jsx';
@@ -31,6 +32,7 @@ export default function TableTabsToolbar({
   onCloseTableTabsToRight,
   onCloseAllTableTabs,
   onToggleTableTabPin,
+  onPromoteTableTab,
   isTableTabPinned,
   activeDb,
   activeTable,
@@ -165,15 +167,17 @@ export default function TableTabsToolbar({
                 }}
                 type="button"
                 onClick={() => onActivateTableTab(tab.id)}
+                onDoubleClick={() => onPromoteTableTab(tab.id)}
                 onContextMenu={(event) => openTabContextMenu(event, tab.id)}
                 className={`group inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs transition-colors whitespace-nowrap ${
                   isActive
                     ? `${tc.border} ${tc.textLight} ${tc.lightBg}`
                     : 'border-[#333] text-zinc-300 hover:bg-[#232323]'
-                }`}
+                } ${tab.isTransient ? 'italic' : ''}`}
                 title={`${tab.dbName}.${tab.tableName}`}
               >
                 {isPinned && <Pin className="w-3 h-3 text-amber-400" />}
+                {tab.isTransient && <Eye className="w-3 h-3 text-zinc-500" />}
                 <span className="max-w-[12rem] truncate">{tab.tableName}</span>
                 <span className="text-[10px] text-zinc-500">{tab.dbName}</span>
                 <span
