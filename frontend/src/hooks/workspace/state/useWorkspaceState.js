@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { normalizePinnedItems } from '../../../utils/pins.js';
 
 const DEFAULT_WORKSPACE_SETTINGS = Object.freeze({
@@ -45,7 +45,7 @@ function sanitizeSavedConnectionProfiles(rawValue) {
       name: String(item.name || '').trim(),
       host: String(item.host || ''),
       user: String(item.user || ''),
-      pass: '',
+      pass: String(item.pass || ''),
       port: String(item.port || ''),
       driver: item.driver === 'pgsql' ? 'pgsql' : 'mysql',
       sslEnabled: Boolean(item.sslEnabled),
@@ -53,7 +53,7 @@ function sanitizeSavedConnectionProfiles(rawValue) {
       sslCa: String(item.sslCa || ''),
       sslCert: String(item.sslCert || ''),
       sslKey: String(item.sslKey || ''),
-      sslPassphrase: '',
+      sslPassphrase: String(item.sslPassphrase || ''),
       sshTunnelEnabled: Boolean(item.sshTunnelEnabled),
       sshTunnelHost: String(item.sshTunnelHost || '127.0.0.1'),
       sshTunnelPort: String(item.sshTunnelPort || ''),
@@ -413,6 +413,52 @@ export default function useWorkspaceState() {
   const [loginError, setLoginError] = useState('');
 
   const sqlContainerRef = useRef(null);
+  const isInitializingFromUrl = useRef(false);
+
+  // --- URL Synchronization ---
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const urlDb = params.get('db');
+    const urlTable = params.get('table');
+
+    // Sync URL -> State (only once on connection)
+    if (!isInitializingFromUrl.current) {
+      if (urlDb) setActiveDb(urlDb);
+      if (urlTable && urlDb) {
+        const tabId = `${urlDb}::${urlTable}`;
+        // We don't necessarily open the tab here, but we set the active ID
+        // The components that render tabs will handle the presence of the tab
+        setActiveTableTabId(tabId);
+      }
+      isInitializingFromUrl.current = true;
+    }
+
+    // Sync State -> URL
+    const newParams = new URLSearchParams();
+    if (activeDb) newParams.set('db', activeDb);
+    
+    if (activeTableTabId && activeTableTabId.includes('::')) {
+      const [, tableName] = activeTableTabId.split('::');
+      newParams.set('table', tableName);
+    }
+
+    const newSearch = newParams.toString();
+    const currentSearch = window.location.search.replace('?', '');
+    
+    if (newSearch !== currentSearch) {
+      const newUrl = `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`;
+      window.history.replaceState(null, '', newUrl);
+    }
+  }, [isConnected, activeDb, activeTableTabId]);
+
+  // Reset initialization flag on disconnect
+  useEffect(() => {
+    if (!isConnected) {
+      isInitializingFromUrl.current = false;
+    }
+  }, [isConnected]);
 
   return {
     lang,

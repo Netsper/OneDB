@@ -78,11 +78,30 @@ export default function useWorkspaceConnectionActions({
 
       persistLastConnection();
 
-      const firstDb = dbNames[0] || null;
-      if (firstDb) {
-        setActiveDb(firstDb);
-        setExpandedDbs({ [firstDb]: true });
-        setExpandedGroups({ [`${firstDb}_tables`]: true, [`${firstDb}_views`]: true });
+      const params = new URLSearchParams(window.location.search);
+      const urlDb = params.get('db');
+      const urlTable = params.get('table');
+
+      const targetDb = (urlDb && dbNames.includes(urlDb)) ? urlDb : (dbNames[0] || null);
+
+      if (targetDb) {
+        setActiveDb(targetDb);
+        setExpandedDbs((prev) => ({ ...prev, [targetDb]: true }));
+        setExpandedGroups((prev) => ({ 
+          ...prev, 
+          [`${targetDb}_tables`]: true, 
+          [`${targetDb}_views`]: true 
+        }));
+
+        if (urlTable) {
+          const tabId = `${targetDb}::${urlTable}`;
+          // Ensure the tab exists in openTableTabs if it's new
+          setOpenTableTabs((prev) => {
+            if (prev.some(t => t.id === tabId)) return prev;
+            return [...prev, { id: tabId, dbName: targetDb, tableName: urlTable, pinned: false }];
+          });
+          setActiveTableTabId(tabId);
+        }
       } else {
         setActiveDb(null);
         setActiveTable(null);
@@ -115,7 +134,7 @@ export default function useWorkspaceConnectionActions({
 
     setSavedConnections((prev) => [
       ...prev.filter((connection) => connection.name !== profileName),
-      { ...connForm, pass: '', sslPassphrase: '', name: profileName },
+      { ...connForm, name: profileName },
     ]);
     setConnForm((prev) => ({ ...prev, name: profileName }));
     setIsSaveProfileModalOpen(false);
@@ -127,7 +146,7 @@ export default function useWorkspaceConnectionActions({
     setConnForm({
       host: profile.host || '',
       user: profile.user || '',
-      pass: '',
+      pass: profile.pass || '',
       port: profile.port || '',
       name: profile.name || '',
       driver: inferredDriver,
@@ -136,7 +155,7 @@ export default function useWorkspaceConnectionActions({
       sslCa: String(profile.sslCa || ''),
       sslCert: String(profile.sslCert || ''),
       sslKey: String(profile.sslKey || ''),
-      sslPassphrase: '',
+      sslPassphrase: profile.sslPassphrase || '',
       sshTunnelEnabled: Boolean(profile.sshTunnelEnabled),
       sshTunnelHost: String(profile.sshTunnelHost || '127.0.0.1'),
       sshTunnelPort: String(profile.sshTunnelPort || ''),

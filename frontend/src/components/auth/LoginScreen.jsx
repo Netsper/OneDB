@@ -78,26 +78,39 @@ export default function LoginScreen({
                 {t('noSavedConn')}
               </div>
             ) : (
-              savedConnections.map((conn, idx) => (
-                <div
-                  key={idx}
-                  className="bg-[#1c1c1c] border border-[#333] hover:border-[#555] rounded-lg p-3 transition-colors group cursor-pointer"
-                  onClick={() => loadConnectionProfile(conn)}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-medium text-zinc-200 text-sm">{conn.name}</span>
-                    <button
-                      onClick={(e) => deleteConnectionProfile(e, conn.name)}
-                      className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+              savedConnections.map((conn, idx) => {
+                const isSelected = connForm.name === conn.name;
+                return (
+                  <div
+                    key={idx}
+                    className={`bg-[#1c1c1c] border rounded-lg p-3 transition-all group cursor-pointer ${
+                      isSelected
+                        ? `${tc.border} ring-1 ${tc.border.replace('border-', 'ring-')}/30`
+                        : 'border-[#333] hover:border-[#555]'
+                    }`}
+                    onClick={() => loadConnectionProfile(conn)}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span
+                        className={`font-medium text-sm transition-colors ${
+                          isSelected ? tc.text : 'text-zinc-200'
+                        }`}
+                      >
+                        {conn.name}
+                      </span>
+                      <button
+                        onClick={(e) => deleteConnectionProfile(e, conn.name)}
+                        className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="text-xs text-zinc-500 font-mono">
+                      {conn.user} @ {conn.host}:{conn.port}
+                    </div>
                   </div>
-                  <div className="text-xs text-zinc-500 font-mono">
-                    {conn.user} @ {conn.host}:{conn.port}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
