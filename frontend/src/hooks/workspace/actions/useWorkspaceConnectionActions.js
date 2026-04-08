@@ -15,6 +15,7 @@ export default function useWorkspaceConnectionActions({
   setIsSaveProfileModalOpen,
   isBuilding,
   setIsBuilding,
+  setIsInitializing,
   csrfTokenRef,
   getCsrfToken,
   callApi,
@@ -101,6 +102,7 @@ export default function useWorkspaceConnectionActions({
             return [...prev, { id: tabId, dbName: targetDb, tableName: urlTable, pinned: false }];
           });
           setActiveTableTabId(tabId);
+          setActiveTable(urlTable);
         }
       } else {
         setActiveDb(null);
@@ -113,6 +115,7 @@ export default function useWorkspaceConnectionActions({
       showToast(error.message || 'Connection failed.', 'error');
     } finally {
       setIsConnecting(false);
+      if (setIsInitializing) setIsInitializing(false);
     }
   };
 

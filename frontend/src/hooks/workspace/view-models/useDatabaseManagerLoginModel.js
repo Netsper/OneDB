@@ -26,16 +26,24 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
   const didAttemptRestoreRef = useRef(false);
 
   useEffect(() => {
-    if (workspace.isConnected) return;
+    if (workspace.isConnected) {
+      workspace.setIsInitializing(false);
+      return;
+    }
     if (workspace.isConnecting) return;
     if (didAttemptRestoreRef.current) return;
+    
     const rawLastConnection = localStorage.getItem('dbm_last_connection');
-    if (!rawLastConnection) return;
+    if (!rawLastConnection) {
+      workspace.setIsInitializing(false);
+      return;
+    }
 
     try {
       const parsed = JSON.parse(rawLastConnection);
       const requiresPassword = Boolean(parsed?.requiresPassword);
       if (requiresPassword && !String(workspace.connForm?.pass || '')) {
+        workspace.setIsInitializing(false);
         return;
       }
     } catch {
@@ -44,7 +52,7 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
 
     didAttemptRestoreRef.current = true;
     handleConnect();
-  }, [handleConnect, workspace.connForm?.pass, workspace.isConnected, workspace.isConnecting]);
+  }, [handleConnect, workspace.connForm?.pass, workspace.isConnected, workspace.isConnecting, workspace.setIsInitializing]);
 
   const loginScreenProps = {
     t,

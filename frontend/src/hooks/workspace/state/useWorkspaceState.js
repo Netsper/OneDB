@@ -246,6 +246,7 @@ export default function useWorkspaceState() {
   const [lang, setLang] = useState(() => localStorage.getItem('dbm_lang') || 'en');
 
   const [isConnected, setIsConnected] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [ping, setPing] = useState(12);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -428,9 +429,15 @@ export default function useWorkspaceState() {
       if (urlDb) setActiveDb(urlDb);
       if (urlTable && urlDb) {
         const tabId = `${urlDb}::${urlTable}`;
-        // We don't necessarily open the tab here, but we set the active ID
-        // The components that render tabs will handle the presence of the tab
+        
+        // Ensure the tab exists in openTableTabs if it's new
+        setOpenTableTabs((prev) => {
+          if (prev.some(t => t.id === tabId)) return prev;
+          return [...prev, { id: tabId, dbName: urlDb, tableName: urlTable, pinned: false }];
+        });
+
         setActiveTableTabId(tabId);
+        setActiveTable(urlTable);
       }
       isInitializingFromUrl.current = true;
     }
@@ -465,6 +472,8 @@ export default function useWorkspaceState() {
     setLang,
     isConnected,
     setIsConnected,
+    isInitializing,
+    setIsInitializing,
     isConnecting,
     setIsConnecting,
     ping,

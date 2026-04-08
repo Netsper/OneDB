@@ -1,6 +1,7 @@
 import React from 'react';
 import WorkspaceLayout from './WorkspaceLayout.jsx';
 import WorkspaceOverlays from './WorkspaceOverlays.jsx';
+import LoadingOverlay from '../shared/LoadingOverlay.jsx';
 
 export default function ConnectedWorkspace({ viewModel }) {
   const { tc, theme, layout, overlays } = viewModel;
@@ -8,8 +9,9 @@ export default function ConnectedWorkspace({ viewModel }) {
   return (
     <div
       data-theme={theme || 'emerald'}
-      className={`h-screen flex flex-col bg-[#18181b] text-zinc-300 font-sans overflow-hidden ${tc.selection}`}
+      className={`h-screen flex flex-col bg-[#18181b] text-zinc-300 font-sans overflow-hidden relative ${tc.selection}`}
     >
+      <LoadingOverlay isVisible={viewModel.isLoading} tc={tc} />
       <WorkspaceLayout
         sidebar={layout.sidebar}
         header={layout.header}
