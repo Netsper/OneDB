@@ -20,8 +20,7 @@ export const en = {
   sshLocalPort: 'Local port',
   secretProfileRef: 'Secret profile reference',
   secretProfileRefHint: 'e.g. PROD_MAIN',
-  secretProfileRefDesc:
-    'Backend reads ONEDB_SECRET_<REF> from environment and merges credentials.',
+  secretProfileRefDesc: 'Backend reads ONEDB_SECRET_<REF> from environment and merges credentials.',
   connectBtn: 'Connect',
   saveBtn: 'Save',
   savedServers: 'Saved Servers',

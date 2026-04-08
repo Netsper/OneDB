@@ -621,13 +621,17 @@ export default function SqlEditorView({
                         <div className="text-sm text-zinc-200">{sqlResult.plan.length}</div>
                       </div>
                       <div className="rounded border border-[#2e2e32] bg-[#18181b] px-3 py-2">
-                        <div className="text-[10px] text-zinc-500 uppercase">{t('explainSummaryRows')}</div>
+                        <div className="text-[10px] text-zinc-500 uppercase">
+                          {t('explainSummaryRows')}
+                        </div>
                         <div className="text-sm text-zinc-200">
                           {buildPlanMetrics(sqlResult.plan).totalRows}
                         </div>
                       </div>
                       <div className="rounded border border-[#2e2e32] bg-[#18181b] px-3 py-2">
-                        <div className="text-[10px] text-zinc-500 uppercase">{t('explainSummaryCost')}</div>
+                        <div className="text-[10px] text-zinc-500 uppercase">
+                          {t('explainSummaryCost')}
+                        </div>
                         <div className="text-sm text-zinc-200">
                           {buildPlanMetrics(sqlResult.plan).maxCost}
                         </div>
@@ -641,7 +645,9 @@ export default function SqlEditorView({
                   )}
 
                   <div className="mt-4 pt-4 border-t border-[#2e2e32]">
-                    <div className="text-zinc-300 font-semibold mb-3">{t('explainCompareTitle')}</div>
+                    <div className="text-zinc-300 font-semibold mb-3">
+                      {t('explainCompareTitle')}
+                    </div>
                     {sqlResult.planCompare ? (
                       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                         <div className="border border-[#2e2e32] rounded bg-[#18181b] p-3">

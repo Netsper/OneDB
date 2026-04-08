@@ -60,9 +60,7 @@ export default function useOneDbApi({
       const resolvedHost = sshTunnelEnabled
         ? String(connForm.sshTunnelHost || '').trim() || '127.0.0.1'
         : host;
-      const resolvedPort = sshTunnelEnabled
-        ? String(connForm.sshTunnelPort || '').trim()
-        : port;
+      const resolvedPort = sshTunnelEnabled ? String(connForm.sshTunnelPort || '').trim() : port;
       const sslEnabled = Boolean(connForm.sslEnabled);
 
       const ssl = sslEnabled
@@ -178,10 +176,14 @@ export default function useOneDbApi({
 
   const executeSql = useCallback(
     async (sql, database = activeDb, options = {}) =>
-      callApi('query', {
-        connection: buildConnectionPayload(database || ''),
-        sql,
-      }, options),
+      callApi(
+        'query',
+        {
+          connection: buildConnectionPayload(database || ''),
+          sql,
+        },
+        options,
+      ),
     [activeDb, buildConnectionPayload, callApi],
   );
 
@@ -259,7 +261,7 @@ export default function useOneDbApi({
               const row = Array.isArray(result?.rows) ? result.rows[0] : null;
               const rawValue =
                 row && typeof row === 'object'
-                  ? row.__onedb_count ?? Object.values(row)[0]
+                  ? (row.__onedb_count ?? Object.values(row)[0])
                   : result?.rowCount;
               const parsedCount = Number(rawValue);
               if (!Number.isFinite(parsedCount) || parsedCount < 0) return;

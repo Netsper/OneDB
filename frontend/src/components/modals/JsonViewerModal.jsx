@@ -78,7 +78,11 @@ function JsonTreeNode({ label, value, path, expandedPaths, togglePath }) {
             onClick={() => togglePath(path)}
             className="text-zinc-400 hover:text-zinc-200 mt-1"
           >
-            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            {isExpanded ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
           </button>
         ) : (
           <span className="w-3.5 h-3.5 mt-1" />
@@ -131,7 +135,11 @@ function collectExpandablePaths(value, path = '$') {
     : Object.entries(value || {});
 
   return entries.reduce(
-    (acc, [key, child]) => [...acc, `${path}.${key}`, ...collectExpandablePaths(child, `${path}.${key}`)],
+    (acc, [key, child]) => [
+      ...acc,
+      `${path}.${key}`,
+      ...collectExpandablePaths(child, `${path}.${key}`),
+    ],
     [path],
   );
 }
@@ -160,9 +168,7 @@ export default function JsonViewerModal({
     [parsedJson],
   );
   const areAllTreeNodesExpanded = useMemo(
-    () =>
-      expandablePaths.length > 0 &&
-      expandablePaths.every((path) => expandedPaths.has(path)),
+    () => expandablePaths.length > 0 && expandablePaths.every((path) => expandedPaths.has(path)),
     [expandablePaths, expandedPaths],
   );
 

@@ -120,7 +120,8 @@ export default function SchemaView({
   const foreignKeys = Array.isArray(insights?.foreignKeys) ? insights.foreignKeys : [];
   const referencedBy = Array.isArray(insights?.referencedBy) ? insights.referencedBy : [];
   const relatedRoutines = Array.isArray(insights?.relatedRoutines) ? insights.relatedRoutines : [];
-  const viewDefinition = typeof insights?.viewDefinition === 'string' ? insights.viewDefinition : '';
+  const viewDefinition =
+    typeof insights?.viewDefinition === 'string' ? insights.viewDefinition : '';
 
   const hasInsightCards =
     indexes.length > 0 ||
@@ -359,7 +360,8 @@ export default function SchemaView({
                               key={`${routine.type}-${routine.name}`}
                               className="text-xs text-zinc-300 font-mono"
                             >
-                              <span className="text-fuchsia-300">{routine.type}</span> {routine.name}
+                              <span className="text-fuchsia-300">{routine.type}</span>{' '}
+                              {routine.name}
                             </div>
                           ))}
                         </div>

@@ -258,9 +258,7 @@ export default function TableTabsToolbar({
                 className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-400/10 flex items-center gap-2"
               >
                 <Pin className="w-3.5 h-3.5" />
-                {isTableTabPinned?.(contextTab.id)
-                  ? t('tabUnpin')
-                  : t('tabPin')}
+                {isTableTabPinned?.(contextTab.id) ? t('tabUnpin') : t('tabPin')}
               </button>
             </MenuSurface>
           )}

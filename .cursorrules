@@ -1,0 +1,18 @@
+# OneDB AI-Core Development Rules
+
+## 🧠 AI Project Knowledge
+Before proposing ANY logic changes, structural modifications, or new features, YOU MUST read the following core identity and mapping files to understand the project architecture:
+
+- **Identity & Versioning**: [IDENTITY.md](file:///Users/sinanaydogan/Documents/MCP/OneDB/ai/IDENTITY.md)
+- **Architecture & Data Flow**: [SYSTEM_MAP.md](file:///Users/sinanaydogan/Documents/MCP/OneDB/ai/SYSTEM_MAP.md)
+- **Module & Component Map**: [COMPONENT_MAP.md](file:///Users/sinanaydogan/Documents/MCP/OneDB/ai/COMPONENT_MAP.md)
+- **Service & Method Registry**: [SERVICE_MAP.md](file:///Users/sinanaydogan/Documents/MCP/OneDB/ai/SERVICE_MAP.md)
+
+---
+
+## 🏗️ Developer Constraints
+
+1. **Build Integrity**: The project relies on a single-file delivery model. Always ensure new code is packable.
+2. **Single-File Release**: The final product is a single PHP file (`release/OneDB.php`). Do not modify it directly. Always modify the source in `backend/src/` or `frontend/src/` and run `./build.sh`.
+3. **Minification Integrity**: Ensure PHP files in `backend/src/` do not use complex regex or unusual comment styles that could break the `pack-release.mjs` minifier.
+4. **CSRF Protection**: All mutating API actions MUST include `SessionCsrf::requireValidToken()` and use `POST` methods.
