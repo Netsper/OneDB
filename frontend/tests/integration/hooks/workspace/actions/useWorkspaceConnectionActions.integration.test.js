@@ -26,8 +26,10 @@ function createDependencies(overrides = {}) {
     setQps: (value) => calls.setQps.push(value),
     setActiveDb: (value) => calls.setActiveDb.push(value),
     setActiveTable: (value) => calls.setActiveTable.push(value),
-    setExpandedDbs: (value) => calls.setExpandedDbs.push(value),
-    setExpandedGroups: (value) => calls.setExpandedGroups.push(value),
+    setExpandedDbs: (value) =>
+      calls.setExpandedDbs.push(typeof value === 'function' ? value({}) : value),
+    setExpandedGroups: (value) =>
+      calls.setExpandedGroups.push(typeof value === 'function' ? value({}) : value),
     setSavedConnections: () => {},
     setProfileNameDraft: () => {},
     setIsSaveProfileModalOpen: () => {},

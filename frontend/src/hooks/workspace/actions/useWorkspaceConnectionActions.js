@@ -67,6 +67,13 @@ export default function useWorkspaceConnectionActions({
     }
   };
 
+  const readUrlParams = () => {
+    if (typeof window === 'undefined' || typeof window.location?.search !== 'string') {
+      return new URLSearchParams('');
+    }
+    return new URLSearchParams(window.location.search);
+  };
+
   const handleConnect = async (e) => {
     if (e) e.preventDefault();
     setIsConnecting(true);
@@ -81,7 +88,7 @@ export default function useWorkspaceConnectionActions({
 
       persistLastConnection();
 
-      const params = new URLSearchParams(window.location.search);
+      const params = readUrlParams();
       const urlDb = params.get('db');
       const urlTable = params.get('table');
 
