@@ -167,7 +167,7 @@ export default function TableTabsToolbar({
                 }}
                 type="button"
                 onClick={() => onActivateTableTab(tab.id)}
-                onDoubleClick={() => onPromoteTableTab(tab.id)}
+                onDoubleClick={() => onPromoteTableTab?.(tab.id)}
                 onContextMenu={(event) => openTabContextMenu(event, tab.id)}
                 className={`group inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs transition-colors whitespace-nowrap ${
                   isActive
