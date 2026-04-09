@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Code,
   Columns,
@@ -62,6 +62,7 @@ export default function TableTabsToolbar({
   onCloseAllTableTabs,
   onToggleTableTabPin,
   onPromoteTableTab,
+  onMoveTableTab,
   isTableTabPinned,
   activeDb,
   activeTable,
@@ -113,16 +114,51 @@ export default function TableTabsToolbar({
   const shouldShowTableTabs = tableTabs.length > 1;
   const tabsScrollRef = useRef(null);
   const tabButtonRefs = useRef({});
+  const tabRectsRef = useRef(new Map());
+  const suppressTabClickRef = useRef(false);
+  const lastDragPreviewKeyRef = useRef('');
   const [tabContextMenu, setTabContextMenu] = useState({
     visible: false,
     x: 0,
     y: 0,
     tabId: null,
   });
+  const [pointerDrag, setPointerDrag] = useState(null);
+  const [draggingTabId, setDraggingTabId] = useState(null);
+  const [tabDropIndicator, setTabDropIndicator] = useState(null);
+  const tabById = useMemo(
+    () =>
+      tableTabs.reduce((map, tab) => {
+        map[tab.id] = tab;
+        return map;
+      }, {}),
+    [tableTabs],
+  );
   const contextTab = useMemo(
     () => tableTabs.find((tab) => tab.id === tabContextMenu.tabId) || null,
     [tableTabs, tabContextMenu.tabId],
   );
+  const draggedTab = useMemo(
+    () => (draggingTabId ? tabById[draggingTabId] || null : null),
+    [draggingTabId, tabById],
+  );
+  const dragGhostStyle = useMemo(() => {
+    if (!pointerDrag || !draggedTab || !draggingTabId) return null;
+    return {
+      left: `${Math.round(pointerDrag.currentX - pointerDrag.offsetX)}px`,
+      top: `${Math.round(pointerDrag.currentY - pointerDrag.offsetY)}px`,
+      width: `${Math.round(pointerDrag.width)}px`,
+      minWidth: `${Math.round(pointerDrag.width)}px`,
+      maxWidth: `${Math.round(pointerDrag.width)}px`,
+    };
+  }, [draggingTabId, draggedTab, pointerDrag]);
+
+  const getDbLabelClass = (tab, isActive) =>
+    colorizeDbLabelsByDatabase
+      ? `${getDbColorClass(tab.dbName)} ${isActive ? 'opacity-100' : 'opacity-90 group-hover:opacity-100'}`
+      : isActive
+        ? 'text-zinc-200'
+        : 'text-zinc-500 group-hover:text-zinc-300';
 
   useEffect(() => {
     if (!tabContextMenu.visible) {
@@ -160,6 +196,34 @@ export default function TableTabsToolbar({
     return () => window.clearTimeout(timeoutId);
   }, [activeTableTabId, shouldShowTableTabs, tableTabs]);
 
+  useLayoutEffect(() => {
+    const nextRects = new Map();
+    tableTabs.forEach((tab) => {
+      const node = tabButtonRefs.current[tab.id];
+      if (!node) return;
+      nextRects.set(tab.id, node.getBoundingClientRect());
+    });
+
+    nextRects.forEach((nextRect, tabId) => {
+      if (tabId === draggingTabId) return;
+      const prevRect = tabRectsRef.current.get(tabId);
+      const node = tabButtonRefs.current[tabId];
+      if (!prevRect || !node) return;
+      const deltaX = prevRect.left - nextRect.left;
+      const deltaY = prevRect.top - nextRect.top;
+      if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) return;
+
+      node.style.transition = 'none';
+      node.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+      requestAnimationFrame(() => {
+        node.style.transition = 'transform 170ms cubic-bezier(0.2, 0, 0, 1)';
+        node.style.transform = '';
+      });
+    });
+
+    tabRectsRef.current = nextRects;
+  }, [draggingTabId, tableTabs]);
+
   const openTabContextMenu = (event, tabId) => {
     event.preventDefault();
     event.stopPropagation();
@@ -175,6 +239,148 @@ export default function TableTabsToolbar({
     setTabContextMenu((prev) => ({ ...prev, visible: false }));
   };
 
+  const clearTabDragState = () => {
+    setDraggingTabId(null);
+    setTabDropIndicator(null);
+    lastDragPreviewKeyRef.current = '';
+  };
+
+  const resolvePointerDropTarget = (clientX, draggingId = null) => {
+    const positionedTabs = tableTabs
+      .map((tab) => {
+        if (draggingId && tab.id === draggingId) return null;
+        const node = tabButtonRefs.current[tab.id];
+        if (!node) return null;
+        const rect = node.getBoundingClientRect();
+        if (!Number.isFinite(rect.left) || !Number.isFinite(rect.right) || rect.width <= 0) {
+          return null;
+        }
+        return { tabId: tab.id, rect };
+      })
+      .filter(Boolean);
+
+    if (positionedTabs.length === 0) return null;
+
+    const first = positionedTabs[0];
+    const last = positionedTabs[positionedTabs.length - 1];
+    if (clientX <= first.rect.left) {
+      return { tabId: first.tabId, position: 'before' };
+    }
+    if (clientX >= last.rect.right) {
+      return { tabId: last.tabId, position: 'after' };
+    }
+
+    const hovered = positionedTabs.find(({ rect }) => clientX >= rect.left && clientX <= rect.right);
+    if (hovered) {
+      const midpoint = hovered.rect.left + hovered.rect.width / 2;
+      return { tabId: hovered.tabId, position: clientX < midpoint ? 'before' : 'after' };
+    }
+
+    let nearest = null;
+    for (const entry of positionedTabs) {
+      const center = entry.rect.left + entry.rect.width / 2;
+      const distance = Math.abs(clientX - center);
+      if (!nearest || distance < nearest.distance) {
+        nearest = { tabId: entry.tabId, center, distance };
+      }
+    }
+
+    if (!nearest) return null;
+    return {
+      tabId: nearest.tabId,
+      position: clientX < nearest.center ? 'before' : 'after',
+    };
+  };
+
+  const autoScrollTabsWhileDragging = (clientX) => {
+    const container = tabsScrollRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const threshold = 48;
+    const maxStep = 16;
+    if (clientX < rect.left + threshold) {
+      const ratio = Math.min(1, (rect.left + threshold - clientX) / threshold);
+      container.scrollLeft -= Math.ceil(maxStep * ratio);
+    } else if (clientX > rect.right - threshold) {
+      const ratio = Math.min(1, (clientX - (rect.right - threshold)) / threshold);
+      container.scrollLeft += Math.ceil(maxStep * ratio);
+    }
+  };
+
+  useEffect(() => {
+    if (!pointerDrag) return undefined;
+    const DRAG_THRESHOLD_PX = 4;
+
+    const handlePointerMove = (event) => {
+      if (event.pointerId !== pointerDrag.pointerId) return;
+      const deltaX = event.clientX - pointerDrag.startX;
+      const deltaY = event.clientY - pointerDrag.startY;
+      setPointerDrag((prev) =>
+        prev && prev.pointerId === event.pointerId
+          ? { ...prev, currentX: event.clientX, currentY: event.clientY }
+          : prev,
+      );
+      if (Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD_PX && draggingTabId === null) {
+        return;
+      }
+
+      if (draggingTabId === null) {
+        setDraggingTabId(pointerDrag.tabId);
+      }
+
+      suppressTabClickRef.current = true;
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+
+      autoScrollTabsWhileDragging(event.clientX);
+
+      const dragTab = tabById[pointerDrag.tabId];
+      if (!dragTab) return;
+
+      const dropTarget = resolvePointerDropTarget(event.clientX, dragTab.id);
+      if (!dropTarget || dropTarget.tabId === dragTab.id) {
+        setTabDropIndicator(null);
+        return;
+      }
+
+      const targetTab = tabById[dropTarget.tabId];
+      if (!targetTab) return;
+      if (Boolean(targetTab.pinned) !== Boolean(dragTab.pinned)) {
+        setTabDropIndicator(null);
+        return;
+      }
+
+      setTabDropIndicator(dropTarget);
+      const previewKey = `${dragTab.id}:${dropTarget.tabId}:${dropTarget.position}`;
+      if (lastDragPreviewKeyRef.current !== previewKey) {
+        onMoveTableTab?.(dragTab.id, dropTarget.tabId, dropTarget.position);
+        lastDragPreviewKeyRef.current = previewKey;
+      }
+    };
+
+    const handlePointerFinish = (event) => {
+      if (event.pointerId !== pointerDrag.pointerId) return;
+      setPointerDrag(null);
+      clearTabDragState();
+      window.setTimeout(() => {
+        suppressTabClickRef.current = false;
+      }, 0);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerFinish);
+    window.addEventListener('pointercancel', handlePointerFinish);
+    document.body.style.userSelect = 'none';
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerFinish);
+      window.removeEventListener('pointercancel', handlePointerFinish);
+      document.body.style.userSelect = '';
+    };
+  }, [draggingTabId, onMoveTableTab, pointerDrag, tabById, tableTabs]);
+
   return (
     <div className="px-6 border-b border-[#2e2e32] bg-[#1c1c1c] shrink-0">
       {shouldShowTableTabs && (
@@ -186,11 +392,7 @@ export default function TableTabsToolbar({
           {tableTabs.map((tab) => {
             const isActive = tab.id === activeTableTabId;
             const isPinned = Boolean(tab.pinned);
-            const dbLabelClass = colorizeDbLabelsByDatabase
-              ? `${getDbColorClass(tab.dbName)} ${isActive ? 'opacity-100' : 'opacity-90 group-hover:opacity-100'}`
-              : isActive
-                ? 'text-zinc-200'
-                : 'text-zinc-500 group-hover:text-zinc-300';
+            const dbLabelClass = getDbLabelClass(tab, isActive);
             return (
               <div
                 key={tab.id}
@@ -208,7 +410,36 @@ export default function TableTabsToolbar({
                 data-db-name={tab.dbName}
                 data-table-name={tab.tableName}
                 data-active={isActive ? 'true' : 'false'}
-                onClick={() => onActivateTableTab(tab.id)}
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  if (tableTabs.length <= 1) return;
+                  const target = event.target;
+                  if (target instanceof Element && target.closest('button')) return;
+                  const node = tabButtonRefs.current[tab.id];
+                  if (!node) return;
+                  const rect = node.getBoundingClientRect();
+                  suppressTabClickRef.current = false;
+                  setPointerDrag({
+                    tabId: tab.id,
+                    pointerId: event.pointerId,
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    currentX: event.clientX,
+                    currentY: event.clientY,
+                    offsetX: event.clientX - rect.left,
+                    offsetY: event.clientY - rect.top,
+                    width: rect.width,
+                    height: rect.height,
+                  });
+                }}
+                onClick={(event) => {
+                  if (suppressTabClickRef.current) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                  }
+                  onActivateTableTab(tab.id);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
@@ -217,13 +448,25 @@ export default function TableTabsToolbar({
                 }}
                 onDoubleClick={() => onPromoteTableTab?.(tab.id)}
                 onContextMenu={(event) => openTabContextMenu(event, tab.id)}
-                className={`group inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs transition-colors whitespace-nowrap ${
+                className={`group relative inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs transition-[colors,transform] whitespace-nowrap select-none ${
                   isActive
                     ? `${tc.border} ${tc.textLight} ${tc.lightBg}`
                     : 'border-[#333] text-zinc-300 hover:bg-[#232323]'
-                } ${tab.isTransient ? 'italic' : ''}`}
+                } ${tab.isTransient ? 'italic' : ''} ${
+                  draggingTabId === tab.id
+                    ? 'opacity-20 scale-[0.98] cursor-grabbing'
+                    : 'cursor-default'
+                } ${
+                  tabDropIndicator?.tabId === tab.id ? 'ring-1 ring-emerald-300/40' : ''
+                }`}
                 title={`${tab.dbName}.${tab.tableName}`}
               >
+                {tabDropIndicator?.tabId === tab.id && tabDropIndicator?.position === 'before' && (
+                  <span className="pointer-events-none absolute -left-[3px] top-1.5 bottom-1.5 w-[2px] rounded-full bg-emerald-300" />
+                )}
+                {tabDropIndicator?.tabId === tab.id && tabDropIndicator?.position === 'after' && (
+                  <span className="pointer-events-none absolute -right-[3px] top-1.5 bottom-1.5 w-[2px] rounded-full bg-emerald-300" />
+                )}
                 {isPinned && <Pin className="w-3 h-3 text-amber-400" />}
                 {tab.isTransient && <Eye className="w-3 h-3 text-zinc-500" />}
                 <span className="max-w-[12rem] truncate">{tab.tableName}</span>
@@ -235,7 +478,9 @@ export default function TableTabsToolbar({
                 </span>
                 <button
                   type="button"
+                  draggable={false}
                   data-testid="table-tab-close"
+                  onMouseDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation();
                     onCloseTableTab(tab.id);
@@ -312,6 +557,27 @@ export default function TableTabsToolbar({
               </button>
             </MenuSurface>
           )}
+        </div>
+      )}
+      {dragGhostStyle && draggedTab && (
+        <div className="pointer-events-none fixed z-[180]" style={dragGhostStyle}>
+          <div
+            className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs whitespace-nowrap shadow-[0_10px_30px_rgba(0,0,0,0.45)] ${
+              draggedTab.id === activeTableTabId
+                ? `${tc.border} ${tc.textLight} ${tc.lightBg}`
+                : 'border-[#3b3b40] text-zinc-100 bg-[#202024]'
+            }`}
+          >
+            {draggedTab.pinned && <Pin className="w-3 h-3 text-amber-400" />}
+            {draggedTab.isTransient && <Eye className="w-3 h-3 text-zinc-500" />}
+            <span className="max-w-[12rem] truncate">{draggedTab.tableName}</span>
+            <span
+              data-testid="table-tab-drag-db-label"
+              className={`text-[10px] ${getDbLabelClass(draggedTab, draggedTab.id === activeTableTabId)}`}
+            >
+              {draggedTab.dbName}
+            </span>
+          </div>
         </div>
       )}
       <div className="flex items-center justify-between gap-4">

@@ -279,6 +279,34 @@ export default function useWorkspaceNavigationActions({
     );
   };
 
+  const moveTableTab = (dragTabId, targetTabId, position = 'before') => {
+    if (!dragTabId || !targetTabId || dragTabId === targetTabId) return;
+    const normalizedPosition = position === 'after' ? 'after' : 'before';
+    setOpenTableTabs((prev) => {
+      const dragTab = prev.find((tab) => tab.id === dragTabId);
+      const targetTab = prev.find((tab) => tab.id === targetTabId);
+      if (!dragTab || !targetTab) return prev;
+      if (Boolean(dragTab.pinned) !== Boolean(targetTab.pinned)) return prev;
+
+      const withoutDrag = prev.filter((tab) => tab.id !== dragTabId);
+      const targetIndex = withoutDrag.findIndex((tab) => tab.id === targetTabId);
+      if (targetIndex < 0) return prev;
+      if (Boolean(withoutDrag[targetIndex]?.pinned) !== Boolean(dragTab.pinned)) return prev;
+
+      const insertAt = normalizedPosition === 'after' ? targetIndex + 1 : targetIndex;
+      const nextTabs = [
+        ...withoutDrag.slice(0, insertAt),
+        dragTab,
+        ...withoutDrag.slice(insertAt),
+      ];
+
+      const unchanged =
+        nextTabs.length === prev.length &&
+        nextTabs.every((tab, index) => tab.id === prev[index]?.id);
+      return unchanged ? prev : nextTabs;
+    });
+  };
+
   const isTableTabPinned = (tabId) => {
     if (!tabId) return false;
     return openTableTabs.some((tab) => tab.id === tabId && tab.pinned);
@@ -395,5 +423,6 @@ export default function useWorkspaceNavigationActions({
     toggleTableTabPin,
     isTableTabPinned,
     promoteTableTab,
+    moveTableTab,
   };
 }

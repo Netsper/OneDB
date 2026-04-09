@@ -20,6 +20,7 @@ export default function WorkspaceMainPanel({
   closeTableTabsToRight,
   closeAllTableTabs,
   toggleTableTabPin,
+  moveTableTab,
   isTableTabPinned,
   selectedRows,
   setFormData,
@@ -151,6 +152,7 @@ export default function WorkspaceMainPanel({
           onCloseTableTabsToRight={closeTableTabsToRight}
           onCloseAllTableTabs={closeAllTableTabs}
           onToggleTableTabPin={toggleTableTabPin}
+          onMoveTableTab={moveTableTab}
           isTableTabPinned={isTableTabPinned}
           activeDb={activeDb}
           activeTable={activeTable}

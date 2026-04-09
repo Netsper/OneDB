@@ -302,6 +302,42 @@ test('close tab actions preserve pinned tabs and keep active tab consistent', as
   assert.equal(state.activeTableTabId, 'appdb::logs');
 });
 
+test('moveTableTab reorders tabs within same pin segment and blocks cross-segment moves', () => {
+  const { state, makeActions } = createHarness({
+    state: {
+      openTableTabs: [
+        { id: 'appdb::pin_a', dbName: 'appdb', tableName: 'pin_a', pinned: true },
+        { id: 'appdb::pin_b', dbName: 'appdb', tableName: 'pin_b', pinned: true },
+        { id: 'appdb::users', dbName: 'appdb', tableName: 'users', pinned: false },
+        { id: 'appdb::logs', dbName: 'appdb', tableName: 'logs', pinned: false },
+        { id: 'appdb::audit', dbName: 'appdb', tableName: 'audit', pinned: false },
+      ],
+      activeTableTabId: 'appdb::users',
+      activeDb: 'appdb',
+      activeTable: 'users',
+    },
+  });
+  const actions = makeActions();
+
+  actions.moveTableTab('appdb::audit', 'appdb::users', 'before');
+  assert.deepEqual(
+    state.openTableTabs.map((tab) => tab.id),
+    ['appdb::pin_a', 'appdb::pin_b', 'appdb::audit', 'appdb::users', 'appdb::logs'],
+  );
+
+  actions.moveTableTab('appdb::pin_a', 'appdb::pin_b', 'after');
+  assert.deepEqual(
+    state.openTableTabs.map((tab) => tab.id),
+    ['appdb::pin_b', 'appdb::pin_a', 'appdb::audit', 'appdb::users', 'appdb::logs'],
+  );
+
+  actions.moveTableTab('appdb::pin_b', 'appdb::users', 'before');
+  assert.deepEqual(
+    state.openTableTabs.map((tab) => tab.id),
+    ['appdb::pin_b', 'appdb::pin_a', 'appdb::audit', 'appdb::users', 'appdb::logs'],
+  );
+});
+
 test('setCellNullFromMenu updates selected cell to NULL using primary key', async () => {
   const { state, calls, makeActions } = createHarness({
     state: {
