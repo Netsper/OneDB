@@ -3,6 +3,9 @@ import { normalizePinnedItems } from '../../../utils/pins.js';
 
 const DEFAULT_WORKSPACE_SETTINGS = Object.freeze({
   showCellTooltipOnHover: true,
+  tabs: {
+    colorizeDbLabelsByDatabase: true,
+  },
   sqlEditor: {
     syntaxHighlight: true,
     autocomplete: true,
@@ -89,6 +92,12 @@ function loadWorkspaceSettings() {
         parsed.showCellTooltipOnHover,
         DEFAULT_WORKSPACE_SETTINGS.showCellTooltipOnHover,
       ),
+      tabs: {
+        colorizeDbLabelsByDatabase: parseBooleanSetting(
+          parsed.tabs?.colorizeDbLabelsByDatabase,
+          DEFAULT_WORKSPACE_SETTINGS.tabs.colorizeDbLabelsByDatabase,
+        ),
+      },
       sqlEditor: {
         syntaxHighlight: parseBooleanSetting(
           parsed.sqlEditor?.syntaxHighlight,

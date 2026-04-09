@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Check,
   ChevronDown,
+  Columns,
   Code2,
   Eye,
   Languages,
@@ -92,6 +93,9 @@ export default function SettingsModal({
   setTheme,
   settings = {
     showCellTooltipOnHover: true,
+    tabs: {
+      colorizeDbLabelsByDatabase: true,
+    },
     sqlEditor: {
       syntaxHighlight: true,
       autocomplete: true,
@@ -111,6 +115,7 @@ export default function SettingsModal({
     general: true,
     appearance: true,
     table: true,
+    tabs: true,
     sql: true,
     json: true,
   });
@@ -134,6 +139,12 @@ export default function SettingsModal({
         icon: Eye,
         title: t('settingsTable'),
         description: t('settingsTableDesc'),
+      },
+      {
+        key: 'tabs',
+        icon: Columns,
+        title: t('settingsTabs'),
+        description: t('settingsTabsDesc'),
       },
       {
         key: 'sql',
@@ -276,6 +287,24 @@ export default function SettingsModal({
                     updateSetting((prev) => ({
                       ...prev,
                       showCellTooltipOnHover: !prev.showCellTooltipOnHover,
+                    }))
+                  }
+                  tc={tc}
+                />
+              ) : null}
+
+              {section.key === 'tabs' ? (
+                <ToggleRow
+                  label={t('settingsTabsColorizeDb')}
+                  description={t('settingsTabsColorizeDbDesc')}
+                  checked={settings.tabs?.colorizeDbLabelsByDatabase ?? true}
+                  onChange={() =>
+                    updateSetting((prev) => ({
+                      ...prev,
+                      tabs: {
+                        ...(prev.tabs || {}),
+                        colorizeDbLabelsByDatabase: !(prev.tabs?.colorizeDbLabelsByDatabase ?? true),
+                      },
                     }))
                   }
                   tc={tc}

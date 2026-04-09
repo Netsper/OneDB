@@ -306,12 +306,13 @@ export default function AppSidebar({
           </div>
           <button
             onClick={openCommandPalette}
-            className="w-full bg-[#232323] border border-[#333] hover:border-[#444] rounded-md py-1.5 px-3 text-xs text-zinc-400 flex items-center justify-between transition-colors"
+            className="w-full bg-[#232323] border border-[#333] hover:border-[#444] rounded-md py-1.5 px-2.5 text-xs text-zinc-400 flex items-center gap-2 transition-colors"
           >
-            <div className="flex items-center gap-2">
-              <Command className="w-3.5 h-3.5" /> {t('openCmd')}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <Command className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate text-left">{t('openCmd')}</span>
             </div>
-            <kbd className="font-mono text-[9px] bg-[#18181b] px-1.5 py-0.5 rounded text-zinc-500">
+            <kbd className="font-mono text-[9px] bg-[#18181b] px-1.5 py-0.5 rounded text-zinc-500 shrink-0 whitespace-nowrap">
               ⌘/Ctrl+K
             </kbd>
           </button>

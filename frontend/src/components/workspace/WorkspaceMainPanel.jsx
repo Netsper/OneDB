@@ -139,6 +139,7 @@ export default function WorkspaceMainPanel({
         <TableTabsToolbar
           t={t}
           tc={tc}
+          settings={settings}
           currentTableData={currentTableData}
           activeTab={activeTab}
           onChangeTab={setActiveTab}
@@ -346,11 +347,12 @@ export default function WorkspaceMainPanel({
       <p className="text-sm">{t('selectDbDesc')}</p>
       <button
         onClick={() => setIsCommandOpen(true)}
-        className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#232323] hover:bg-[#2e2e32] border border-[#333] rounded-md text-sm transition-colors text-zinc-300 shadow-sm"
+        className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#232323] hover:bg-[#2e2e32] border border-[#333] rounded-md text-sm transition-colors text-zinc-300 shadow-sm min-w-0 max-w-full"
       >
-        <Command className="w-4 h-4" /> {t('openCmd')}{' '}
-        <kbd className="font-mono text-[10px] bg-[#18181b] px-1.5 py-0.5 rounded text-zinc-500 border border-[#333]">
-          ⌘K
+        <Command className="w-4 h-4 shrink-0" />
+        <span className="truncate">{t('openCmd')}</span>
+        <kbd className="font-mono text-[10px] bg-[#18181b] px-1.5 py-0.5 rounded text-zinc-500 border border-[#333] shrink-0 whitespace-nowrap">
+          ⌘/Ctrl+K
         </kbd>
       </button>
     </div>

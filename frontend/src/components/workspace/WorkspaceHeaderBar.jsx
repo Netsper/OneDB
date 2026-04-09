@@ -17,22 +17,27 @@ export default function WorkspaceHeaderBar({
 }) {
   return (
     <header className="h-14 bg-[#1c1c1c] border-b border-[#2e2e32] flex items-center justify-between px-6 shrink-0 z-10">
-      <div className="flex items-center gap-2 text-sm text-zinc-400">
+      <div className="flex items-center gap-2 text-sm text-zinc-400 min-w-0 flex-1 mr-4 overflow-hidden">
         <button
           onClick={onToggleSidebar}
-          className="mr-3 text-zinc-500 hover:text-zinc-300 transition-colors p-1 hover:bg-[#333] rounded"
+          className="mr-2 text-zinc-500 hover:text-zinc-300 transition-colors p-1 hover:bg-[#333] rounded shrink-0"
         >
           <PanelLeft className="w-4 h-4" />
         </button>
-        <button onClick={onClearSelection} className="hover:text-zinc-200 transition-colors">
+        <button
+          onClick={onClearSelection}
+          className="hover:text-zinc-200 transition-colors truncate min-w-0 max-w-[28%] text-left"
+          title={host}
+        >
           {host}
         </button>
         {activeDb && (
           <>
-            <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
+            <ChevronRight className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
             <button
               onClick={onSelectDatabase}
-              className={`hover:text-zinc-200 transition-colors ${!activeTable ? 'text-zinc-100 font-medium' : ''}`}
+              className={`hover:text-zinc-200 transition-colors truncate min-w-0 max-w-[28%] text-left ${!activeTable ? 'text-zinc-100 font-medium' : ''}`}
+              title={activeDb}
             >
               {activeDb}
             </button>
@@ -40,12 +45,14 @@ export default function WorkspaceHeaderBar({
         )}
         {activeTable && (
           <>
-            <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
-            <span className="text-zinc-100 font-medium">{activeTable}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
+            <span className="text-zinc-100 font-medium truncate min-w-0 max-w-[34%]" title={activeTable}>
+              {activeTable}
+            </span>
           </>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={onOpenCommandPalette}
           className="text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded hover:bg-[#2e2e32]"

@@ -296,6 +296,11 @@ export const en = {
   settingsAppearanceDesc: 'Theme and visual style',
   settingsTable: 'Table & Cell',
   settingsTableDesc: 'Cell and table interaction options',
+  settingsTabs: 'Tabs',
+  settingsTabsDesc: 'Tab behavior and visual grouping',
+  settingsTabsColorizeDb: 'Color database labels across tabs',
+  settingsTabsColorizeDbDesc:
+    'When multiple databases are open, assign a soft color per database for quick distinction.',
   settingsTooltipOnHover: 'Show full cell text on hover',
   settingsTooltipOnHoverDesc: 'When enabled, truncated values open a tooltip on hover.',
   settingsSqlEditor: 'SQL Editor',

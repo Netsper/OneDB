@@ -286,6 +286,11 @@ export const tr = {
   settingsAppearanceDesc: 'Tema ve görsel stil ayarları',
   settingsTable: 'Tablo & Hücre',
   settingsTableDesc: 'Hücre ve tablo etkileşim seçenekleri',
+  settingsTabs: 'Sekmeler',
+  settingsTabsDesc: 'Sekme davranışı ve görsel gruplama',
+  settingsTabsColorizeDb: 'Veritabanı etiketlerini renklendir',
+  settingsTabsColorizeDbDesc:
+    'Farklı veritabanlarından sekmeler açıkken, her veritabanına yumuşak bir etiket rengi ata.',
   settingsTooltipOnHover: 'Hover’da hücrenin tamamını göster',
   settingsTooltipOnHoverDesc:
     'Açık olduğunda kesilen uzun değerler hover ile tooltip içinde görünür.',

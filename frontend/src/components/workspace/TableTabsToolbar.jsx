@@ -18,9 +18,36 @@ import MenuSurface from '../shared/MenuSurface.jsx';
 import SelectField from '../shared/SelectField.jsx';
 import TemporalInputField from '../shared/TemporalInputField.jsx';
 
+const DB_LABEL_COLOR_CLASSES = [
+  'text-amber-100',
+  'text-sky-100',
+  'text-emerald-100',
+  'text-rose-100',
+  'text-violet-100',
+  'text-cyan-100',
+  'text-lime-100',
+  'text-orange-100',
+  'text-indigo-100',
+  'text-teal-100',
+];
+
+function getDbColorClass(dbName) {
+  const normalized = String(dbName || '').trim().toLowerCase();
+  if (!normalized) {
+    return DB_LABEL_COLOR_CLASSES[0];
+  }
+
+  let hash = 0;
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash = (hash * 31 + normalized.charCodeAt(index)) >>> 0;
+  }
+  return DB_LABEL_COLOR_CLASSES[hash % DB_LABEL_COLOR_CLASSES.length];
+}
+
 export default function TableTabsToolbar({
   t,
   tc,
+  settings,
   currentTableData,
   activeTab,
   onChangeTab,
@@ -71,6 +98,7 @@ export default function TableTabsToolbar({
   setIsAutoRefreshMenuOpen,
   setAutoRefreshInt,
 }) {
+  const colorizeDbLabelsByDatabase = settings?.tabs?.colorizeDbLabelsByDatabase !== false;
   const tableTabs = useMemo(
     () =>
       openTableTabs && openTableTabs.length > 0
@@ -155,6 +183,11 @@ export default function TableTabsToolbar({
           {tableTabs.map((tab) => {
             const isActive = tab.id === activeTableTabId;
             const isPinned = Boolean(tab.pinned);
+            const dbLabelClass = colorizeDbLabelsByDatabase
+              ? `${getDbColorClass(tab.dbName)} ${isActive ? 'opacity-100' : 'opacity-90 group-hover:opacity-100'}`
+              : isActive
+                ? 'text-zinc-200'
+                : 'text-zinc-500 group-hover:text-zinc-300';
             return (
               <div
                 key={tab.id}
@@ -186,7 +219,7 @@ export default function TableTabsToolbar({
                 {isPinned && <Pin className="w-3 h-3 text-amber-400" />}
                 {tab.isTransient && <Eye className="w-3 h-3 text-zinc-500" />}
                 <span className="max-w-[12rem] truncate">{tab.tableName}</span>
-                <span className="text-[10px] text-zinc-500">{tab.dbName}</span>
+                <span className={`text-[10px] transition-colors ${dbLabelClass}`}>{tab.dbName}</span>
                 <button
                   type="button"
                   onClick={(event) => {
