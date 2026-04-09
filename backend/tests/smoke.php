@@ -36,13 +36,39 @@ function assert_same($expected, $actual, string $message): void
 }
 
 /**
+ * Picks a currently available localhost TCP port for smoke server boot.
+ */
+function pick_available_port(string $host): int
+{
+    for ($attempt = 0; $attempt < 20; $attempt++) {
+        $socket = @stream_socket_server('tcp://' . $host . ':0', $errno, $errstr);
+        if (!is_resource($socket)) {
+            continue;
+        }
+
+        $address = (string)stream_socket_get_name($socket, false);
+        fclose($socket);
+
+        $portText = (string)substr($address, strrpos($address, ':') + 1);
+        if ($portText !== '' && ctype_digit($portText)) {
+            $port = (int)$portText;
+            if ($port > 0) {
+                return $port;
+            }
+        }
+    }
+
+    throw new SmokeTestFailure('Could not allocate a free localhost port for backend smoke server.');
+}
+
+/**
  * @param array<string,string> $envExtra
  * @return array{port:int, process:resource, stdoutLog:string, stderrLog:string}
  */
 function start_backend_server(string $rootDir, array $envExtra = []): array
 {
-    $port = 18000 + (getmypid() % 1000);
     $host = '127.0.0.1';
+    $port = pick_available_port($host);
     $docRoot = $rootDir . '/backend/public';
     $stdoutLog = sys_get_temp_dir() . '/onedb-smoke-server-out-' . getmypid() . '.log';
     $stderrLog = sys_get_temp_dir() . '/onedb-smoke-server-err-' . getmypid() . '.log';
@@ -91,6 +117,15 @@ function stop_backend_server(array $server): void
 {
     if (is_resource($server['process'])) {
         proc_terminate($server['process']);
+        $deadline = microtime(true) + 2.0;
+        $status = proc_get_status($server['process']);
+        while (($status['running'] ?? false) && microtime(true) < $deadline) {
+            usleep(100_000);
+            $status = proc_get_status($server['process']);
+        }
+        if (($status['running'] ?? false) && defined('SIGKILL')) {
+            @proc_terminate($server['process'], SIGKILL);
+        }
         proc_close($server['process']);
     }
 
@@ -407,6 +442,10 @@ function run_smoke_suite(): void
         $readonlyCookies = [];
 
         wait_until_server_ready($readonlyBaseUrl);
+        $readonlyPing = call_api($readonlyBaseUrl, 'ping');
+        assert_same(200, $readonlyPing['status'], 'readonly ping status must be 200');
+        assert_same(true, (bool)($readonlyPing['json']['readonly'] ?? false), 'readonly server must report readonly=true');
+
         $readonlyCsrf = call_api($readonlyBaseUrl, 'csrf');
         $readonlyToken = (string)($readonlyCsrf['json']['token'] ?? '');
         $readonlyCookies = array_merge($readonlyCookies, $readonlyCsrf['cookies']);
