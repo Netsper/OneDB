@@ -98,7 +98,7 @@ export default function TableTabsToolbar({
   setIsAutoRefreshMenuOpen,
   setAutoRefreshInt,
 }) {
-  const colorizeDbLabelsByDatabase = settings?.tabs?.colorizeDbLabelsByDatabase !== false;
+  const colorizeDbLabelsByDatabase = settings?.tabs?.colorizeDbLabelsByDatabase === true;
   const tableTabs = useMemo(
     () =>
       openTableTabs && openTableTabs.length > 0

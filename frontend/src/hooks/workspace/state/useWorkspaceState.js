@@ -4,7 +4,7 @@ import { normalizePinnedItems } from '../../../utils/pins.js';
 const DEFAULT_WORKSPACE_SETTINGS = Object.freeze({
   showCellTooltipOnHover: true,
   tabs: {
-    colorizeDbLabelsByDatabase: true,
+    colorizeDbLabelsByDatabase: false,
   },
   sqlEditor: {
     syntaxHighlight: true,

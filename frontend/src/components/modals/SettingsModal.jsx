@@ -94,7 +94,7 @@ export default function SettingsModal({
   settings = {
     showCellTooltipOnHover: true,
     tabs: {
-      colorizeDbLabelsByDatabase: true,
+      colorizeDbLabelsByDatabase: false,
     },
     sqlEditor: {
       syntaxHighlight: true,
@@ -297,13 +297,13 @@ export default function SettingsModal({
                 <ToggleRow
                   label={t('settingsTabsColorizeDb')}
                   description={t('settingsTabsColorizeDbDesc')}
-                  checked={settings.tabs?.colorizeDbLabelsByDatabase ?? true}
+                  checked={settings.tabs?.colorizeDbLabelsByDatabase ?? false}
                   onChange={() =>
                     updateSetting((prev) => ({
                       ...prev,
                       tabs: {
                         ...(prev.tabs || {}),
-                        colorizeDbLabelsByDatabase: !(prev.tabs?.colorizeDbLabelsByDatabase ?? true),
+                        colorizeDbLabelsByDatabase: !(prev.tabs?.colorizeDbLabelsByDatabase ?? false),
                       },
                     }))
                   }
