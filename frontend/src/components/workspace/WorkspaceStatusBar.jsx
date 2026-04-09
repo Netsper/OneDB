@@ -16,7 +16,10 @@ export default function WorkspaceStatusBar({
         <span className={`flex items-center gap-1.5 ${tc.textLight} shrink-0`}>
           <Server className="w-3 h-3" /> {connForm.host}:{connForm.port}
         </span>
-        <span className="truncate min-w-0 hidden md:inline" title={`${connForm.user}@${connForm.host}`}>
+        <span
+          className="truncate min-w-0 hidden md:inline"
+          title={`${connForm.user}@${connForm.host}`}
+        >
           {connForm.user}@{connForm.host}
         </span>
         {activeDb && (

@@ -11,9 +11,10 @@ export default function useDatabaseManagerScreenModel() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const loadingStartedRef = useRef(null);
 
-  const rawIsLoading = foundationModel.workspace.isConnecting || 
-                       foundationModel.workspace.isRefreshing || 
-                       foundationModel.workspace.isQueryRunning;
+  const rawIsLoading =
+    foundationModel.workspace.isConnecting ||
+    foundationModel.workspace.isRefreshing ||
+    foundationModel.workspace.isQueryRunning;
 
   // Finalize initial load state
   useEffect(() => {
@@ -35,11 +36,11 @@ export default function useDatabaseManagerScreenModel() {
       if (showLoading) {
         const elapsed = Date.now() - (loadingStartedRef.current || 0);
         const remaining = Math.max(0, 1000 - elapsed);
-        
+
         const timer = setTimeout(() => {
           setShowLoading(false);
         }, remaining);
-        
+
         return () => clearTimeout(timer);
       }
     }
@@ -51,7 +52,7 @@ export default function useDatabaseManagerScreenModel() {
     layoutInputs: workspaceInputs,
     mainPanelInputs: workspaceInputs,
     overlaysInputs: workspaceInputs,
-    isLoading: isInitialLoad ? showLoading : false
+    isLoading: isInitialLoad ? showLoading : false,
   });
 
   return {

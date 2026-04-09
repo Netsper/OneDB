@@ -8,6 +8,7 @@ export default function ConnectedWorkspace({ viewModel }) {
 
   return (
     <div
+      data-testid="workspace-root"
       data-theme={theme || 'emerald'}
       className={`h-screen flex flex-col bg-[#18181b] text-zinc-300 font-sans overflow-hidden relative ${tc.selection}`}
     >

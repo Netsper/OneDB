@@ -439,10 +439,10 @@ export default function useWorkspaceState() {
       if (urlDb) setActiveDb(urlDb);
       if (urlTable && urlDb) {
         const tabId = `${urlDb}::${urlTable}`;
-        
+
         // Ensure the tab exists in openTableTabs if it's new
         setOpenTableTabs((prev) => {
-          if (prev.some(t => t.id === tabId)) return prev;
+          if (prev.some((t) => t.id === tabId)) return prev;
           return [...prev, { id: tabId, dbName: urlDb, tableName: urlTable, pinned: false }];
         });
 
@@ -454,7 +454,7 @@ export default function useWorkspaceState() {
 
     // Sync State -> URL
     const newParams = new URLSearchParams(window.location.search);
-    
+
     if (activeDb) {
       newParams.set('db', activeDb);
     } else {
@@ -470,7 +470,7 @@ export default function useWorkspaceState() {
 
     const newSearch = newParams.toString();
     const currentSearch = window.location.search.replace('?', '');
-    
+
     if (newSearch !== currentSearch) {
       const newUrl = `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`;
       window.history.replaceState(null, '', newUrl);

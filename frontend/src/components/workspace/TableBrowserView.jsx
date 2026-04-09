@@ -264,7 +264,7 @@ export default function TableBrowserView({
   ]);
 
   return (
-    <div className="flex-1 flex flex-col h-full relative">
+    <div data-testid="table-browser-view" className="flex-1 flex flex-col h-full relative">
       {showToolbar && (
         <div className="flex justify-between items-center px-4 py-2 border-b border-[#2e2e32] bg-[#18181b] shrink-0 z-20">
           <div className="flex items-center gap-2">
@@ -700,6 +700,9 @@ export default function TableBrowserView({
                     return (
                       <td
                         key={col.name}
+                        data-testid="table-cell"
+                        data-row-index={String(row._origIndex)}
+                        data-column-name={col.name}
                         onDoubleClick={() =>
                           currentTableData.type !== 'view' &&
                           setEditingCell({
@@ -728,6 +731,7 @@ export default function TableBrowserView({
                         >
                           {isEditingThisCell ? (
                             <input
+                              data-testid="inline-edit-input"
                               autoFocus
                               value={editingCell.value == null ? '' : String(editingCell.value)}
                               onChange={(e) =>
@@ -878,6 +882,7 @@ export default function TableBrowserView({
           <span>{t('rowsPerPage')}</span>
           <SelectField
             wrapperClassName="w-auto min-w-[72px]"
+            data-testid="table-rows-per-page"
             value={rowsPerPage}
             onChange={(e) => {
               setRowsPerPage(Number(e.target.value));
@@ -894,15 +899,14 @@ export default function TableBrowserView({
           </SelectField>
         </div>
         <div className="flex items-center gap-4 text-xs">
-          <span className="text-zinc-400">
+          <span data-testid="table-pagination-range" className="text-zinc-400">
             {currentPageRowCount > 0 ? (safePage - 1) * safeRowsPerPage + 1 : 0} -{' '}
-            {currentPageRowCount > 0
-              ? (safePage - 1) * safeRowsPerPage + currentPageRowCount
-              : 0}{' '}
-            / {effectiveTotalRows}
+            {currentPageRowCount > 0 ? (safePage - 1) * safeRowsPerPage + currentPageRowCount : 0} /{' '}
+            {effectiveTotalRows}
           </span>
           <div className="flex gap-1">
             <button
+              data-testid="table-pagination-first"
               onClick={() => setPage(1)}
               disabled={!canGoPrevPage}
               className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
@@ -910,6 +914,7 @@ export default function TableBrowserView({
               <ChevronFirst className="w-4 h-4" />
             </button>
             <button
+              data-testid="table-pagination-prev"
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               disabled={!canGoPrevPage}
               className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
@@ -917,6 +922,7 @@ export default function TableBrowserView({
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
+              data-testid="table-pagination-next"
               onClick={() => setPage((prev) => Math.min(effectiveTotalPages, prev + 1))}
               disabled={!canGoNextPage}
               className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
@@ -924,6 +930,7 @@ export default function TableBrowserView({
               <ChevronRight className="w-4 h-4" />
             </button>
             <button
+              data-testid="table-pagination-last"
               onClick={() => setPage(effectiveTotalPages)}
               disabled={!canGoNextPage}
               className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"

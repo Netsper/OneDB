@@ -35,5 +35,8 @@ test('filterCommandEntries applies query and respects max limit', () => {
 
   const filtered = filterCommandEntries(source, 'analytics', 15);
   assert.equal(filtered.length, 15);
-  assert.equal(filtered.every((entry) => entry.dbName === 'analytics'), true);
+  assert.equal(
+    filtered.every((entry) => entry.dbName === 'analytics'),
+    true,
+  );
 });

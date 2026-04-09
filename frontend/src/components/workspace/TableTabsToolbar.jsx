@@ -32,7 +32,9 @@ const DB_LABEL_COLOR_CLASSES = [
 ];
 
 function getDbColorClass(dbName) {
-  const normalized = String(dbName || '').trim().toLowerCase();
+  const normalized = String(dbName || '')
+    .trim()
+    .toLowerCase();
   if (!normalized) {
     return DB_LABEL_COLOR_CLASSES[0];
   }
@@ -178,6 +180,7 @@ export default function TableTabsToolbar({
       {shouldShowTableTabs && (
         <div
           ref={tabsScrollRef}
+          data-testid="table-tabs-list"
           className="flex items-center gap-2 py-2 border-b border-[#252529] overflow-x-auto scrollbar-none"
         >
           {tableTabs.map((tab) => {
@@ -200,6 +203,11 @@ export default function TableTabsToolbar({
                 }}
                 role="button"
                 tabIndex={0}
+                data-testid="table-tab"
+                data-tab-id={tab.id}
+                data-db-name={tab.dbName}
+                data-table-name={tab.tableName}
+                data-active={isActive ? 'true' : 'false'}
                 onClick={() => onActivateTableTab(tab.id)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -219,9 +227,15 @@ export default function TableTabsToolbar({
                 {isPinned && <Pin className="w-3 h-3 text-amber-400" />}
                 {tab.isTransient && <Eye className="w-3 h-3 text-zinc-500" />}
                 <span className="max-w-[12rem] truncate">{tab.tableName}</span>
-                <span className={`text-[10px] transition-colors ${dbLabelClass}`}>{tab.dbName}</span>
+                <span
+                  data-testid="table-tab-db-label"
+                  className={`text-[10px] transition-colors ${dbLabelClass}`}
+                >
+                  {tab.dbName}
+                </span>
                 <button
                   type="button"
+                  data-testid="table-tab-close"
                   onClick={(event) => {
                     event.stopPropagation();
                     onCloseTableTab(tab.id);

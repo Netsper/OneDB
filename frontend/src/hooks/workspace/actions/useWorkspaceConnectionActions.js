@@ -92,22 +92,22 @@ export default function useWorkspaceConnectionActions({
       const urlDb = params.get('db');
       const urlTable = params.get('table');
 
-      const targetDb = (urlDb && dbNames.includes(urlDb)) ? urlDb : (dbNames[0] || null);
+      const targetDb = urlDb && dbNames.includes(urlDb) ? urlDb : dbNames[0] || null;
 
       if (targetDb) {
         setActiveDb(targetDb);
         setExpandedDbs((prev) => ({ ...prev, [targetDb]: true }));
-        setExpandedGroups((prev) => ({ 
-          ...prev, 
-          [`${targetDb}_tables`]: true, 
-          [`${targetDb}_views`]: true 
+        setExpandedGroups((prev) => ({
+          ...prev,
+          [`${targetDb}_tables`]: true,
+          [`${targetDb}_views`]: true,
         }));
 
         if (urlTable) {
           const tabId = `${targetDb}::${urlTable}`;
           // Ensure the tab exists in openTableTabs if it's new
           setOpenTableTabs((prev) => {
-            if (prev.some(t => t.id === tabId)) return prev;
+            if (prev.some((t) => t.id === tabId)) return prev;
             return [...prev, { id: tabId, dbName: targetDb, tableName: urlTable, pinned: false }];
           });
           setActiveTableTabId(tabId);
@@ -183,7 +183,7 @@ export default function useWorkspaceConnectionActions({
 
   const handleDownloadBuild = async () => {
     if (isBuilding) return;
-    
+
     showToast(t('building') + '...', 'info');
     setIsBuilding(true);
     try {

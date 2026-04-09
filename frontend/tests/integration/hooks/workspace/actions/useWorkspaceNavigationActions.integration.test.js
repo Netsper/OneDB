@@ -27,7 +27,10 @@ function createHarness(overrides = {}) {
     },
     currentTableData: {
       type: 'table',
-      columns: [{ name: 'id', isPrimary: true }, { name: 'name', isPrimary: false }],
+      columns: [
+        { name: 'id', isPrimary: true },
+        { name: 'name', isPrimary: false },
+      ],
       data: [{ id: 1, name: 'Alice' }],
     },
     cellContextMenu: {

@@ -34,7 +34,7 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
     }
     if (workspace.isConnecting) return;
     if (didAttemptRestoreRef.current) return;
-    
+
     const rawLastConnection = localStorage.getItem('dbm_last_connection');
     if (!rawLastConnection) {
       workspace.setIsInitializing(false);
@@ -54,7 +54,13 @@ export default function useDatabaseManagerLoginModel(model, apiModel) {
 
     didAttemptRestoreRef.current = true;
     handleConnect();
-  }, [handleConnect, workspace.connForm?.pass, workspace.isConnected, workspace.isConnecting, workspace.setIsInitializing]);
+  }, [
+    handleConnect,
+    workspace.connForm?.pass,
+    workspace.isConnected,
+    workspace.isConnecting,
+    workspace.setIsInitializing,
+  ]);
 
   const loginScreenProps = {
     t,

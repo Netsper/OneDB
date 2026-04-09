@@ -95,7 +95,7 @@ export default function useWorkspaceNavigationActions({
       // If opening as transient
       if (isTransient) {
         // If it already exists (even if pinned or transient), just keep it as is
-        // but if it was permanent, don't make it transient. 
+        // but if it was permanent, don't make it transient.
         // Actually, if it exists, we just return prev.
         if (existingTabIndex >= 0) {
           return prev;
@@ -121,7 +121,10 @@ export default function useWorkspaceNavigationActions({
       }
 
       // Add new permanent tab
-      return orderTabs([...prev, { id: tabId, dbName, tableName, pinned: false, isTransient: false }]);
+      return orderTabs([
+        ...prev,
+        { id: tabId, dbName, tableName, pinned: false, isTransient: false },
+      ]);
     });
     setActiveTableTabId(tabId);
   };

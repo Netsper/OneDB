@@ -9,7 +9,14 @@ test('generateSchemaDDL builds CREATE TABLE for mysql with primary and foreign k
     tableType: 'table',
     columns: [
       { name: 'id', type: 'BIGINT', nullable: 'No', isPrimary: true, extra: 'auto_increment' },
-      { name: 'user_id', type: 'BIGINT', nullable: 'No', isForeign: true, foreignTable: 'users', foreignCol: 'id' },
+      {
+        name: 'user_id',
+        type: 'BIGINT',
+        nullable: 'No',
+        isForeign: true,
+        foreignTable: 'users',
+        foreignCol: 'id',
+      },
       { name: 'status', type: 'VARCHAR(20)', nullable: 'No', extra: "'draft'" },
     ],
   });
@@ -26,7 +33,9 @@ test('generateSchemaDDL maps auto increment to identity for pgsql', () => {
     driver: 'pgsql',
     tableName: 'users',
     tableType: 'table',
-    columns: [{ name: 'id', type: 'INTEGER', nullable: 'No', isPrimary: true, extra: 'auto_increment' }],
+    columns: [
+      { name: 'id', type: 'INTEGER', nullable: 'No', isPrimary: true, extra: 'auto_increment' },
+    ],
   });
 
   assert.match(ddl, /CREATE TABLE "users"/);

@@ -141,6 +141,7 @@ export default function AppSidebar({
 
   return (
     <div
+      data-testid="sidebar-root"
       className="shrink-0 transition-all duration-300 ease-in-out overflow-hidden bg-[#1c1c1c] z-20 flex"
       style={{
         width: isSidebarOpen ? `${sidebarWidth}px` : '0px',
@@ -289,6 +290,7 @@ export default function AppSidebar({
           <div className="relative mb-2">
             <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
+              data-testid="sidebar-search-input"
               type="text"
               value={sidebarQuery}
               onChange={(e) => setSidebarQuery(e.target.value)}
@@ -305,6 +307,7 @@ export default function AppSidebar({
             )}
           </div>
           <button
+            data-testid="sidebar-open-command-palette"
             onClick={openCommandPalette}
             className="w-full bg-[#232323] border border-[#333] hover:border-[#444] rounded-md py-1.5 px-2.5 text-xs text-zinc-400 flex items-center gap-2 transition-colors"
           >
@@ -328,36 +331,42 @@ export default function AppSidebar({
                 </span>
               </div>
               {pinnedDatabases.map(({ dbName, tableCount }) => (
-                <SidebarEntry
+                <div
                   key={dbName}
-                  icon={<Database className="w-3.5 h-3.5 shrink-0" />}
-                  label={dbName}
-                  active={activeDb === dbName && !activeTable}
-                  accentBg={tc.accentBg}
-                  lightBg={tc.lightBg}
-                  textLight={tc.textLight}
-                  onClick={() => openDatabase(dbName)}
-                  trailing={
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      {tableCount !== null && (
-                        <span
-                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${tc.badgeBg} ${tc.badgeText}`}
+                  data-testid="sidebar-db-entry"
+                  data-db-name={dbName}
+                  data-entry-source="favorites"
+                >
+                  <SidebarEntry
+                    icon={<Database className="w-3.5 h-3.5 shrink-0" />}
+                    label={dbName}
+                    active={activeDb === dbName && !activeTable}
+                    accentBg={tc.accentBg}
+                    lightBg={tc.lightBg}
+                    textLight={tc.textLight}
+                    onClick={() => openDatabase(dbName)}
+                    trailing={
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        {tableCount !== null && (
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${tc.badgeBg} ${tc.badgeText}`}
+                          >
+                            {tableCount}
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            togglePinDatabase(dbName);
+                          }}
+                          className="p-1 text-amber-500 transition-colors"
                         >
-                          {tableCount}
-                        </span>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          togglePinDatabase(dbName);
-                        }}
-                        className="p-1 text-amber-500 transition-colors"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  }
-                />
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    }
+                  />
+                </div>
               ))}
             </div>
           )}
@@ -382,6 +391,9 @@ export default function AppSidebar({
                   ref={(node) => {
                     sidebarEntryRefs.current[`db:${dbName}`] = node;
                   }}
+                  data-testid="sidebar-db-entry"
+                  data-db-name={dbName}
+                  data-entry-source="database-list"
                   role="button"
                   tabIndex={0}
                   className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-[#232323] transition-colors group cursor-pointer ${activeDb === dbName && !activeTable ? `${tc.lightBg} ${tc.textLight}` : ''}`}
@@ -396,6 +408,8 @@ export default function AppSidebar({
                   <div className="flex items-center gap-2 flex-1 overflow-hidden">
                     {expandedDbs[dbName] ? (
                       <ChevronDown
+                        data-testid="sidebar-db-expand-toggle"
+                        data-db-name={dbName}
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleDatabaseExpanded(dbName, false);
@@ -404,6 +418,8 @@ export default function AppSidebar({
                       />
                     ) : (
                       <ChevronRight
+                        data-testid="sidebar-db-expand-toggle"
+                        data-db-name={dbName}
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleDatabaseExpanded(dbName, true);
@@ -448,7 +464,11 @@ export default function AppSidebar({
                 </div>
 
                 {expandedDbs[dbName] && (
-                  <div className="ml-6 mt-0.5 space-y-1 relative before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-[#333]">
+                  <div
+                    data-testid="sidebar-db-panel"
+                    data-db-name={dbName}
+                    className="ml-6 mt-0.5 space-y-1 relative before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-[#333]"
+                  >
                     <div className="sticky top-0 z-20 px-1 py-1 mb-1 bg-[#1c1c1c]/95 backdrop-blur-sm border-b border-[#2a2a2e]">
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1">
                         {dbName}
@@ -489,6 +509,11 @@ export default function AppSidebar({
                         {filteredPinnedEntries.map((entry) => (
                           <div
                             key={`${dbName}.${entry.name}`}
+                            data-testid="sidebar-table-entry"
+                            data-db-name={dbName}
+                            data-table-name={entry.name}
+                            data-table-type={entry.type === 'view' ? 'view' : 'table'}
+                            data-entry-source="favorites"
                             ref={(node) => {
                               sidebarEntryRefs.current[`${dbName}::${entry.name}`] = node;
                             }}
@@ -507,7 +532,9 @@ export default function AppSidebar({
                               lightBg={tc.lightBg}
                               textLight={tc.textLight}
                               onClick={() => selectDbAndTable(dbName, entry.name, null, true)}
-                              onDoubleClick={() => selectDbAndTable(dbName, entry.name, null, false)}
+                              onDoubleClick={() =>
+                                selectDbAndTable(dbName, entry.name, null, false)
+                              }
                               trailing={
                                 <button
                                   onClick={(e) => {
@@ -527,6 +554,9 @@ export default function AppSidebar({
 
                     <div>
                       <div
+                        data-testid="sidebar-group-toggle"
+                        data-group-type="tables"
+                        data-db-name={dbName}
                         role="button"
                         tabIndex={0}
                         className="flex items-center gap-1 px-1 py-1 cursor-pointer group/folder"
@@ -560,6 +590,11 @@ export default function AppSidebar({
                         filteredTables.map((tableEntry) => (
                           <div
                             key={tableEntry.name}
+                            data-testid="sidebar-table-entry"
+                            data-db-name={dbName}
+                            data-table-name={tableEntry.name}
+                            data-table-type="table"
+                            data-entry-source="tables"
                             ref={(node) => {
                               sidebarEntryRefs.current[`${dbName}::${tableEntry.name}`] = node;
                             }}
@@ -573,7 +608,9 @@ export default function AppSidebar({
                               lightBg={tc.lightBg}
                               textLight={tc.textLight}
                               onClick={() => selectDbAndTable(dbName, tableEntry.name, null, true)}
-                              onDoubleClick={() => selectDbAndTable(dbName, tableEntry.name, null, false)}
+                              onDoubleClick={() =>
+                                selectDbAndTable(dbName, tableEntry.name, null, false)
+                              }
                               trailing={
                                 <button
                                   onClick={(e) => {
@@ -597,6 +634,9 @@ export default function AppSidebar({
 
                     <div>
                       <div
+                        data-testid="sidebar-group-toggle"
+                        data-group-type="views"
+                        data-db-name={dbName}
                         role="button"
                         tabIndex={0}
                         className="flex items-center gap-1 px-1 py-1 cursor-pointer"
@@ -621,6 +661,11 @@ export default function AppSidebar({
                         filteredViews.map((viewEntry) => (
                           <div
                             key={viewEntry.name}
+                            data-testid="sidebar-table-entry"
+                            data-db-name={dbName}
+                            data-table-name={viewEntry.name}
+                            data-table-type="view"
+                            data-entry-source="views"
                             ref={(node) => {
                               sidebarEntryRefs.current[`${dbName}::${viewEntry.name}`] = node;
                             }}
@@ -633,7 +678,9 @@ export default function AppSidebar({
                               lightBg={tc.lightBg}
                               textLight={tc.textLight}
                               onClick={() => selectDbAndTable(dbName, viewEntry.name, null, true)}
-                              onDoubleClick={() => selectDbAndTable(dbName, viewEntry.name, null, false)}
+                              onDoubleClick={() =>
+                                selectDbAndTable(dbName, viewEntry.name, null, false)
+                              }
                               trailing={
                                 <button
                                   onClick={(e) => {

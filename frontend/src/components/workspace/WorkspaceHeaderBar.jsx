@@ -19,6 +19,7 @@ export default function WorkspaceHeaderBar({
     <header className="h-14 bg-[#1c1c1c] border-b border-[#2e2e32] flex items-center justify-between px-6 shrink-0 z-10">
       <div className="flex items-center gap-2 text-sm text-zinc-400 min-w-0 flex-1 mr-4 overflow-hidden">
         <button
+          data-testid="header-toggle-sidebar"
           onClick={onToggleSidebar}
           className="mr-2 text-zinc-500 hover:text-zinc-300 transition-colors p-1 hover:bg-[#333] rounded shrink-0"
         >
@@ -46,7 +47,10 @@ export default function WorkspaceHeaderBar({
         {activeTable && (
           <>
             <ChevronRight className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
-            <span className="text-zinc-100 font-medium truncate min-w-0 max-w-[34%]" title={activeTable}>
+            <span
+              className="text-zinc-100 font-medium truncate min-w-0 max-w-[34%]"
+              title={activeTable}
+            >
               {activeTable}
             </span>
           </>
@@ -54,18 +58,21 @@ export default function WorkspaceHeaderBar({
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <button
+          data-testid="header-open-command-palette"
           onClick={onOpenCommandPalette}
           className="text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded hover:bg-[#2e2e32]"
         >
           <Search className="w-4 h-4" />
         </button>
         <button
+          data-testid="header-refresh"
           onClick={onRefresh}
           className="text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded hover:bg-[#2e2e32]"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-zinc-100' : ''}`} />
         </button>
         <button
+          data-testid="header-open-settings"
           onClick={onOpenSettings}
           className="text-zinc-400 hover:text-zinc-100 transition-colors p-1.5 rounded hover:bg-[#2e2e32]"
         >
@@ -73,6 +80,7 @@ export default function WorkspaceHeaderBar({
         </button>
         <div className="w-[1px] h-4 bg-[#333] mx-1"></div>
         <button
+          data-testid="header-logout"
           onClick={onLogout}
           className="text-zinc-400 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-[#2e2e32]"
           title={t('logout')}

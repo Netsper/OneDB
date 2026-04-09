@@ -185,8 +185,8 @@ export default function SearchableSelectField({
                       isHighlighted
                         ? `${tc.lightBg} ${tc.textLight}`
                         : isActive
-                        ? `${tc.lightBg} ${tc.textLight}`
-                        : 'text-zinc-300 hover:bg-[#232329]'
+                          ? `${tc.lightBg} ${tc.textLight}`
+                          : 'text-zinc-300 hover:bg-[#232329]'
                     }`}
                   >
                     <span className="truncate text-left">{entry.label}</span>

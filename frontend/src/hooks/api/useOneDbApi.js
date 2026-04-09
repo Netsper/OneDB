@@ -49,7 +49,8 @@ export const parseApiJson = async (response, action) => {
     return JSON.parse(trimmedPayload);
   } catch {
     const head = trimmedPayload.slice(0, 20).toLowerCase();
-    const looksLikeHtml = head.startsWith('<!doctype') || head.startsWith('<html') || head[0] === '<';
+    const looksLikeHtml =
+      head.startsWith('<!doctype') || head.startsWith('<html') || head[0] === '<';
     const snippet = normalizeResponseSnippet(trimmedPayload);
     const detail = snippet !== '' ? ` Response starts with: ${snippet}` : '';
     if (looksLikeHtml) {

@@ -50,9 +50,12 @@ function SettingRow({ title, description, children }) {
   );
 }
 
-function ToggleRow({ label, description, checked, onChange, tc }) {
+function ToggleRow({ label, description, checked, onChange, tc, testId }) {
   return (
-    <label className="flex items-center justify-between gap-4 border-b border-[#25252a] bg-[#131316] px-4 py-3 transition-colors hover:bg-[#18181d]">
+    <label
+      data-testid={testId}
+      className="flex items-center justify-between gap-4 border-b border-[#25252a] bg-[#131316] px-4 py-3 transition-colors hover:bg-[#18181d]"
+    >
       <div className="space-y-0.5 min-w-0">
         <p className="text-sm text-zinc-100">{label}</p>
         {description ? <p className="text-xs text-zinc-400">{description}</p> : null}
@@ -191,6 +194,7 @@ export default function SettingsModal({
     <div className="fixed inset-0 z-50">
       <button
         type="button"
+        data-testid="settings-modal-overlay"
         onClick={onClose}
         className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 ${
           isEntering ? 'opacity-100' : 'opacity-0'
@@ -198,6 +202,7 @@ export default function SettingsModal({
         aria-label={t('close')}
       />
       <div
+        data-testid="settings-modal"
         className={`absolute inset-y-0 right-0 w-full max-w-xl bg-gradient-to-b from-[#1d1d21] to-[#17171a] border-l border-[#333] rounded-l-2xl flex flex-col shadow-2xl transition-all duration-300 ease-out ${
           isEntering ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
         }`}
@@ -210,6 +215,7 @@ export default function SettingsModal({
             <p className="text-xs text-zinc-500 mt-0.5">{t('settingsGeneralDesc')}</p>
           </div>
           <button
+            data-testid="settings-modal-close"
             onClick={onClose}
             className="text-zinc-500 hover:text-zinc-300 p-1 hover:bg-[#333] rounded"
           >
@@ -295,6 +301,7 @@ export default function SettingsModal({
 
               {section.key === 'tabs' ? (
                 <ToggleRow
+                  testId="settings-tabs-colorize-db-toggle"
                   label={t('settingsTabsColorizeDb')}
                   description={t('settingsTabsColorizeDbDesc')}
                   checked={settings.tabs?.colorizeDbLabelsByDatabase ?? false}
@@ -303,7 +310,9 @@ export default function SettingsModal({
                       ...prev,
                       tabs: {
                         ...(prev.tabs || {}),
-                        colorizeDbLabelsByDatabase: !(prev.tabs?.colorizeDbLabelsByDatabase ?? false),
+                        colorizeDbLabelsByDatabase: !(
+                          prev.tabs?.colorizeDbLabelsByDatabase ?? false
+                        ),
                       },
                     }))
                   }

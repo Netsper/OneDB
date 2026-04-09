@@ -90,10 +90,12 @@ export default function CommandPalette({
 
   return (
     <div
+      data-testid="command-palette-overlay"
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-start justify-center pt-[10vh] px-4"
       onClick={closePalette}
     >
       <div
+        data-testid="command-palette"
         className="bg-[#18181b] border border-[#303038] rounded-2xl w-full max-w-xl flex flex-col shadow-2xl animate-in fade-in zoom-in-95 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -109,6 +111,7 @@ export default function CommandPalette({
           <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-[#32323a] bg-[#101013]">
             <Search className="w-4 h-4 text-zinc-500 shrink-0" />
             <input
+              data-testid="command-palette-input"
               ref={searchInputRef}
               type="text"
               placeholder={t('searchDbTable')}
@@ -128,12 +131,16 @@ export default function CommandPalette({
               {commandQuery ? t('noFilterResults') : t('noRecords')}
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div data-testid="command-palette-list" className="space-y-1.5">
               <div className="px-2 py-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
                 {t('tables')} / {t('views')}
               </div>
               {filteredCommands.map((cmd, idx) => (
                 <button
+                  data-testid="command-palette-item"
+                  data-db-name={cmd.dbName}
+                  data-table-name={cmd.tableName}
+                  data-active={activeIndex === idx ? 'true' : 'false'}
                   key={`${cmd.dbName}::${cmd.tableName}`}
                   ref={(node) => {
                     itemRefs.current[`${cmd.dbName}::${cmd.tableName}`] = node;
@@ -149,13 +156,17 @@ export default function CommandPalette({
                     {cmd.type === 'view' ? (
                       <Eye
                         className={`w-3.5 h-3.5 shrink-0 ${
-                          activeIndex === idx ? 'text-white' : 'text-zinc-500 group-hover:text-white/70'
+                          activeIndex === idx
+                            ? 'text-white'
+                            : 'text-zinc-500 group-hover:text-white/70'
                         }`}
                       />
                     ) : (
                       <Table2
                         className={`w-3.5 h-3.5 shrink-0 ${
-                          activeIndex === idx ? 'text-white' : 'text-zinc-500 group-hover:text-white/70'
+                          activeIndex === idx
+                            ? 'text-white'
+                            : 'text-zinc-500 group-hover:text-white/70'
                         }`}
                       />
                     )}
@@ -163,6 +174,7 @@ export default function CommandPalette({
                   </div>
                   <div className="ml-3 flex items-center gap-2 shrink-0">
                     <span
+                      data-testid="command-palette-db-label"
                       className={`text-[11px] max-w-[16rem] truncate ${
                         activeIndex === idx ? 'text-white/90' : 'text-zinc-500'
                       }`}

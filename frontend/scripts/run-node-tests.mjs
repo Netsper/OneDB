@@ -57,9 +57,7 @@ const testFiles = collectTestFiles(rootDir).sort();
 
 if (testFiles.length === 0) {
   if (process.env.ALLOW_EMPTY_TESTS === '1') {
-    console.log(
-      `No node test files found under '${targetDir}', skipping (ALLOW_EMPTY_TESTS=1).`,
-    );
+    console.log(`No node test files found under '${targetDir}', skipping (ALLOW_EMPTY_TESTS=1).`);
     process.exit(0);
   }
   console.error(`No node test files found under '${targetDir}'.`);

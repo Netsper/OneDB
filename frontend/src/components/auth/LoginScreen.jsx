@@ -452,7 +452,9 @@ export default function LoginScreen({
           disabled={isBuilding}
           className="text-zinc-500 hover:text-zinc-100 text-sm flex items-center gap-2 transition-all group disabled:opacity-60"
         >
-          <div className={`p-1.5 rounded-full bg-[#232323] border border-[#333] group-hover:border-[#555] transition-colors ${isBuilding ? 'animate-pulse' : ''}`}>
+          <div
+            className={`p-1.5 rounded-full bg-[#232323] border border-[#333] group-hover:border-[#555] transition-colors ${isBuilding ? 'animate-pulse' : ''}`}
+          >
             {isBuilding ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
             ) : (
