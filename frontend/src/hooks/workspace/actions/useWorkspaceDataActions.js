@@ -73,15 +73,32 @@ export default function useWorkspaceDataActions({
       return;
     }
 
-    const pkCol = currentTableData.columns.find((c) => c.isPrimary);
-    if (!pkCol) {
+    const pkCols = currentTableData.columns.filter((c) => c.isPrimary);
+    if (pkCols.length === 0) {
       showToast('Primary key is required for inline update.', 'error');
       setEditingCell(null);
       return;
     }
 
+    const missingPkColumn = pkCols.find((pkCol) => targetRow[pkCol.name] === undefined);
+    if (missingPkColumn) {
+      showToast('Primary key value is missing for inline update.', 'error');
+      setEditingCell(null);
+      return;
+    }
+
+    const whereClause = pkCols
+      .map((pkCol) => {
+        const rawValue = targetRow[pkCol.name];
+        if (rawValue === null) {
+          return `${quoteIdentifier(pkCol.name)} IS NULL`;
+        }
+        return `${quoteIdentifier(pkCol.name)} = ${escapeLiteral(rawValue)}`;
+      })
+      .join(' AND ');
+
     try {
-      const sql = `UPDATE ${quoteIdentifier(activeTable)} SET ${quoteIdentifier(editingCell.colName)} = ${escapeLiteral(editingCell.value === '' ? null : editingCell.value)} WHERE ${quoteIdentifier(pkCol.name)} = ${escapeLiteral(targetRow[pkCol.name])};`;
+      const sql = `UPDATE ${quoteIdentifier(activeTable)} SET ${quoteIdentifier(editingCell.colName)} = ${escapeLiteral(editingCell.value === '' ? null : editingCell.value)} WHERE ${whereClause};`;
       await executeSql(sql);
       await refreshActiveTable();
       showToast(t('recordUpdated'), 'success');

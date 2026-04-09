@@ -44,7 +44,6 @@ export default function TableBrowserView({
   rowsPerPage,
   setRowsPerPage,
   setPage,
-  totalPages,
   processedData,
   activeColumnFilterCount,
   hasDataFilters,
@@ -98,6 +97,19 @@ export default function TableBrowserView({
   const [pinnedLeftOffsets, setPinnedLeftOffsets] = useState({});
   const ROW_HEIGHT = 36;
   const OVERSCAN_ROWS = 10;
+  const safePage = Math.max(1, Number(page || 1));
+  const safeRowsPerPage = Math.max(1, Number(rowsPerPage || 1));
+  const currentPageRowCount = Math.max(0, Number(processedData?.length || 0));
+  const knownRowsThroughCurrentPage = (safePage - 1) * safeRowsPerPage + currentPageRowCount;
+  const rawRowCount = Number(currentTableData?.rowCount || 0);
+  const safeRowCount = Number.isFinite(rawRowCount) && rawRowCount >= 0 ? rawRowCount : 0;
+  const hasMoreRows = Boolean(currentTableData?.hasMore);
+  const effectiveTotalRows = hasMoreRows
+    ? Math.max(safeRowCount, knownRowsThroughCurrentPage + 1)
+    : knownRowsThroughCurrentPage;
+  const effectiveTotalPages = Math.max(1, Math.ceil(effectiveTotalRows / safeRowsPerPage));
+  const canGoPrevPage = safePage > 1;
+  const canGoNextPage = hasMoreRows || safePage < effectiveTotalPages;
   const rowOffset = (page - 1) * rowsPerPage;
   const allRowsSelected = paginatedData.length > 0 && selectedRows.size === paginatedData.length;
   const shouldVirtualizeRows = paginatedData.length > 80;
@@ -717,13 +729,18 @@ export default function TableBrowserView({
                           {isEditingThisCell ? (
                             <input
                               autoFocus
-                              value={editingCell.value || ''}
+                              value={editingCell.value == null ? '' : String(editingCell.value)}
                               onChange={(e) =>
-                                setEditingCell({ ...editingCell, value: e.target.value })
+                                setEditingCell((prev) =>
+                                  prev ? { ...prev, value: e.target.value } : prev,
+                                )
                               }
-                              onBlur={saveInlineEdit}
+                              onBlur={() => saveInlineEdit(editingCell)}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') saveInlineEdit();
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  e.currentTarget.blur();
+                                }
                               }}
                               className={`w-full bg-[#18181b] border ${tc.border} rounded px-1 py-0.5 text-sm text-zinc-200 outline-none shadow-lg`}
                             />
@@ -878,38 +895,37 @@ export default function TableBrowserView({
         </div>
         <div className="flex items-center gap-4 text-xs">
           <span className="text-zinc-400">
-            {processedData.length > 0 ? (page - 1) * rowsPerPage + 1 : 0} -{' '}
-            {Math.min(
-              (page - 1) * rowsPerPage + processedData.length,
-              Number(currentTableData?.rowCount || 0),
-            )}{' '}
-            / {Number(currentTableData?.rowCount || 0)}
+            {currentPageRowCount > 0 ? (safePage - 1) * safeRowsPerPage + 1 : 0} -{' '}
+            {currentPageRowCount > 0
+              ? (safePage - 1) * safeRowsPerPage + currentPageRowCount
+              : 0}{' '}
+            / {effectiveTotalRows}
           </span>
           <div className="flex gap-1">
             <button
               onClick={() => setPage(1)}
-              disabled={page === 1}
+              disabled={!canGoPrevPage}
               className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
             >
               <ChevronFirst className="w-4 h-4" />
             </button>
             <button
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-              disabled={page === 1}
+              disabled={!canGoPrevPage}
               className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={page === totalPages || totalPages === 0}
+              onClick={() => setPage((prev) => Math.min(effectiveTotalPages, prev + 1))}
+              disabled={!canGoNextPage}
               className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setPage(totalPages)}
-              disabled={page === totalPages || totalPages === 0}
+              onClick={() => setPage(effectiveTotalPages)}
+              disabled={!canGoNextPage}
               className="p-1.5 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
             >
               <ChevronLast className="w-4 h-4" />

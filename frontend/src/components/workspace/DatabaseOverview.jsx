@@ -98,10 +98,11 @@ export default function DatabaseOverview({
           const hasRowCount = Number.isFinite(Number(tableEntry?.rowCount));
           const rowCountLabel = hasRowCount ? Number(tableEntry.rowCount) : '...';
           return (
-            <div
+            <button
+              type="button"
               key={tableName}
               onClick={() => selectDbAndTable(activeDb, tableName)}
-              className="bg-[#1c1c1c] border border-[#2e2e32] p-4 rounded-lg hover:border-[#444] cursor-pointer transition-colors group shadow-sm hover:shadow-md"
+              className="bg-[#1c1c1c] border border-[#2e2e32] p-4 rounded-lg hover:border-[#444] cursor-pointer transition-colors group shadow-sm hover:shadow-md text-left"
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-zinc-200 font-medium flex items-center gap-2">
@@ -120,16 +121,17 @@ export default function DatabaseOverview({
                 {tableEntry.columnCount ?? tableEntry.columns.length} {t('colsFound')}{' '}
                 {tableEntry.type === 'view' && `(${t('views')})`}
               </p>
-            </div>
+            </button>
           );
         })}
-        <div
+        <button
+          type="button"
           onClick={openCreateTable}
           className={`border-2 border-dashed border-[#333] hover:${tc.border} p-4 rounded-lg cursor-pointer transition-colors flex flex-col items-center justify-center text-zinc-500 hover:${tc.text} min-h-[100px]`}
         >
           <Plus className="w-6 h-6 mb-1" />
           <span className="text-sm font-medium">{t('addNewTable')}</span>
-        </div>
+        </button>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ export default function useWorkspaceNavigationActions({
   activeDb,
   activeTable,
   activeTab,
+  databases,
   currentTableData,
   cellContextMenu,
   refreshActiveTable,
@@ -21,6 +22,8 @@ export default function useWorkspaceNavigationActions({
   setIsRefreshing,
   setActiveDb,
   setActiveTable,
+  setExpandedDbs,
+  setExpandedGroups,
   openTableTabs,
   setOpenTableTabs,
   activeTableTabId,
@@ -143,13 +146,37 @@ export default function useWorkspaceNavigationActions({
     }
   };
 
+  const resolveTableType = (dbName, tableName, loadedEntries = []) => {
+    const fromLoaded = Array.isArray(loadedEntries)
+      ? loadedEntries.find((entry) => entry?.name === tableName)
+      : null;
+    const fromState = databases?.[dbName]?.[tableName];
+    return String(fromLoaded?.type || fromState?.type || 'table').toLowerCase() === 'view'
+      ? 'view'
+      : 'table';
+  };
+
   const selectDbAndTable = async (dbName, tableName, forceTab = null, isTransient = false) => {
+    let loadedEntries = [];
     try {
-      await ensureDatabaseTablesLoaded(dbName);
+      loadedEntries = (await ensureDatabaseTablesLoaded(dbName)) || [];
     } catch (error) {
       showToast(error.message || 'Failed to load table list.', 'error');
       return;
     }
+    const tableType = resolveTableType(dbName, tableName, loadedEntries);
+    setExpandedDbs?.((prev) => ({ ...prev, [dbName]: true }));
+    setExpandedGroups?.((prev) => {
+      const next = { ...(prev || {}) };
+      const tableGroupKey = `${dbName}_tables`;
+      const viewGroupKey = `${dbName}_views`;
+      if (tableType === 'view') {
+        next[viewGroupKey] = true;
+      } else {
+        next[tableGroupKey] = true;
+      }
+      return next;
+    });
     setActiveDb(dbName);
     setActiveTable(tableName);
     if (forceTab) setActiveTab(forceTab);

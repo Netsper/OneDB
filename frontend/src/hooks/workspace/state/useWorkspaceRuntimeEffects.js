@@ -30,7 +30,6 @@ export default function useWorkspaceRuntimeEffects({
   sortConfig,
   setSelectedRows,
   isCommandOpen,
-  isVisibilityMenuOpen,
   databases,
 }) {
   const loadTableDetailsRef = useRef(loadTableDetails);
@@ -184,9 +183,27 @@ export default function useWorkspaceRuntimeEffects({
   ]);
 
   useEffect(() => {
-    if (!isCommandOpen && !isVisibilityMenuOpen) return;
-    Promise.all(Object.keys(databases).map((dbName) => ensureDatabaseTablesLoaded(dbName))).catch(
-      () => {},
+    if (!isCommandOpen) return;
+    const dbNamesToLoad = Object.keys(databases).filter(
+      (dbName) => !loadedTableDbs[dbName] && !loadingTableDbs[dbName],
     );
-  }, [isCommandOpen, isVisibilityMenuOpen, databases, ensureDatabaseTablesLoaded]);
+    if (dbNamesToLoad.length === 0) return;
+
+    let isDisposed = false;
+    const loadMissingDatabases = async () => {
+      for (const dbName of dbNamesToLoad) {
+        if (isDisposed) break;
+        try {
+          await ensureDatabaseTablesLoaded(dbName, { skipRowCountPreload: true });
+        } catch {
+          // Ignore per-database load failures to keep palette responsive.
+        }
+      }
+    };
+
+    void loadMissingDatabases();
+    return () => {
+      isDisposed = true;
+    };
+  }, [databases, ensureDatabaseTablesLoaded, isCommandOpen, loadedTableDbs, loadingTableDbs]);
 }

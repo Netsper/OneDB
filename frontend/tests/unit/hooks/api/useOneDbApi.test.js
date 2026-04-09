@@ -5,10 +5,10 @@ import {
   resolveBrowseRowCount,
 } from '../../../../src/hooks/api/useOneDbApi.js';
 
-test('shouldIncludeBrowseRowCount defaults to disabled for performance', () => {
-  assert.equal(shouldIncludeBrowseRowCount(1), false);
+test('shouldIncludeBrowseRowCount defaults to first page only', () => {
+  assert.equal(shouldIncludeBrowseRowCount(1), true);
   assert.equal(shouldIncludeBrowseRowCount(2), false);
-  assert.equal(shouldIncludeBrowseRowCount(undefined), false);
+  assert.equal(shouldIncludeBrowseRowCount(undefined), true);
 });
 
 test('shouldIncludeBrowseRowCount respects explicit override', () => {

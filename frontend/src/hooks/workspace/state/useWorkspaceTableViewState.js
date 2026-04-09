@@ -113,7 +113,18 @@ export default function useWorkspaceTableViewState({
 
   const paginatedData = useMemo(() => processedData, [processedData]);
 
-  const totalPages = Math.max(1, Math.ceil(Number(currentTableData?.rowCount || 0) / rowsPerPage));
+  const totalPages = useMemo(() => {
+    const safeRowsPerPage = Math.max(1, Number(rowsPerPage || 1));
+    const safePage = Math.max(1, Number(currentTableData?.page || 1));
+    const currentPageRows = Math.max(0, Number(processedData.length || 0));
+    const knownRowsThroughCurrentPage = (safePage - 1) * safeRowsPerPage + currentPageRows;
+    const rawRowCount = Number(currentTableData?.rowCount || 0);
+    const safeRowCount = Number.isFinite(rawRowCount) && rawRowCount >= 0 ? rawRowCount : 0;
+    const effectiveTotalRows = currentTableData?.hasMore
+      ? Math.max(safeRowCount, knownRowsThroughCurrentPage + 1)
+      : knownRowsThroughCurrentPage;
+    return Math.max(1, Math.ceil(effectiveTotalRows / safeRowsPerPage));
+  }, [currentTableData?.hasMore, currentTableData?.page, currentTableData?.rowCount, processedData, rowsPerPage]);
 
   const toggleRowSelection = (origIndex) => {
     const newSet = new Set(selectedRows);

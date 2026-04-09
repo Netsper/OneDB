@@ -4,7 +4,7 @@ export const shouldIncludeBrowseRowCount = (nextPage, overrideValue) => {
   if (typeof overrideValue === 'boolean') {
     return overrideValue;
   }
-  return false;
+  return Math.max(1, Number(nextPage || 1)) === 1;
 };
 
 export const resolveBrowseRowCount = ({
@@ -28,7 +28,37 @@ export const resolveBrowseRowCount = ({
   const safePageRowsLength = Math.max(0, Number(pageRowsLength || 0));
   const knownMinimum = (safePage - 1) * safePerPage + safePageRowsLength;
   const inferred = hasMore ? knownMinimum + 1 : knownMinimum;
+  if (!hasMore) {
+    return knownMinimum;
+  }
   return Math.max(safeFallback, inferred);
+};
+
+const normalizeResponseSnippet = (payload) =>
+  String(payload || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 180);
+
+export const parseApiJson = async (response, action) => {
+  const rawPayload = await response.text();
+  const trimmedPayload = rawPayload.trim();
+  if (trimmedPayload === '') return null;
+
+  try {
+    return JSON.parse(trimmedPayload);
+  } catch {
+    const head = trimmedPayload.slice(0, 20).toLowerCase();
+    const looksLikeHtml = head.startsWith('<!doctype') || head.startsWith('<html') || head[0] === '<';
+    const snippet = normalizeResponseSnippet(trimmedPayload);
+    const detail = snippet !== '' ? ` Response starts with: ${snippet}` : '';
+    if (looksLikeHtml) {
+      throw new Error(
+        `Server returned HTML instead of JSON for "${action}" (HTTP ${response.status}).${detail}`,
+      );
+    }
+    throw new Error(`Invalid JSON response for "${action}" (HTTP ${response.status}).${detail}`);
+  }
 };
 
 export default function useOneDbApi({
@@ -116,7 +146,7 @@ export default function useOneDbApi({
     ],
   );
 
-  const apiActionUrl = useCallback((action) => `/api/${encodeURIComponent(action)}`, []);
+  const apiActionUrl = useCallback((action) => `?api=${encodeURIComponent(action)}`, []);
 
   const quoteIdentifier = useCallback(
     (name) => {
@@ -134,9 +164,9 @@ export default function useOneDbApi({
     const res = await fetch(apiActionUrl('csrf'), {
       credentials: 'same-origin',
     });
-    const data = await res.json();
-    if (!res.ok || !data.ok || !data.token) {
-      throw new Error(data?.error || 'Failed to fetch CSRF token.');
+    const data = await parseApiJson(res, 'csrf');
+    if (!res.ok || !data?.ok || !data?.token) {
+      throw new Error(data?.error || `Failed to fetch CSRF token (HTTP ${res.status}).`);
     }
     csrfTokenRef.current = data.token;
     return csrfTokenRef.current;
@@ -161,22 +191,15 @@ export default function useOneDbApi({
 
       if (options.responseType === 'blob') {
         if (!res.ok) {
-          let errorData = null;
-          try {
-            errorData = await res.json();
-          } catch {
-            // ignore
-          }
+          const errorData = await parseApiJson(res, action);
           throw new Error(errorData?.error || `API "${action}" failed (${res.status}).`);
         }
         return await res.blob();
       }
 
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {
-        throw new Error(`Invalid API response for "${action}".`);
+      const data = await parseApiJson(res, action);
+      if (!data || typeof data !== 'object') {
+        throw new Error(`Invalid API response for "${action}" (HTTP ${res.status}).`);
       }
 
       if (!res.ok || !data?.ok) {
@@ -325,6 +348,7 @@ export default function useOneDbApi({
       if (loadingTableDbs[dbName] && !options.force) {
         return [];
       }
+      const shouldPreloadRowCounts = !options.skipRowCountPreload;
 
       setLoadingTableDbs((prev) => ({ ...prev, [dbName]: true }));
       try {
@@ -373,7 +397,9 @@ export default function useOneDbApi({
           };
         });
         setLoadedTableDbs((prev) => ({ ...prev, [dbName]: true }));
-        void preloadTableRowCounts(dbName, rowCountTargets);
+        if (shouldPreloadRowCounts) {
+          void preloadTableRowCounts(dbName, rowCountTargets);
+        }
 
         return entries;
       } finally {

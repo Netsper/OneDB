@@ -14,8 +14,10 @@ export default function SearchableSelectField({
 }) {
   const rootRef = useRef(null);
   const inputRef = useRef(null);
+  const optionRefs = useRef({});
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const selectedOption = useMemo(
     () => options.find((entry) => entry.value === value) || null,
@@ -60,6 +62,70 @@ export default function SearchableSelectField({
     return () => window.clearTimeout(timer);
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveIndex(0);
+      return;
+    }
+    if (filteredOptions.length === 0) {
+      setActiveIndex(-1);
+      return;
+    }
+    const selectedIndex = filteredOptions.findIndex((entry) => entry.value === value);
+    if (selectedIndex >= 0) {
+      setActiveIndex(selectedIndex);
+      return;
+    }
+    setActiveIndex((prev) => {
+      if (prev < 0 || prev >= filteredOptions.length) return 0;
+      return prev;
+    });
+  }, [filteredOptions, isOpen, value]);
+
+  useEffect(() => {
+    if (!isOpen || activeIndex < 0) return;
+    const activeEntry = filteredOptions[activeIndex];
+    if (!activeEntry) return;
+    optionRefs.current[String(activeEntry.value)]?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex, filteredOptions, isOpen]);
+
+  const selectEntry = (entry) => {
+    onChange(entry.value);
+    setIsOpen(false);
+    setQuery('');
+  };
+
+  const handleInputKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setIsOpen(false);
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (filteredOptions.length === 0) return;
+      setActiveIndex((prev) => {
+        const current = prev < 0 ? 0 : prev;
+        return (current + 1) % filteredOptions.length;
+      });
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (filteredOptions.length === 0) return;
+      setActiveIndex((prev) => {
+        if (prev <= 0) return filteredOptions.length - 1;
+        return prev - 1;
+      });
+      return;
+    }
+    if (event.key === 'Enter') {
+      if (activeIndex < 0 || activeIndex >= filteredOptions.length) return;
+      event.preventDefault();
+      selectEntry(filteredOptions[activeIndex]);
+    }
+  };
+
   return (
     <div ref={rootRef} className={`relative ${className}`}>
       <button
@@ -68,6 +134,12 @@ export default function SearchableSelectField({
         onClick={() => {
           if (disabled) return;
           setIsOpen((prev) => !prev);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' && !isOpen) {
+            event.preventDefault();
+            setIsOpen(true);
+          }
         }}
         className={`w-full px-3 py-2 rounded-lg border bg-[#101013] text-left text-sm transition-colors flex items-center justify-between gap-2 ${
           isOpen ? `${tc.border} ${tc.lightBg}` : 'border-[#333] hover:border-[#4a4a52]'
@@ -89,6 +161,7 @@ export default function SearchableSelectField({
                 type="text"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={handleInputKeyDown}
                 placeholder={searchPlaceholder}
                 className={`w-full py-1.5 pl-8 pr-2.5 rounded-md border border-[#333] bg-[#0f0f12] text-xs text-zinc-200 ${tc.focusRing}`}
               />
@@ -99,16 +172,19 @@ export default function SearchableSelectField({
             {filteredOptions.length > 0 ? (
               filteredOptions.map((entry) => {
                 const isActive = entry.value === value;
+                const isHighlighted = filteredOptions[activeIndex]?.value === entry.value;
                 return (
                   <button
                     key={entry.value}
-                    type="button"
-                    onClick={() => {
-                      onChange(entry.value);
-                      setIsOpen(false);
+                    ref={(node) => {
+                      optionRefs.current[String(entry.value)] = node;
                     }}
+                    type="button"
+                    onClick={() => selectEntry(entry)}
                     className={`w-full px-2.5 py-2 rounded-md text-xs transition-colors flex items-center justify-between gap-2 ${
-                      isActive
+                      isHighlighted
+                        ? `${tc.lightBg} ${tc.textLight}`
+                        : isActive
                         ? `${tc.lightBg} ${tc.textLight}`
                         : 'text-zinc-300 hover:bg-[#232329]'
                     }`}

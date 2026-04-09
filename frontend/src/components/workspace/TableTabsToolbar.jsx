@@ -156,7 +156,7 @@ export default function TableTabsToolbar({
             const isActive = tab.id === activeTableTabId;
             const isPinned = Boolean(tab.pinned);
             return (
-              <button
+              <div
                 key={tab.id}
                 ref={(node) => {
                   if (node) {
@@ -165,8 +165,15 @@ export default function TableTabsToolbar({
                     delete tabButtonRefs.current[tab.id];
                   }
                 }}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => onActivateTableTab(tab.id)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onActivateTableTab(tab.id);
+                  }
+                }}
                 onDoubleClick={() => onPromoteTableTab?.(tab.id)}
                 onContextMenu={(event) => openTabContextMenu(event, tab.id)}
                 className={`group inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs transition-colors whitespace-nowrap ${
@@ -180,26 +187,18 @@ export default function TableTabsToolbar({
                 {tab.isTransient && <Eye className="w-3 h-3 text-zinc-500" />}
                 <span className="max-w-[12rem] truncate">{tab.tableName}</span>
                 <span className="text-[10px] text-zinc-500">{tab.dbName}</span>
-                <span
-                  role="button"
-                  tabIndex={0}
+                <button
+                  type="button"
                   onClick={(event) => {
                     event.stopPropagation();
                     onCloseTableTab(tab.id);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      onCloseTableTab(tab.id);
-                    }
                   }}
                   className="text-zinc-500 hover:text-zinc-200 transition-colors"
                   aria-label={t('close')}
                 >
                   <X className="w-3 h-3" />
-                </span>
-              </button>
+                </button>
+              </div>
             );
           })}
           {tabContextMenu.visible && contextTab && (

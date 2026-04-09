@@ -57,6 +57,11 @@ export default function useWorkspaceLayoutViewModel(params) {
     filteredCommands,
   } = params;
 
+  const openCommandPalette = () => {
+    setCommandQuery('');
+    setIsCommandOpen(true);
+  };
+
   return {
     sidebar: {
       t,
@@ -77,7 +82,7 @@ export default function useWorkspaceLayoutViewModel(params) {
       isDatabaseVisible,
       sidebarQuery,
       setSidebarQuery,
-      openCommandPalette: () => setIsCommandOpen(true),
+      openCommandPalette,
       openCreateDatabase: () => {
         setInputVal('');
         setModalConfig({ isOpen: true, type: 'create_db' });
@@ -139,7 +144,7 @@ export default function useWorkspaceLayoutViewModel(params) {
         setActiveTable(null);
         setActiveTableTabId(null);
       },
-      onOpenCommandPalette: () => setIsCommandOpen(true),
+      onOpenCommandPalette: openCommandPalette,
       onRefresh: handleRefresh,
       isRefreshing,
       onOpenSettings: () => setIsSettingsOpen(true),
@@ -171,6 +176,7 @@ export default function useWorkspaceLayoutViewModel(params) {
       t,
       tc,
       isOpen: isCommandOpen,
+      setIsCommandOpen,
       searchInputRef,
       commandQuery,
       setCommandQuery,

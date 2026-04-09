@@ -28,11 +28,22 @@ function SidebarEntry({
   onDoubleClick,
   trailing,
 }) {
+  const handleKeyDown = (event) => {
+    if (!onClick) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick(event);
+    }
+  };
+
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm transition-colors group cursor-pointer relative ${active ? `${lightBg} ${textLight} font-medium` : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#232323]'}`}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
+      onKeyDown={handleKeyDown}
     >
       {active && (
         <div
@@ -122,8 +133,11 @@ export default function AppSidebar({
     if (!activeKey) return;
     const targetNode = sidebarEntryRefs.current[activeKey];
     if (!targetNode || typeof targetNode.scrollIntoView !== 'function') return;
-    targetNode.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [activeDb, activeTable]);
+    // Keep active item comfortably visible instead of hugging sticky search/header areas.
+    targetNode.style.scrollMarginTop = '88px';
+    targetNode.style.scrollMarginBottom = '24px';
+    targetNode.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+  }, [activeDb, activeTable, expandedDbs, expandedGroups, loadingTableDbs, sidebarDatabases]);
 
   return (
     <div
@@ -298,7 +312,7 @@ export default function AppSidebar({
               <Command className="w-3.5 h-3.5" /> {t('openCmd')}
             </div>
             <kbd className="font-mono text-[9px] bg-[#18181b] px-1.5 py-0.5 rounded text-zinc-500">
-              ⌘K
+              ⌘/Ctrl+K
             </kbd>
           </button>
         </div>
@@ -367,8 +381,16 @@ export default function AppSidebar({
                   ref={(node) => {
                     sidebarEntryRefs.current[`db:${dbName}`] = node;
                   }}
+                  role="button"
+                  tabIndex={0}
                   className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-[#232323] transition-colors group cursor-pointer ${activeDb === dbName && !activeTable ? `${tc.lightBg} ${tc.textLight}` : ''}`}
                   onClick={() => openDatabase(dbName)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openDatabase(dbName);
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-2 flex-1 overflow-hidden">
                     {expandedDbs[dbName] ? (
@@ -504,8 +526,16 @@ export default function AppSidebar({
 
                     <div>
                       <div
+                        role="button"
+                        tabIndex={0}
                         className="flex items-center gap-1 px-1 py-1 cursor-pointer group/folder"
                         onClick={() => toggleGroup(`${dbName}_tables`)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleGroup(`${dbName}_tables`);
+                          }
+                        }}
                       >
                         {expandedGroups[`${dbName}_tables`] ? (
                           <ChevronDown className="w-3 h-3 text-zinc-500" />
@@ -566,8 +596,16 @@ export default function AppSidebar({
 
                     <div>
                       <div
+                        role="button"
+                        tabIndex={0}
                         className="flex items-center gap-1 px-1 py-1 cursor-pointer"
                         onClick={() => toggleGroup(`${dbName}_views`)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleGroup(`${dbName}_views`);
+                          }
+                        }}
                       >
                         {expandedGroups[`${dbName}_views`] ? (
                           <ChevronDown className="w-3 h-3 text-zinc-500" />

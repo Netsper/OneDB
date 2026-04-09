@@ -122,8 +122,15 @@ export default function useDatabaseManagerWorkspaceActionsModel(model, apiModel)
     t,
   });
 
-  const saveInlineEdit = () => dataActions.saveInlineEdit(workspace.editingCell);
-  const handleBulkDelete = () => dataActions.handleBulkDelete(workspace.selectedRows);
+  const {
+    saveInlineEdit: saveInlineEditRaw,
+    handleBulkDelete: handleBulkDeleteRaw,
+    ...otherDataActions
+  } = dataActions;
+
+  const saveInlineEdit = (editingCell = workspace.editingCell) => saveInlineEditRaw(editingCell);
+  const handleBulkDelete = (selectedRows = workspace.selectedRows) =>
+    handleBulkDeleteRaw(selectedRows);
   const renderCellContent = useWorkspaceTableCellRenderer({
     tc,
     isJsonColumn,
@@ -150,8 +157,6 @@ export default function useDatabaseManagerWorkspaceActionsModel(model, apiModel)
     hasSidebarFilters,
     showToast,
     copyToClipboard,
-    saveInlineEdit,
-    handleBulkDelete,
     renderCellContent,
     ...workspaceSidebarCollections,
     ...workspaceFilters,
@@ -159,9 +164,11 @@ export default function useDatabaseManagerWorkspaceActionsModel(model, apiModel)
     ...workspaceNavigationActions,
     ...workspaceSqlActions,
     ...workspaceImportExportActions,
-    ...dataActions,
+    ...otherDataActions,
     ...workspaceCellHelpers,
     ...workspaceColumnTypeHelpers,
+    saveInlineEdit,
+    handleBulkDelete,
   };
 
   return { workspaceInputs };

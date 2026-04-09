@@ -34,7 +34,7 @@ export default function ShortcutsModal({ t, isOpen, onClose }) {
             <span className="text-sm text-zinc-300">{t('runQuery')}</span>
             <div className="flex gap-1">
               <kbd className="bg-[#2e2e32] text-zinc-300 px-2 py-1 rounded text-xs font-mono">
-                Ctrl
+                Cmd / Ctrl
               </kbd>
               <kbd className="bg-[#2e2e32] text-zinc-300 px-2 py-1 rounded text-xs font-mono">
                 Enter
