@@ -165,6 +165,14 @@ final class Runtime
                 return;
 
             case 'build_release':
+                self::requireMethod(['POST']);
+                SessionCsrf::requireValidToken();
+                if (!Environment::allowBuild()) {
+                    throw new HttpException('Build endpoint is disabled.', 403);
+                }
+                if (Environment::readonlyMode()) {
+                    throw new HttpException('Build is not allowed in readonly mode.', 403);
+                }
                 self::handleBuildRelease();
                 return;
 
@@ -321,13 +329,6 @@ final class Runtime
      */
     private static function handleBuildRelease(): void
     {
-        self::requireMethod(['POST']);
-        SessionCsrf::requireValidToken();
-
-        if (Environment::readonlyMode()) {
-            throw new HttpException('Build is not allowed in readonly mode.', 403);
-        }
-
         $rootDir = dirname(__DIR__, 2);
         $buildScript = $rootDir . '/build.sh';
         $releaseFile = $rootDir . '/release/OneDB.php';
@@ -349,10 +350,12 @@ final class Runtime
         exec($command, $output, $resultCode);
 
         if ($resultCode !== 0) {
+            // Log details to server logs but hide them from public API response
+            error_log("[OneDB] Build failed: " . implode("\n", $output));
+            
             JsonResponse::send([
                 'ok' => false,
-                'error' => 'Build failed.',
-                'details' => implode("\n", $output)
+                'error' => 'Build failed. Check server logs for details.'
             ], 500);
             return;
         }

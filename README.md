@@ -59,7 +59,7 @@ Main API actions:
 ## Requirements
 
 - Node.js + npm (for frontend development/build)
-- PHP 8+ with PDO extensions for your target DB engines
+- PHP 7.4+ with PDO extensions for your target DB engines
 
 ## Local Development
 
@@ -90,6 +90,45 @@ Backend URL:
 - `http://localhost:8080`
 
 The backend allows CORS for local frontend origins (`localhost:5173` / `127.0.0.1:5173`).
+
+## Docker
+
+OneDB includes a `Dockerfile` and `docker-compose.yml` for containerized development.
+
+### 1. Quick Start (Docker Compose)
+
+Run the entire stack in the background:
+
+```bash
+docker-compose up -d
+```
+
+The application will be available at:
+- **App**: `http://localhost:8080`
+- **Vite HMR**: `http://localhost:5173`
+
+### 2. Manual Build
+
+If you prefer to build the image manually:
+
+```bash
+docker build -t onedb .
+docker run -p 8080:80 -p 5173:5173 onedb
+```
+
+### 3. Database Connectivity
+
+When running inside Docker, connecting to a database on your host machine requires special handling:
+
+- **macOS/Windows**: Use `host.docker.internal` as the database host.
+- **Linux**: `host.docker.internal` is not resolvable by default. You can:
+    - Use the `--add-host=host.docker.internal:host-gateway` flag when running Docker.
+    - Or set the `ONEDB_DOCKER_HOST` environment variable to your host's internal IP (e.g., `172.17.0.1`).
+
+Example for Linux users:
+```bash
+docker run -e ONEDB_DOCKER_HOST=172.17.0.1 -p 8080:80 onedb
+```
 
 ## Build Release (`OneDB.php`)
 
@@ -122,6 +161,7 @@ Covered API actions:
 - `list_tables` (SQLite)
 - `browse_table` (SQLite)
 - `query` (mutation + result set + readonly behavior)
+- `build_release` (method, feature flag, and readonly guards)
 - method/content-type/CSRF enforcement checks
 
 ## Security Notes
@@ -152,6 +192,15 @@ ONEDB_DEBUG=1
 
 # Optional file sink for debug telemetry lines
 ONEDB_DEBUG_LOG_PATH=/tmp/onedb-debug.log
+
+# Enable the build/release endpoint (disabled by default)
+ONEDB_ALLOW_BUILD=1
+
+# Optional override for Docker-to-host connectivity
+ONEDB_DOCKER_HOST=host.docker.internal
+
+# (Frontend Only) Custom backend API target for Vite proxy
+VITE_API_TARGET=http://localhost:8080
 ```
 
 ## Repository Notes

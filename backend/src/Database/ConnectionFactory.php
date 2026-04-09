@@ -69,7 +69,7 @@ final class ConnectionFactory
             $host = trim((string)($connection['host'] ?? ''));
             if ($host === '' || $host === 'localhost' || $host === '127.0.0.1' || $host === '0.0.0.0') {
                 if (Environment::isDocker()) {
-                    $host = 'host.docker.internal';
+                    $host = Environment::dockerHostOverride() ?: 'host.docker.internal';
                 } elseif ($host === '') {
                     $host = '127.0.0.1';
                 }

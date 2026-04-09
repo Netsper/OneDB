@@ -8,7 +8,7 @@ This map describes the orchestration and data flow between the various component
 The backend is built around a single dispatcher: `OneDB\Runtime`.
 
 - **Entry Point**: `backend/bootstrap.php` initializes the environment and calls `OneDB\Runtime::dispatch()`.
-- **Dispatcher**: `backend/src/runtime.php` resolves the `action` parameter and routes it to specific services.
+- **Dispatcher**: `backend/src/runtime.php` (via `ApiRequest`) resolves the action from query parameters (`action`, `api`) or the URL path (`/api/{action}`).
 - **Service Layers**:
     - `MetadataService`: Handles schema introspection (databases, tables, columns).
     - `QueryService`: Executes SQL queries and transactions.
@@ -22,7 +22,7 @@ The frontend communicates with the backend via JSON-RPC-style actions.
 graph TD
     UI[React Components] --> Hooks[Business Logic Hooks]
     Hooks --> API[useOneDbApi.js]
-    API -- "POST ?action=..." --> Runtime[OneDB\Runtime]
+    API -- "POST /api/{action} or ?action=..." --> Runtime[OneDB\Runtime]
     Runtime --> Services[Database Services]
     Services -- "PDO" --> DB[(Target Database)]
 ```
@@ -35,7 +35,7 @@ OneDB uses a custom packing mechanism to generate a single-file release.
 3.  **Output**: `release/OneDB.php` contains the entire application (Backend + Frontend + Assets).
 
 ## 🛡️ Security Mechanisms
-- **CSRF Protection**: Handled by `OneDB\Http\SessionCsrf`. Every `POST` request must include a `one-db-csrf` header.
+- **CSRF Protection**: Handled by `OneDB\Http\SessionCsrf`. Every `POST` request must include an `X-CSRF-Token` header.
 - **ReadOnly Guard**: `OneDB\Database\ReadOnlySqlGuard` prevents destructive queries when `ONEDB_READONLY` is enabled.
 
 ## 📁 Key Directories

@@ -205,6 +205,7 @@ function sanitizeOpenTableTabs(rawValue) {
       dbName,
       tableName,
       pinned: Boolean(item.pinned),
+      isTransient: Boolean(item.isTransient),
     });
   });
 
@@ -443,12 +444,19 @@ export default function useWorkspaceState() {
     }
 
     // Sync State -> URL
-    const newParams = new URLSearchParams();
-    if (activeDb) newParams.set('db', activeDb);
+    const newParams = new URLSearchParams(window.location.search);
     
+    if (activeDb) {
+      newParams.set('db', activeDb);
+    } else {
+      newParams.delete('db');
+    }
+
     if (activeTableTabId && activeTableTabId.includes('::')) {
       const [, tableName] = activeTableTabId.split('::');
       newParams.set('table', tableName);
+    } else {
+      newParams.delete('table');
     }
 
     const newSearch = newParams.toString();
