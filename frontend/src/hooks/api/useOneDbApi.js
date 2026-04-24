@@ -147,7 +147,7 @@ export default function useOneDbApi({
     ],
   );
 
-  const apiActionUrl = useCallback((action) => `?api=${encodeURIComponent(action)}`, []);
+  const apiActionUrl = useCallback((action) => `/api/${encodeURIComponent(action)}`, []);
 
   const quoteIdentifier = useCallback(
     (name) => {
